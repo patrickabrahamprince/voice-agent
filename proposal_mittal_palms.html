@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Commercial Proposal — Autonomous Voice AI Agent for Mittal Palms</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 14mm 14mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1A1A1A;
+      background: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      font-size: 11.5pt;
+      line-height: 1.5;
+    }
+
+    /* Header Banner */
+    .header {
+      border-bottom: 2px solid #0066CC;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .brand-title {
+      font-size: 20pt;
+      font-weight: 800;
+      color: #000000;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-subtitle {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #0066CC;
+      margin-top: 3px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .meta-box {
+      text-align: right;
+      font-size: 9.5pt;
+      color: #555555;
+    }
+
+    .meta-box strong {
+      color: #111111;
+    }
+
+    /* Section Styling */
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #003366;
+      border-bottom: 1px solid #E2E8F0;
+      padding-bottom: 6px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      letter-spacing: -0.01em;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin: 6px 0;
+      color: #2D3748;
+    }
+
+    /* Highlight Banner */
+    .hero-banner {
+      background: #F0F7FF;
+      border-left: 4px solid #0066CC;
+      padding: 12px 16px;
+      border-radius: 0 6px 6px 0;
+      margin-bottom: 18px;
+    }
+
+    .hero-banner p {
+      margin: 2px 0;
+      font-size: 10.5pt;
+    }
+
+    /* Feature Grid */
+    .grid-2 {
+      display: flex;
+      gap: 14px;
+      margin: 12px 0 16px 0;
+      page-break-inside: avoid;
+    }
+
+    .card {
+      flex: 1;
+      border: 1px solid #CBD5E0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: #FFFFFF;
+    }
+
+    .card.good {
+      border-top: 4px solid #28A745;
+      background: #FAFFF9;
+    }
+
+    .card.bad {
+      border-top: 4px solid #DC3545;
+      background: #FFF9F9;
+    }
+
+    .card.learning {
+      border-top: 4px solid #6F42C1;
+      background: #FAF7FF;
+    }
+
+    .card-title {
+      font-size: 11pt;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-title.green {
+      color: #1E7E34;
+    }
+
+    .card-title.red {
+      color: #BD2130;
+    }
+
+    .card-title.purple {
+      color: #59359A;
+    }
+
+    .card ul {
+      margin: 4px 0 0 0;
+      padding-left: 18px;
+      font-size: 9.8pt;
+      color: #2D3748;
+    }
+
+    .card li {
+      margin-bottom: 4px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 16px 0;
+      font-size: 10pt;
+      page-break-inside: avoid;
+    }
+
+    th {
+      background: #003366;
+      color: #FFFFFF;
+      text-align: left;
+      padding: 9px 11px;
+      font-weight: 600;
+      font-size: 9.5pt;
+      letter-spacing: 0.02em;
+    }
+
+    td {
+      padding: 9px 11px;
+      border-bottom: 1px solid #E2E8F0;
+      color: #2D3748;
+    }
+
+    tr:nth-child(even) td {
+      background: #F8FAFC;
+    }
+
+    .price-tag {
+      font-weight: 700;
+      color: #0066CC;
+      font-size: 10.5pt;
+    }
+
+    .badge-pop {
+      background: #EBF8FF;
+      color: #0066CC;
+      font-size: 8pt;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #BEE3F8;
+      display: inline-block;
+      margin-left: 4px;
+    }
+
+    .badge-rec {
+      background: #DEF7EC;
+      color: #03543F;
+      font-size: 8pt;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #BCF0DA;
+      display: inline-block;
+      margin-left: 4px;
+    }
+
+    /* Setup Box */
+    .setup-box {
+      border: 1.5px solid #0066CC;
+      background: #F4F9FF;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      page-break-inside: avoid;
+    }
+
+    .setup-title {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #003366;
+      margin: 0;
+    }
+
+    .setup-desc {
+      font-size: 9.5pt;
+      color: #4A5568;
+      margin-top: 3px;
+    }
+
+    .setup-price {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0066CC;
+      white-space: nowrap;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    /* Terms & Signature */
+    .terms-box {
+      font-size: 9pt;
+      color: #64748B;
+      border-top: 1px solid #E2E8F0;
+      padding-top: 10px;
+      margin-top: 18px;
+    }
+
+    .signature-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 26px;
+      page-break-inside: avoid;
+    }
+
+    .sign-block {
+      width: 44%;
+      border-top: 1px solid #718096;
+      padding-top: 6px;
+      font-size: 9.5pt;
+      color: #4A5568;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1 class="brand-title">Getmore.OS</h1>
+      <div class="brand-subtitle">Commercial Proposal & Telephony AI Implementation Scope</div>
+    </div>
+    <div class="meta-box">
+      <div><strong>Prepared By:</strong> Getmore.OS (<a href="https://getmoreos.in/" target="_blank"
+          style="color: #0066CC; text-decoration: none;">getmoreos.in</a>)</div>
+      <div><strong>Client:</strong> Mittal Palms, Jakkur</div>
+      <div><strong>Project:</strong> 3.2 Acre Residential Development</div>
+      <div><strong>Date:</strong> October 2026</div>
+      <div><strong>Status:</strong> Ready for Execution</div>
+    </div>
+  </div>
+
+  <!-- Executive Summary -->
+  <div class="hero-banner">
+    <p><strong>Executive Purpose:</strong> Deploy an autonomous, human-sounding inbound Voice AI Property Advisor
+      (<strong>"Priya"</strong>) dedicated exclusively to <strong>Mittal Palms, Jakkur, North Bangalore</strong>. The
+      agent answers 100% of incoming prospective buyer calls within 1 ring, conducts structured BANT qualification,
+      segments prospects into high-intent and filtered buckets, coordinates site visit walkthroughs with
+      <strong>Raghavendra (9945577935)</strong>, and continuously improves after every conversation.
+    </p>
+  </div>
+
+  <!-- Core Architectural Pillars -->
+  <h2>1. Core Capabilities: Dual-Bucket Prospecting & Self-Learning</h2>
+
+  <div class="grid-2">
+    <!-- Good Prospects Bucket -->
+    <div class="card good">
+      <div class="card-title green">
+        <span>✓</span> Good Prospects Bucket (Immediate Action)
+      </div>
+      <ul>
+        <li><strong>Verified Budget:</strong> Aligned with 2 BHK (₹1.15 Cr+) or 3 BHK (₹1.70 Cr+).</li>
+        <li><strong>Immediate Possession:</strong> Seeking ready-to-move homes in Jakkur.</li>
+        <li><strong>Walkthrough Scheduled:</strong> Locked in weekend site visit with <strong>Raghavendra</strong>.</li>
+        <li><strong>Instant Alert:</strong> Direct WhatsApp & CRM ping to sales closers.</li>
+      </ul>
+    </div>
+
+    <!-- Bad Prospects Bucket -->
+    <div class="card bad">
+      <div class="card-title red">
+        <span>⚠️</span> Bad Prospects Bucket (Auto-Filtered)
+      </div>
+      <ul>
+        <li><strong>Budget Mismatch:</strong> Inquiries seeking 3 BHK under ₹50 Lakhs.</li>
+        <li><strong>Rental & PG Hunters:</strong> Looking for leases rather than property purchase.</li>
+        <li><strong>Unserviceable Corridors:</strong> Refusing North Bangalore commute.</li>
+        <li><strong>Saves 200+ Sales Hours:</strong> Polite handling without wasting sales rep time.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Post-Call Self-Training Engine -->
+  <div class="card learning">
+    <div class="card-title purple">
+      <span>🧠</span> Continuous Post-Call Self-Training Flywheel (Train-After-Every-Call)
+    </div>
+    <ul>
+      <li><strong>Autonomous Transcript Analysis:</strong> The moment each phone call concludes, the LLM analyzes buyer
+        questions, sentiment, objections, and negotiation attempts.</li>
+      <li><strong>Dynamic Learning Database:</strong> New objections (e.g. Kaveri water, airport transit time, payment
+        milestones) are committed into the active intelligence memory in real time.</li>
+      <li><strong>Few-Shot In-Context Injection:</strong> By the very next phone call, Priya automatically adopts the
+        optimal answers learned from previous calls—making the agent progressively sharper and more persuasive every
+        single day.</li>
+    </ul>
+  </div>
+
+  <!-- Voice Quality -->
+  <h2>2. Voice Persona: Sarvam AI Bulbul (Authentic Bangalore Dialect)</h2>
+  <p>To eliminate synthetic robotic tones, the voice agent is powered by <strong>Sarvam AI Bulbul v4-flash</strong>
+    (Bangalore frontier voice lab):</p>
+  <ul>
+    <li><strong>Simran (Conversational Sales Persona):</strong> Energetic, warm, and articulate Indian English tone.
+    </li>
+    <li><strong>Native Real Estate Phonetics:</strong> Flawless pronunciation of local Bangalore terminology
+      (<em>Jakkur, Hebbal, Manyata Tech Park, Airport Road, Crores, Lakhs, 2 BHK, 3 BHK</em>).</li>
+    <li><strong>Hardware Barge-In Support:</strong> Sub-50ms clear buffer flush allowing callers to interrupt naturally.
+    </li>
+  </ul>
+
+  <!-- Commercial Terms (Page 2) -->
+  <div class="page-break"></div>
+
+  <div class="header">
+    <div>
+      <h1 class="brand-title" style="font-size: 16pt;">Getmore.OS Voice AI — Commercial Schedule</h1>
+    </div>
+    <div class="meta-box">
+      <div><strong>Prepared By:</strong> Getmore.OS (<a href="https://getmoreos.in/" target="_blank"
+          style="color: #0066CC; text-decoration: none;">getmoreos.in</a>)</div>
+      <div><strong>Project:</strong> Mittal Palms, Jakkur</div>
+      <div><strong>Page:</strong> 2 of 2</div>
+    </div>
+  </div>
+
+  <h2>3. One-Time Build & Setup Fee</h2>
+
+  <div class="setup-box">
+    <div>
+      <div class="setup-title">Fixed One-Time Build & Telephony Deployment</div>
+      <div class="setup-desc">Complete end-to-end knowledge base ingestion, PBX integration, Sarvam AI tuning & CRM
+        sync.</div>
+    </div>
+    <div class="setup-price">₹50,000</div>
+  </div>
+
+  <p style="font-size: 9.8pt; color: #4A5568; margin-top: -6px;">
+    <strong>Includes:</strong> Mittal Palms 3.2 Acre inventory setup (1235–1980 sq.ft) • 5-Question BANT qualification
+    matrix • Dual-bucket lead classification engine • Continuous post-call self-learning loop • Virtual telephony PBX
+    trunking • Google Sheets & SQLite live audit console • Raghavendra site visit dispatch routing.
+  </p>
+
+  <h2>4. Monthly Maintenance & Infrastructure Plans</h2>
+  <p>All plans are calculated based on an <strong>average call duration of 3 minutes per call</strong>, covering 100% of
+    inbound telephony, Deepgram STT, Sarvam AI neural synthesis, Groq LLM intelligence, server hosting, and database
+    maintenance:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Plan Tier</th>
+        <th>Monthly Call Volume</th>
+        <th>Total Talk Time</th>
+        <th>Monthly Retainer</th>
+        <th>Effective Cost / Call</th>
+        <th>Features & SLA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Tier 1 — Standard</strong></td>
+        <td><strong>2,000 Calls</strong></td>
+        <td>6,000 Minutes</td>
+        <td class="price-tag">₹34,000 / mo</td>
+        <td>₹17.00 / call</td>
+        <td>24/7 Telephony, Sarvam AI Bulbul, Lead Bucketing, Google Sheet Sync, Standard Support</td>
+      </tr>
+      <tr>
+        <td><strong>Tier 2 — Growth</strong> <span class="badge-rec">Recommended</span></td>
+        <td><strong>3,000 Calls</strong></td>
+        <td>9,000 Minutes</td>
+        <td class="price-tag">₹44,000 / mo</td>
+        <td>₹14.66 / call</td>
+        <td>Everything in Tier 1 + Bi-weekly Prompt Optimization, WhatsApp Lead Alerts, Priority SLA</td>
+      </tr>
+      <tr>
+        <td><strong>Tier 3 — Scale</strong> <span class="badge-pop">High Volume</span></td>
+        <td><strong>4,000 Calls</strong></td>
+        <td>12,000 Minutes</td>
+        <td class="price-tag">₹54,000 / mo</td>
+        <td>₹13.50 / call</td>
+        <td>Everything in Tier 2 + Dedicated Account Manager, Multi-Number Routing, Weekly Intelligence Audit</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="font-size: 9pt; color: #64748B;">
+    * Overage Calls beyond plan limits are billed at flat <strong>₹12 per 3-minute call</strong>. No rollover of unused
+    minutes.
+  </p>
+
+  <h2>5. Financial Comparison: Voice AI vs. Human Telecallers</h2>
+  <p>For a project receiving <strong>3,000 calls per month</strong> (approx. 100–150 calls/day across peak hours &
+    weekends):</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Evaluation Parameter</th>
+        <th>Human Telecaller Team (3–4 Staff)</th>
+        <th>Getmore.OS Voice AI (Tier 2)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Monthly Cost</strong></td>
+        <td>₹85,000 – ₹1,10,000 / month (Payroll + bonuses)</td>
+        <td style="color: #28A745; font-weight: 700;">₹44,000 / month (Flat)</td>
+      </tr>
+      <tr>
+        <td><strong>Availability</strong></td>
+        <td>9:30 AM – 6:30 PM (Misses evenings & Sundays)</td>
+        <td style="color: #28A745; font-weight: 700;">24/7/365 (Instant pick-up within 1 ring)</td>
+      </tr>
+      <tr>
+        <td><strong>Consistency & CRM Logging</strong></td>
+        <td>Manual data entry, delayed or missed leads</td>
+        <td style="color: #28A745; font-weight: 700;">100% Automated, instant Good/Bad bucketing</td>
+      </tr>
+      <tr>
+        <td><strong>Monthly Net Savings</strong></td>
+        <td>Baseline Cost</td>
+        <td style="color: #28A745; font-weight: 700;">Save ₹41,000 – ₹66,000 every single month</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>6. Implementation Timeline & Milestone Terms</h2>
+  <ul>
+    <li><strong>Timeline:</strong> Full deployment within <strong>5 to 7 business days</strong> from kickoff.</li>
+    <li><strong>Payment Milestones:</strong> 50% upfront on project commencement; 50% upon successful live pilot call
+      demonstration.</li>
+    <li><strong>Monthly Retainer:</strong> Billed at the beginning of each billing cycle; 30-day notice for tier
+      adjustments.</li>
+  </ul>
+
+  <!-- Signature Block -->
+  <div class="signature-row">
+    <div class="sign-block">
+      <strong>Prepared By:</strong><br>
+      Getmore.OS (<a href="https://getmoreos.in/" target="_blank"
+        style="color: #0066CC; text-decoration: none;">https://getmoreos.in/</a>)<br>
+      Authorized Signatory
+    </div>
+    <div class="sign-block">
+      <strong>Accepted & Confirmed By:</strong><br>
+      Mittal Palms, Jakkur<br>
+      Authorized Signatory & Date
+    </div>
+  </div>
+
+  <div class="terms-box">
+    This proposal is confidential and prepared exclusively for the sales operations of Mittal Palms. Valid for 30 days
+    from issuance.
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dylan Dsouza — Voice Agent Interactive Audio Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090B10;
+      --surface: #121620;
+      --surface-elevated: #1A2130;
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #3B82F6;
+      --accent-glow: rgba(59, 130, 246, 0.35);
+      --success: #10B981;
+      --amber: #F59E0B;
+      --rose: #F43F5E;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --font: 'Plus Jakarta Sans', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      padding: 32px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 980px;
+    }
+
+    header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #34D399;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 999px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #10B981;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #10B981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    /* Player Status Bar */
+    .player-dock {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .now-playing {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .soundwave {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 24px;
+    }
+
+    .soundwave-bar {
+      width: 3px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 3px;
+      transition: height 0.2s ease;
+    }
+
+    .playing .soundwave-bar:nth-child(1) { animation: wave 0.8s infinite ease-in-out; }
+    .playing .soundwave-bar:nth-child(2) { animation: wave 0.8s infinite ease-in-out 0.15s; }
+    .playing .soundwave-bar:nth-child(3) { animation: wave 0.8s infinite ease-in-out 0.3s; }
+    .playing .soundwave-bar:nth-child(4) { animation: wave 0.8s infinite ease-in-out 0.45s; }
+
+    @keyframes wave {
+      0%, 100% { height: 6px; }
+      50% { height: 24px; }
+    }
+
+    .track-meta h3 {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .track-meta p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Sections */
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card:hover {
+      background: var(--surface-elevated);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+    }
+
+    .card.active {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .card-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+    }
+
+    .card.objection .card-tag {
+      color: var(--amber);
+    }
+
+    .play-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .card:hover .play-btn {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .card-quote {
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--text);
+      font-style: italic;
+    }
+
+    .audio-player-native {
+      display: none;
+    }
+
+    /* Footer info */
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div>
+        <div class="badge"><span class="status-dot"></span> Neural Voice AI Ready • Sarvam Bulbul</div>
+        <h1 style="margin-top: 8px;">Dylan Dsouza — Real Estate Voice Agent</h1>
+        <p class="subtitle">Bangalore Property Advisor Voice Demonstration & Objection Rejection Testing</p>
+      </div>
+      <div>
+        <span style="font-family: var(--mono); font-size: 12px; color: var(--text-muted); background: var(--surface); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);">
+          Voice: Shubh (Sarvam Bulbul • en-IN)
+        </span>
+      </div>
+    </header>
+
+    <!-- Global Player Dock -->
+    <div class="player-dock">
+      <div class="now-playing">
+        <div id="soundwave" class="soundwave">
+          <div class="soundwave-bar"></div>
+          <div class="soundwave-bar"></div>
+          <div class="soundwave-bar"></div>
+          <div class="soundwave-bar"></div>
+        </div>
+        <div class="track-meta">
+          <h3 id="current-title">Click any turn below to test Dylan's voice</h3>
+          <p id="current-text">Real-time voice playback from Sarvam AI Bulbul neural audio engine</p>
+        </div>
+      </div>
+      <button id="global-pause-btn" style="display:none; padding: 8px 16px; border-radius: 8px; background: var(--surface-elevated); border: 1px solid var(--border); color: var(--text); cursor: pointer;" onclick="stopAudio()">⏹ Stop</button>
+    </div>
+
+    <!-- Section 1: Main Conversation Script Flow -->
+    <div class="section-title">
+      <span>📞 Stage-by-Stage Outbound Conversation Script</span>
+    </div>
+    <div class="grid">
+
+      <div class="card" onclick="playTurn('dylan_1_greeting.wav', 'Stage 1: Greeting & Verification', 'Hi, good morning — am I speaking with Rahul?')">
+        <div class="card-header">
+          <span class="card-tag">Stage 1: Opening</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"Hi, good morning — am I speaking with Rahul?"</div>
+      </div>
+
+      <div class="card" onclick="playTurn('dylan_2_intro.wav', 'Stage 2: Intro & Value Hook', 'Hi Rahul, I’m Dylan Dsouza, a property advisor. I just wanted to check if you are exploring properties in Bangalore?')">
+        <div class="card-header">
+          <span class="card-tag">Stage 2: Intro</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"Hi, I’m Dylan Dsouza, a property advisor. I just wanted to check if you are exploring properties in Bangalore?"</div>
+      </div>
+
+      <div class="card" onclick="playTurn('dylan_3_permission.wav', 'Stage 3: Permission to Qualify', 'I just need to ask a few quick questions to better understand your requirements — would that be alright?')">
+        <div class="card-header">
+          <span class="card-tag">Stage 3: Permission</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"I just need to ask a few quick questions to better understand your requirements — would that be alright?"</div>
+      </div>
+
+      <div class="card" onclick="playTurn('dylan_4_config.wav', 'Stage 4: Qualification (BHK)', 'Are you looking for a 2 or 3 BHK?')">
+        <div class="card-header">
+          <span class="card-tag">Stage 4: Q1 Configuration</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"Are you looking for a 2 or 3 BHK?"</div>
+      </div>
+
+      <div class="card" onclick="playTurn('dylan_5_pitch.wav', 'Stage 5: Project Pitch', 'The project is spread across 5 acres with 75% lush open green spaces, offering premium 2 and 3 BHK residences with a clubhouse and sports amenities.')">
+        <div class="card-header">
+          <span class="card-tag">Stage 5: Pitch</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"The project is spread across 5 acres with 75% lush open green spaces, offering premium 2 and 3 BHK residences..."</div>
+      </div>
+
+      <div class="card" onclick="playTurn('dylan_6_callback.wav', 'Stage 6: WhatsApp & Callback Booking', 'I’ll share the complete details with you on WhatsApp so you can take a look at the floor plans. Could we connect tomorrow to discuss this further?')">
+        <div class="card-header">
+          <span class="card-tag">Stage 6: WhatsApp & Close</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"I’ll share complete details on WhatsApp... Could we connect tomorrow to discuss further? Please let me know a suitable time."</div>
+      </div>
+
+      <div class="card" onclick="playTurn('dylan_7_goodbye.wav', 'Stage 6: Courteous Sign-off', 'Thank you for your time. Have an amazing day. Goodbye!')">
+        <div class="card-header">
+          <span class="card-tag">Stage 6: Sign-off</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"Thank you for your time. Have an amazing day. Goodbye!"</div>
+      </div>
+
+    </div>
+
+    <!-- Section 2: Objection Rejection Soundboard -->
+    <div class="section-title">
+      <span>🛡️ Battle-Tested Objection & Rejection Handling</span>
+    </div>
+    <div class="grid">
+
+      <div class="card objection" onclick="playTurn('dylan_obj_busy.wav', 'Objection: Busy / In Meeting / Driving', 'Completely understand! When would be a convenient time for me to give you a quick callback later today?')">
+        <div class="card-header">
+          <span class="card-tag">Caller is Busy</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"Completely understand! When would be a convenient time for me to give you a quick callback later today?"</div>
+      </div>
+
+      <div class="card objection" onclick="playTurn('dylan_obj_whatsapp.wav', 'Objection: Send on WhatsApp Only / Don’t Call', 'Absolutely! I will share the brochure on WhatsApp right away. Just to send the right floor plan, are you considering a 2 or 3 BHK?')">
+        <div class="card-header">
+          <span class="card-tag">"Just WhatsApp me"</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"Absolutely! I will share the brochure on WhatsApp right away. Just to send the right floor plan, are you considering a 2 or 3 BHK?"</div>
+      </div>
+
+      <div class="card objection" onclick="playTurn('dylan_obj_budget.wav', 'Objection: Budget Out of Range', 'Understood! We also have flexible layouts and upcoming phases with convenient payment plans. What budget range were you ideally targeting?')">
+        <div class="card-header">
+          <span class="card-tag">Budget Too High</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"Understood! We also have flexible layouts and upcoming phases with convenient payment plans. What budget range were you ideally targeting?"</div>
+      </div>
+
+      <div class="card objection" onclick="playTurn('dylan_obj_not_interested.wav', 'Objection: Not Interested Right Now', 'Understood, thank you for letting me know! Are you planning to explore something in the next 6 to 12 months, or should I take this off for now?')">
+        <div class="card-header">
+          <span class="card-tag">Not Interested</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"Understood, thank you for letting me know! Are you planning to explore something in the next 6 to 12 months, or should I take this off for now?"</div>
+      </div>
+
+      <div class="card objection" onclick="playTurn('dylan_obj_dnc.wav', 'Objection: Hard Rejection / Do Not Call', 'I truly apologize for any disturbance. I will mark your number on our Do Not Call list right away. Have a good day.')">
+        <div class="card-header">
+          <span class="card-tag">Remove My Number</span>
+          <div class="play-btn">▶</div>
+        </div>
+        <div class="card-quote">"I truly apologize for any disturbance. I will mark your number on our Do Not Call list right away. Have a good day."</div>
+      </div>
+
+    </div>
+
+    <audio id="audio-engine" class="audio-player-native"></audio>
+
+    <footer>
+      <p>Powered by <strong>Sarvam AI Bulbul</strong> (Model v3 / Shubh) • Tuned for Bangalore Real Estate Telephony</p>
+      <p style="margin-top: 4px;">Refer to <a href="CONVERSATION.md" style="color: var(--accent); text-decoration: none;">CONVERSATION.md</a> for prompt instructions & system parameters.</p>
+    </footer>
+  </div>
+
+  <script>
+    const audio = document.getElementById('audio-engine');
+    const soundwave = document.getElementById('soundwave');
+    const titleEl = document.getElementById('current-title');
+    const textEl = document.getElementById('current-text');
+    const pauseBtn = document.getElementById('global-pause-btn');
+
+    let currentCard = null;
+
+    function playTurn(filename, title, text) {
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+      if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active');
+      }
+
+      titleEl.innerText = title;
+      textEl.innerText = text;
+      pauseBtn.style.display = 'block';
+
+      audio.src = filename;
+      audio.play().then(() => {
+        soundwave.classList.add('playing');
+      }).catch(err => {
+        console.warn('Playback error:', err);
+      });
+    }
+
+    function stopAudio() {
+      audio.pause();
+      audio.currentTime = 0;
+      soundwave.classList.remove('playing');
+      pauseBtn.style.display = 'none';
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+    }
+
+    audio.onended = () => {
+      soundwave.classList.remove('playing');
+      pauseBtn.style.display = 'none';
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+    };
+  </script>
+</body>
+</html>
