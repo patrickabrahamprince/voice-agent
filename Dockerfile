@@ -1,10 +1,10 @@
-# Multi-stage Docker build for Voice AI Production
-FROM node:20-alpine AS builder
+# Multi-stage Docker build for Voice AI Production (Debian glibc for native better-sqlite3 stability)
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
 # Install build dependencies for better-sqlite3 native build
-RUN apk add --no-cache python3 make g++
+RUN apt-get update && apt-get install -y python3 make g++ gcc && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 RUN npm ci
@@ -17,15 +17,15 @@ COPY scripts ./scripts
 RUN npm run build
 
 # Production Runtime Stage
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# Runtime dependencies
-RUN apk add --no-cache python3 make g++
+# Runtime build tools for native addons
+RUN apt-get update && apt-get install -y python3 make g++ gcc && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 RUN npm ci --omit=dev
