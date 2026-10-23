@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: getmoreos-voice-agent
+    env: docker
+    plan: standard
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production

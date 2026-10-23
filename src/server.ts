@@ -9,7 +9,15 @@ import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings,
 import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech } from './pipeline/tts.js';
 import { clearQualifier } from './pipeline/llm.js';
-import { verifyExotelSignature, buildStreamResponse, logInboundCall } from './telephony/exotel.js';
+import { verifyPlivoSignature, buildStreamResponse, logInboundCall } from './telephony/plivo.js';
+
+// Environment Validation: If TELEPHONY_PROVIDER=plivo and PLIVO_AUTH_ID is missing, crash on startup with clear error
+if (process.env.TELEPHONY_PROVIDER === 'plivo' && !process.env.PLIVO_AUTH_ID) {
+  console.error(
+    '\n❌ [Fatal Configuration Error] TELEPHONY_PROVIDER is set to "plivo" but PLIVO_AUTH_ID is missing from environment. Telephony calls cannot be verified. Exiting.\n'
+  );
+  process.exit(1);
+}
 
 export const app = Fastify({
   logger: {
@@ -17,14 +25,48 @@ export const app = Fastify({
   },
 });
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || `localhost:${PORT}`;
 
 // In-memory registry of active simulated sessions for the web tester
 const activeSimulators = new Map<string, VoiceSession>();
 
+// Active WebSocket registry for graceful shutdown
+export const activeWebSockets = new Set<WebSocket>();
+
 // Register WebSocket plugin
 await app.register(fastifyWebsocket);
+
+/**
+ * CORS Lock: Allow /incoming-call and carrier webhooks unconditionally,
+ * lock down /admin and private endpoints to configured domain.
+ */
+app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
+  const url = request.raw.url || '';
+  const origin = (request.headers.origin || request.headers.referer || '') as string;
+
+  // 1. Allow carrier webhooks & health checks unconditionally (Plivo, Twilio, Railway healthcheck)
+  if (url.startsWith('/incoming-call') || url.startsWith('/health') || url.startsWith('/media-stream')) {
+    return;
+  }
+
+  // 2. If browser origin header is present on admin/api in production, enforce domain lock
+  if (origin && process.env.NODE_ENV === 'production') {
+    const publicDomain = process.env.PUBLIC_DOMAIN?.trim();
+    const allowedOrigins = [
+      publicDomain,
+      request.headers.host,
+      'localhost',
+      '127.0.0.1',
+    ].filter(Boolean) as string[];
+
+    const isAllowed = allowedOrigins.some((allowed) => allowed && origin.includes(allowed));
+    if (!isAllowed) {
+      reply.code(403);
+      return reply.send({ error: 'CORS policy: Access restricted to authorized domain.' });
+    }
+  }
+});
 
 /**
  * Helper to determine canonical public WebSocket streaming URL
@@ -39,65 +81,70 @@ function getCanonicalStreamUrl(reqHost?: string, isTls?: boolean): string {
 }
 
 /**
- * Health check and configuration status (compatible with Exotel dashboard testing)
+ * Fast Health check endpoint: Guarantees 200 within <100ms for Railway/Render health checks
  */
-app.get('/health', async (request: FastifyRequest) => {
+app.get('/health', async (request: FastifyRequest, reply: FastifyReply) => {
   const isTls = request.headers['x-forwarded-proto'] === 'https';
   const websocketUrl = getCanonicalStreamUrl(request.headers.host, isTls);
-  return {
+  reply.header('Cache-Control', 'no-store, max-age=0');
+  return reply.code(200).send({
     status: 'ok',
     websocket: websocketUrl,
+    provider: process.env.TELEPHONY_PROVIDER || 'plivo',
     timestamp: new Date().toISOString(),
-    provider: process.env.TELEPHONY_PROVIDER || 'exotel',
     services: {
       deepgram: Boolean(process.env.DEEPGRAM_API_KEY && process.env.DEEPGRAM_API_KEY !== 'your_deepgram_api_key_here'),
       openrouter: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here'),
       sarvam: Boolean(process.env.SARVAM_API_KEY && process.env.SARVAM_API_KEY !== 'your_sarvam_api_key_here'),
       googleSheets: Boolean(process.env.GOOGLE_SHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
     },
-  };
+  });
 });
 
 /**
  * 1. Telephony Webhook: ALL /incoming-call
- * Accepts inbound calls from Exotel & Twilio, validates signature, logs caller data,
- * and guarantees a 200 OK Voice XML / TwiML response.
+ * Accepts inbound calls from Plivo, validates x-plivo-signature-v2, logs caller data,
+ * and guarantees a 200 OK Voice XML response with wss:// stream URL.
  */
 app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) => {
   const isTls = request.headers['x-forwarded-proto'] === 'https';
   const streamUrl = getCanonicalStreamUrl(request.headers.host, isTls);
 
-  // Extract carrier signature and metadata
-  const exotelSig = (request.headers['x-exotel-signature'] || request.headers['x-twilio-signature']) as string | undefined;
   const body = (request.body || {}) as any;
   const query = (request.query || {}) as any;
 
-  const callerFrom = body.From || body.from || body.CallFrom || query.From || query.from || query.CallFrom || 'Unknown';
-  const callTo = body.To || body.to || body.CallTo || query.To || query.to || query.CallTo || process.env.EXOTEL_PHONE_NUMBER || 'ExoPhone';
-  const callSid = body.CallSid || body.call_sid || body.Sid || query.CallSid || query.call_sid || `call_${Date.now()}`;
+  // Plivo sends CallUUID, From, To
+  const callerFrom = body.From || body.from || query.From || query.from || 'Unknown';
+  const callTo = body.To || body.to || query.To || query.to || process.env.PLIVO_PHONE_NUMBER || 'Plivo Number';
+  const callUuid = body.CallUUID || body.call_uuid || body.CallSid || query.CallUUID || query.CallSid || `plivo_${Date.now()}`;
 
   // Log every inbound call
   logInboundCall({
     from: callerFrom,
     to: callTo,
-    callSid,
+    callUuid,
     direction: 'inbound',
   });
 
-  // Verify signature if provided or in production
-  if (exotelSig) {
-    const isValid = verifyExotelSignature(exotelSig, body);
+  // Plivo v2 Signature validation (x-plivo-signature-v2 + x-plivo-signature-v2-nonce)
+  const signature = request.headers['x-plivo-signature-v2'] as string | undefined;
+  const nonce = request.headers['x-plivo-signature-v2-nonce'] as string | undefined;
+  const protocol = isTls ? 'https' : 'http';
+  const fullUri = `${protocol}://${request.headers.host}${request.raw.url}`;
+
+  if (signature && nonce) {
+    const isValid = verifyPlivoSignature(fullUri, nonce, signature);
     if (!isValid && process.env.NODE_ENV === 'production') {
-      app.log.warn({ callSid }, '[Exotel] Signature verification failed in production');
+      app.log.warn({ callUuid }, '[Plivo] Signature v2 verification failed in production');
       reply.code(401);
-      return reply.send('Unauthorized: Invalid Exotel Signature');
+      return reply.send('Unauthorized: Invalid Plivo Signature');
     }
   }
 
-  // Always return HTTP 200 + valid XML
-  const twiml = buildStreamResponse(streamUrl);
+  // Always return HTTP 200 + valid Voice XML
+  const xml = buildStreamResponse(streamUrl);
   reply.header('Content-Type', 'text/xml');
-  return reply.code(200).send(twiml);
+  return reply.code(200).send(xml);
 });
 
 /**
@@ -105,9 +152,13 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
  * Handles the live bidirectional 8kHz G.711 mulaw WebSocket stream.
  */
 app.get('/media-stream', { websocket: true }, (socket: WebSocket, req: FastifyRequest) => {
+  activeWebSockets.add(socket);
+  socket.on('close', () => activeWebSockets.delete(socket));
   app.log.info({ ip: req.ip }, '[MediaStream] Incoming telephony WebSocket connected');
   new VoiceSession(socket);
 });
+
+
 
 /**
  * API: Get recent calls
@@ -564,14 +615,37 @@ app.get('/', async (request, reply) => {
   return reply.redirect('/admin');
 });
 
-// Start the server
-async function startServer() {
-  if (process.env.VERCEL) {
-    console.warn(
-      '\n⚠️  [TELEPHONY WARNING] Vercel does not support persistent WebSockets. Use Railway/Render or cloudflared tunnel. Telephony will fail.\n'
-    );
-  }
+// Graceful Shutdown Handler for WebSockets and Fastify Server
+async function gracefulShutdown(signal: string) {
+  console.log(`\n🛑 Received ${signal}. Initiating graceful shutdown...`);
 
+  // 1. Close all active carrier WebSockets
+  console.log(`[Shutdown] Closing ${activeWebSockets.size} active telephony WebSocket connection(s)...`);
+  for (const ws of activeWebSockets) {
+    try {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1001, 'Server shutting down');
+      }
+    } catch {}
+  }
+  activeWebSockets.clear();
+
+  // 2. Close Fastify HTTP server
+  try {
+    await app.close();
+    console.log('✅ Fastify server closed cleanly. Exiting.');
+    process.exit(0);
+  } catch (err: any) {
+    console.error('❌ Error during shutdown:', err.message);
+    process.exit(1);
+  }
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Start the production server
+async function startServer() {
   try {
     await app.listen({ port: PORT, host: '0.0.0.0' });
     console.log(`\n======================================================`);
@@ -586,18 +660,5 @@ async function startServer() {
   }
 }
 
-const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-if (process.env.VERCEL) {
-  console.warn(
-    '\n⚠️  [TELEPHONY WARNING] Vercel does not support persistent WebSockets. Use Railway/Render or cloudflared tunnel. Telephony will fail.\n'
-  );
-}
-
-if (!isServerless) {
-  startServer();
-}
-
-export default async function handler(req: any, res: any) {
-  await app.ready();
-  app.server.emit('request', req, res);
-}
+// Start persistent server
+startServer();
