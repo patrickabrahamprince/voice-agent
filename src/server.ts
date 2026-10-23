@@ -9,6 +9,7 @@ import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings,
 import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech } from './pipeline/tts.js';
 import { clearQualifier } from './pipeline/llm.js';
+import { verifyExotelSignature, buildStreamResponse, logInboundCall } from './telephony/exotel.js';
 
 export const app = Fastify({
   logger: {
@@ -26,16 +27,31 @@ const activeSimulators = new Map<string, VoiceSession>();
 await app.register(fastifyWebsocket);
 
 /**
- * Health check and configuration status
+ * Helper to determine canonical public WebSocket streaming URL
  */
-app.get('/health', async () => {
+function getCanonicalStreamUrl(reqHost?: string, isTls?: boolean): string {
+  const publicDomain = process.env.PUBLIC_DOMAIN?.trim();
+  let domain = publicDomain || reqHost || HOST;
+  domain = domain.replace(/^https?:\/\//i, '').replace(/^wss?:\/\//i, '').replace(/\/$/, '');
+  const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+  const protocol = !isLocal || isTls ? 'wss' : 'ws';
+  return `${protocol}://${domain}/media-stream`;
+}
+
+/**
+ * Health check and configuration status (compatible with Exotel dashboard testing)
+ */
+app.get('/health', async (request: FastifyRequest) => {
+  const isTls = request.headers['x-forwarded-proto'] === 'https';
+  const websocketUrl = getCanonicalStreamUrl(request.headers.host, isTls);
   return {
-    status: 'healthy',
+    status: 'ok',
+    websocket: websocketUrl,
     timestamp: new Date().toISOString(),
+    provider: process.env.TELEPHONY_PROVIDER || 'exotel',
     services: {
       deepgram: Boolean(process.env.DEEPGRAM_API_KEY && process.env.DEEPGRAM_API_KEY !== 'your_deepgram_api_key_here'),
       openrouter: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here'),
-      groq: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here'),
       sarvam: Boolean(process.env.SARVAM_API_KEY && process.env.SARVAM_API_KEY !== 'your_sarvam_api_key_here'),
       googleSheets: Boolean(process.env.GOOGLE_SHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
     },
@@ -43,23 +59,45 @@ app.get('/health', async () => {
 });
 
 /**
- * 1. Telephony Webhook: POST /incoming-call
- * Returns TwiML / Voice XML compatible with Twilio and Exotel.
+ * 1. Telephony Webhook: ALL /incoming-call
+ * Accepts inbound calls from Exotel & Twilio, validates signature, logs caller data,
+ * and guarantees a 200 OK Voice XML / TwiML response.
  */
 app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) => {
-  const reqHost = request.headers.host || HOST;
-  const protocol = request.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
-  const streamUrl = `${protocol}://${reqHost}/media-stream`;
+  const isTls = request.headers['x-forwarded-proto'] === 'https';
+  const streamUrl = getCanonicalStreamUrl(request.headers.host, isTls);
 
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="${streamUrl}"/>
-  </Connect>
-</Response>`;
+  // Extract carrier signature and metadata
+  const exotelSig = (request.headers['x-exotel-signature'] || request.headers['x-twilio-signature']) as string | undefined;
+  const body = (request.body || {}) as any;
+  const query = (request.query || {}) as any;
 
+  const callerFrom = body.From || body.from || body.CallFrom || query.From || query.from || query.CallFrom || 'Unknown';
+  const callTo = body.To || body.to || body.CallTo || query.To || query.to || query.CallTo || process.env.EXOTEL_PHONE_NUMBER || 'ExoPhone';
+  const callSid = body.CallSid || body.call_sid || body.Sid || query.CallSid || query.call_sid || `call_${Date.now()}`;
+
+  // Log every inbound call
+  logInboundCall({
+    from: callerFrom,
+    to: callTo,
+    callSid,
+    direction: 'inbound',
+  });
+
+  // Verify signature if provided or in production
+  if (exotelSig) {
+    const isValid = verifyExotelSignature(exotelSig, body);
+    if (!isValid && process.env.NODE_ENV === 'production') {
+      app.log.warn({ callSid }, '[Exotel] Signature verification failed in production');
+      reply.code(401);
+      return reply.send('Unauthorized: Invalid Exotel Signature');
+    }
+  }
+
+  // Always return HTTP 200 + valid XML
+  const twiml = buildStreamResponse(streamUrl);
   reply.header('Content-Type', 'text/xml');
-  return reply.send(twiml);
+  return reply.code(200).send(twiml);
 });
 
 /**
@@ -528,6 +566,12 @@ app.get('/', async (request, reply) => {
 
 // Start the server
 async function startServer() {
+  if (process.env.VERCEL) {
+    console.warn(
+      '\n⚠️  [TELEPHONY WARNING] Vercel does not support persistent WebSockets. Use Railway/Render or cloudflared tunnel. Telephony will fail.\n'
+    );
+  }
+
   try {
     await app.listen({ port: PORT, host: '0.0.0.0' });
     console.log(`\n======================================================`);
@@ -543,6 +587,12 @@ async function startServer() {
 }
 
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+if (process.env.VERCEL) {
+  console.warn(
+    '\n⚠️  [TELEPHONY WARNING] Vercel does not support persistent WebSockets. Use Railway/Render or cloudflared tunnel. Telephony will fail.\n'
+  );
+}
+
 if (!isServerless) {
   startServer();
 }
