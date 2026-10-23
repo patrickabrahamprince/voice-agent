@@ -1,8 +1,9 @@
 services:
   - type: web
-    name: getmoreos-voice-agent
-    env: docker
-    plan: standard
+    name: mittal-palms-voice-agent
+    runtime: docker
+    region: singapore
+    plan: starter
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -10,3 +11,17 @@ services:
         value: 3001
       - key: NODE_ENV
         value: production
+      - key: TELEPHONY_PROVIDER
+        value: plivo
+      - key: PLIVO_AUTH_ID
+        sync: false
+      - key: PLIVO_AUTH_TOKEN
+        sync: false
+      - key: PLIVO_PHONE_NUMBER
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: LEAD_EMAIL
+        value: niraj@mittal.com
