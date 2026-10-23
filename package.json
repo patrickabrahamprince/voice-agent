@@ -19,14 +19,13 @@
     "twilio",
     "exotel",
     "deepgram",
-    "cartesia",
+    "sarvam",
     "groq",
     "real-estate"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@cartesia/cartesia-js": "^4.2.0",
     "@deepgram/sdk": "^5.14.0",
     "@fastify/websocket": "^11.3.4",
     "better-sqlite3": "^13.0.3",
@@ -34,8 +33,6 @@
     "fastify": "^5.12.5",
     "googleapis": "^185.0.0",
     "groq-sdk": "^1.6.0",
-    "kokoro-js": "^1.2.1",
-    "msedge-tts": "^2.0.9",
     "ws": "^8.22.0"
   },
   "devDependencies": {

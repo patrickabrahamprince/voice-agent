@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Getmore.OS — Mittal Palms Voice AI Dashboard</title>
   
-  <!-- Classy Typography: Plus Jakarta Sans & JetBrains Mono -->
+  <!-- High-Legibility Typography: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
   <style>
     /* ==========================================================================
-       GETMORE.OS — LUXURY OBSIDIAN & GLASS DASHBOARD DESIGN SYSTEM
-       Classy, polished, atmospheric dark aesthetic with subtle depth and glow.
+       MITTAL PALMS VOICE AI — CLEAN MODERN LIGHT THEME DESIGN SYSTEM
+       Minimalist, high-legibility, fast, and modern interface.
        ========================================================================== */
     *, *::before, *::after {
       box-sizing: border-box;
@@ -22,130 +22,349 @@
     }
 
     :root {
-      --bg-void: #060709;
-      --bg-base: #0A0D14;
-      --bg-surface: rgba(16, 21, 31, 0.7);
-      --bg-surface-elevated: rgba(22, 29, 44, 0.85);
-      --bg-surface-hover: rgba(30, 40, 60, 0.9);
-      
-      --border-glass: rgba(255, 255, 255, 0.08);
-      --border-glass-light: rgba(255, 255, 255, 0.14);
-      --border-glass-hover: rgba(255, 255, 255, 0.22);
+      --bg-page: #F8FAFC;
+      --bg-surface: #FFFFFF;
+      --bg-surface-elevated: #FFFFFF;
+      --bg-subtle: #F1F5F9;
+      --bg-hover: #F8FAFC;
 
-      --text-pure: #FFFFFF;
-      --text-main: #F1F5F9;
-      --text-secondary: #94A3B8;
-      --text-muted: #64748B;
+      --border-light: #CBD5E1;
+      --border-subtle: #E2E8F0;
+      --border-focus: #2563EB;
 
-      --accent-blue: #3B82F6;
-      --accent-blue-glow: rgba(59, 130, 246, 0.35);
-      --accent-emerald: #10B981;
-      --accent-emerald-glow: rgba(16, 185, 129, 0.35);
-      --accent-amber: #F59E0B;
-      --accent-amber-glow: rgba(245, 158, 11, 0.35);
-      --accent-rose: #F43F5E;
-      --accent-purple: #A855F7;
-      --accent-purple-glow: rgba(168, 85, 247, 0.35);
+      --text-primary: #0A0F1D;
+      --text-secondary: #1E293B;
+      --text-muted: #475569;
+      --text-light: #64748B;
 
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --radius-xl: 22px;
+      --accent-blue: #2563EB;
+      --accent-blue-subtle: #EFF6FF;
+      --accent-blue-border: #BFDBFE;
 
-      --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+      --accent-emerald: #059669;
+      --accent-emerald-subtle: #ECFDF5;
+      --accent-emerald-border: #A7F3D0;
+
+      --accent-amber: #D97706;
+      --accent-amber-subtle: #FFFBEB;
+      --accent-amber-border: #FDE68A;
+
+      --accent-rose: #DC2626;
+      --accent-rose-subtle: #FEF2F2;
+      --accent-rose-border: #FECACA;
+
+      --accent-purple: #7C3AED;
+      --accent-purple-subtle: #F5F3FF;
+      --accent-purple-border: #DDD6FE;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 18px;
+
+      --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+
+      --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --font-mono: "JetBrains Mono", Menlo, Consolas, monospace;
-    }
-
-    body {
-      background-color: var(--bg-void);
-      background-image: 
-        radial-gradient(ellipse 90% 45% at 50% -15%, rgba(59, 130, 246, 0.12), transparent 75%),
-        radial-gradient(circle 800px at 90% 15%, rgba(16, 185, 129, 0.06), transparent 60%),
-        radial-gradient(circle 600px at 10% 80%, rgba(168, 85, 247, 0.05), transparent 50%),
-        radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-      background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px;
-      color: var(--text-main);
+       html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
       font-family: var(--font-display);
+      font-size: 13.5px;
+      font-weight: 500;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      line-height: 1.55;
-      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .app-shell {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-page);
+    }
+
+    /* Fixed Left Sidebar */
+    .app-sidebar {
+      width: 256px;
+      min-width: 256px;
+      max-width: 256px;
+      height: 100vh;
+      background: #FFFFFF;
+      border-right: 1px solid var(--border-subtle);
       display: flex;
       flex-direction: column;
-    }
-
-    /* Classy Top Navigation Bar */
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(6, 7, 9, 0.82);
-      backdrop-filter: blur(24px) saturate(190%);
-      -webkit-backdrop-filter: blur(24px) saturate(190%);
-      border-bottom: 1px solid var(--border-glass);
-      padding: 14px 32px;
-    }
-
-    .topbar-inner {
-      max-width: 1440px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: 24px;
+      flex-shrink: 0;
+      z-index: 50;
+      box-shadow: 1px 0 2px rgba(0, 0, 0, 0.03);
+    }
+
+    .sidebar-top {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
     }
 
     .brand-cluster {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #FCFDFE;
     }
 
     .brand-emblem {
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       border-radius: var(--radius-md);
-      background: linear-gradient(145deg, #1A2234 0%, #0D121F 100%);
-      border: 1px solid var(--border-glass-light);
+      background: var(--accent-blue-subtle);
+      border: 1px solid var(--accent-blue-border);
       display: flex;
       align-items: center;
       justify-content: center;
       color: var(--accent-blue);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-      position: relative;
-    }
-
-    .brand-emblem::after {
-      content: '';
-      position: absolute;
-      inset: -1px;
-      border-radius: inherit;
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), transparent);
-      z-index: -1;
+      flex-shrink: 0;
     }
 
     .brand-meta h1 {
-      font-size: 16px;
+      font-size: 14.5px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+      line-height: 1.2;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-meta p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Vertical Navigation */
+    .sidebar-nav {
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .nav-section {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .nav-section-title {
+      font-size: 10.5px;
       font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #FFFFFF;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-light);
+      padding: 0 10px 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item-left {
       display: flex;
       align-items: center;
       gap: 10px;
+    }
+
+    .nav-item svg {
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted);
+      transition: color 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+    }
+    .nav-item:hover svg {
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--accent-blue-subtle);
+      border-color: var(--accent-blue-border);
+      color: var(--accent-blue);
+      font-weight: 700;
+    }
+    .nav-item.active svg {
+      color: var(--accent-blue);
+    }
+
+    .tab-pill, .nav-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: #E2E8F0;
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+
+    .nav-item.active .tab-pill,
+    .nav-item.active .nav-badge {
+      background: #DBEAFE;
+      color: var(--accent-blue);
+    }
+
+    /* Sidebar Footer Status Capsule */
+    .sidebar-footer {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border-subtle);
+      background: #FCFDFE;
+    }
+
+    .agent-status-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .agent-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #F5F3FF;
+      border: 1px solid #DDD6FE;
+      color: var(--accent-purple);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .agent-meta {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .agent-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .agent-sub {
+      font-size: 11px;
+      color: var(--accent-emerald);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* App Main Canvas */
+    .app-main {
+      flex: 1;
+      height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-page);
+      min-width: 0;
+    }
+
+    /* Top Sticky Header */
+    .app-topbar {
+      height: 54px;
+      min-height: 54px;
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .breadcrumb-trail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .breadcrumb-trail .crumb-divider {
+      color: var(--border-light);
+    }
+
+    .breadcrumb-trail strong {
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .status-capsule {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
-      color: #34D399;
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      padding: 2.5px 10px;
+      color: var(--accent-emerald);
+      background: var(--accent-emerald-subtle);
+      border: 1px solid var(--accent-emerald-border);
+      padding: 3px 10px;
       border-radius: 999px;
-      box-shadow: 0 0 14px rgba(16, 185, 129, 0.18);
     }
 
     .pulse-dot {
@@ -153,7 +372,6 @@
       height: 6px;
       border-radius: 50%;
       background: var(--accent-emerald);
-      box-shadow: 0 0 10px var(--accent-emerald);
       animation: pulse-ring 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
     }
 
@@ -162,77 +380,56 @@
       50% { opacity: 0.35; transform: scale(0.8); }
     }
 
-    .brand-meta p {
-      font-size: 12px;
-      color: var(--text-secondary);
-      font-weight: 400;
-      margin-top: 1px;
-      letter-spacing: -0.01em;
-    }
-
-    .topbar-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
     .action-btn {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
       font-size: 12.5px;
-      font-weight: 500;
-      color: var(--text-main);
-      background: rgba(18, 24, 38, 0.85);
-      border: 1px solid var(--border-glass);
+      font-weight: 600;
+      color: var(--text-primary);
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
       border-radius: var(--radius-md);
-      padding: 8px 14px;
+      padding: 6px 12px;
       text-decoration: none;
       cursor: pointer;
-      backdrop-filter: blur(12px);
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transition: all 0.15s ease;
+      box-shadow: var(--shadow-xs);
     }
 
     .action-btn:hover {
-      background: rgba(28, 36, 56, 0.95);
-      border-color: var(--border-glass-light);
-      color: #FFFFFF;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      background: var(--bg-subtle);
+      border-color: #CBD5E1;
+      color: var(--text-primary);
     }
 
     .action-btn.btn-featured {
-      background: linear-gradient(135deg, rgba(37, 99, 235, 0.3) 0%, rgba(30, 64, 175, 0.2) 100%);
-      border: 1px solid rgba(59, 130, 246, 0.45);
-      color: #BFDBFE;
-      box-shadow: 0 4px 18px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #FFFFFF;
     }
 
     .action-btn.btn-featured:hover {
-      background: linear-gradient(135deg, rgba(37, 99, 235, 0.5) 0%, rgba(30, 64, 175, 0.35) 100%);
-      border-color: var(--accent-blue);
-      color: #FFFFFF;
-      box-shadow: 0 6px 24px rgba(37, 99, 235, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      background: #1D4ED8;
+      border-color: #1D4ED8;
     }
 
-    /* Main Container */
-    .dashboard-shell {
+    /* Dashboard Main Canvas */
+    .dashboard-content {
+      padding: 20px 24px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
       max-width: 1440px;
       width: 100%;
       margin: 0 auto;
-      padding: 28px 32px 56px;
-      display: flex;
-      flex-direction: column;
-      gap: 26px;
-      flex: 1;
     }
 
-    /* KPI Metrics Cards Grid */
+    /* Compact 4-Card KPI Strip */
     .kpi-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 18px;
+      gap: 14px;
     }
 
     @media (max-width: 1100px) {
@@ -243,70 +440,48 @@
     }
 
     .kpi-card {
-      background: linear-gradient(180deg, rgba(20, 26, 39, 0.75) 0%, rgba(12, 16, 25, 0.85) 100%);
-      border: 1px solid var(--border-glass);
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
-      padding: 22px 24px;
+      padding: 14px 18px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 14px;
-      backdrop-filter: blur(16px);
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
-      position: relative;
-      overflow: hidden;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      gap: 8px;
+      box-shadow: var(--shadow-xs);
+      transition: all 0.2s ease;
     }
-
-    .kpi-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: transparent;
-      transition: background 0.25s ease;
-    }
-
-    .kpi-card.glow-blue::before { background: linear-gradient(90deg, transparent, var(--accent-blue), transparent); }
-    .kpi-card.glow-green::before { background: linear-gradient(90deg, transparent, var(--accent-emerald), transparent); }
-    .kpi-card.glow-amber::before { background: linear-gradient(90deg, transparent, var(--accent-amber), transparent); }
-    .kpi-card.glow-purple::before { background: linear-gradient(90deg, transparent, var(--accent-purple), transparent); }
 
     .kpi-card:hover {
-      border-color: var(--border-glass-light);
-      transform: translateY(-2px);
-      box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.75), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+      box-shadow: var(--shadow-sm);
+      border-color: var(--border-light);
     }
 
     .kpi-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
+      font-size: 11.5px;
+      font-weight: 700;
       color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     .kpi-num {
-      font-size: 34px;
+      font-size: 28px;
       font-weight: 800;
-      letter-spacing: -0.03em;
-      color: #FFFFFF;
-      line-height: 1.05;
+      color: var(--text-primary);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
     }
 
     .kpi-num.num-emerald {
-      color: #34D399;
-      text-shadow: 0 0 24px rgba(16, 185, 129, 0.25);
+      color: var(--accent-emerald);
     }
 
     .kpi-num.num-amber {
-      color: #FBBF24;
-      text-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+      color: var(--accent-amber);
     }
 
     .kpi-footer {
@@ -314,283 +489,169 @@
       align-items: center;
       justify-content: space-between;
       font-size: 11.5px;
+      font-weight: 600;
       color: var(--text-muted);
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      padding-top: 12px;
-    }
-
-    /* Classy Navigation Tab Bar */
-    .tab-nav {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(14, 18, 28, 0.75);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg);
-      padding: 6px;
-      backdrop-filter: blur(20px);
-      overflow-x: auto;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    }
-
-    .tab-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: var(--radius-md);
-      padding: 10px 20px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .tab-item:hover {
-      color: var(--text-main);
-      background: rgba(255, 255, 255, 0.035);
-    }
-
-    .tab-item.active {
-      color: #FFFFFF;
-      background: linear-gradient(180deg, rgba(32, 42, 64, 0.85) 0%, rgba(20, 26, 40, 0.95) 100%);
-      border-color: rgba(255, 255, 255, 0.12);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-      font-weight: 600;
-    }
-
-    .tab-pill {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 1.5px 7px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--text-secondary);
-    }
-
-    .tab-item.active .tab-pill {
-      background: rgba(59, 130, 246, 0.25);
-      color: #93C5FD;
-      box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 8px;
     }
 
     /* Tab Panes */
     .tab-pane {
       display: none;
     }
+
     .tab-pane.active {
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      animation: classyFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      gap: 18px;
+      animation: fadeIn 0.15s ease;
     }
 
-    @keyframes classyFade {
-      from { opacity: 0; transform: translateY(4px); }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(2px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Dark Glass Surfaces */
+    /* Clean Card Panels */
     .glass-panel {
-      background: linear-gradient(180deg, rgba(18, 23, 35, 0.8) 0%, rgba(11, 15, 24, 0.88) 100%);
-      border: 1px solid var(--border-glass);
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
-      backdrop-filter: blur(20px);
-      box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+      box-shadow: var(--shadow-sm);
       overflow: hidden;
     }
 
     .panel-head {
-      padding: 18px 26px;
-      border-bottom: 1px solid var(--border-glass);
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      background: rgba(255, 255, 255, 0.015);
+      background: #FCFDFE;
     }
 
     .panel-title {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 700;
-      letter-spacing: -0.01em;
-      color: #FFFFFF;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .panel-subtitle {
-      font-size: 12.5px;
-      color: var(--text-secondary);
+      font-size: 12px;
+      color: var(--text-muted);
       margin-top: 2px;
     }
 
-    /* Simulator Studio Layout */
+    /* 2-Column Live Simulator Grid */
     .sim-layout {
       display: grid;
-      grid-template-columns: 1fr 350px;
-      gap: 22px;
+      grid-template-columns: 1fr 340px;
+      gap: 18px;
+      align-items: start;
     }
 
-    @media (max-width: 1024px) {
+    @media (max-width: 1080px) {
       .sim-layout { grid-template-columns: 1fr; }
     }
 
-    
-    /* Mobile Screen Responsiveness */
-    @media (max-width: 640px) {
-      .sim-bar {
-        padding: 12px 14px;
-        gap: 10px;
-      }
-      .sim-bar > div:first-child {
-        width: 100%;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-      }
-      .sim-input-phone {
-        width: 140px;
-        font-size: 12.5px;
-        padding: 6px 10px;
-      }
-      .btn-call-action {
-        padding: 7px 12px;
-        font-size: 12px;
-      }
-      .conversational-status-bar {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-        padding: 8px 12px;
-      }
-      #dialogue-box {
-        height: 380px !important;
-        padding: 12px !important;
-      }
-      .sim-input-row {
-        padding: 8px 12px !important;
-        gap: 8px !important;
-      }
-      .sim-input-chat {
-        font-size: 13px !important;
-        padding: 8px 12px !important;
-      }
-      .quick-chips-wrap {
-        padding: 8px 12px !important;
-        gap: 6px !important;
-      }
-      .chip-btn {
-        font-size: 11.5px !important;
-        padding: 5px 10px !important;
-      }
-    }
-
+    /* Telephony Console Bar */
     .sim-bar {
-      padding: 16px 24px;
-      background: rgba(24, 32, 48, 0.6);
-      border-bottom: 1px solid var(--border-glass);
+      padding: 12px 18px;
+      background: #F8FAFC;
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
+      gap: 12px;
     }
 
     .sim-input-phone {
-      background: rgba(8, 11, 18, 0.9);
-      border: 1px solid var(--border-glass-light);
-      color: #FFFFFF;
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      color: var(--text-primary);
       font-family: var(--font-mono);
-      font-size: 13.5px;
+      font-size: 13px;
+      font-weight: 600;
       border-radius: var(--radius-md);
-      padding: 8.5px 14px;
+      padding: 7px 12px;
       outline: none;
-      width: 180px;
-      transition: all 0.2s ease;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+      width: 165px;
+      transition: border-color 0.15s ease;
     }
     .sim-input-phone:focus {
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25), inset 0 1px 3px rgba(0, 0, 0, 0.5);
+      border-color: var(--border-focus);
     }
 
     .btn-call-action {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      font-size: 13px;
-      font-weight: 600;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
       border: none;
       border-radius: var(--radius-md);
-      padding: 9px 18px;
+      padding: 7px 15px;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.15s ease;
     }
 
     .btn-call-action.start {
-      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      background: var(--accent-emerald);
       color: #FFFFFF;
-      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
     .btn-call-action.start:hover {
-      background: linear-gradient(135deg, #34D399 0%, #059669 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 22px rgba(16, 185, 129, 0.45);
+      background: #047857;
     }
     .btn-call-action.start:disabled {
-      opacity: 0.35;
+      opacity: 0.4;
       cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
     }
 
     .btn-call-action.end {
-      background: rgba(244, 63, 94, 0.12);
-      border: 1px solid rgba(244, 63, 94, 0.35);
-      color: #FDA4AF;
+      background: var(--accent-rose-subtle);
+      border: 1px solid var(--accent-rose-border);
+      color: var(--accent-rose);
     }
     .btn-call-action.end:hover:not(:disabled) {
-      background: #E11D48;
+      background: var(--accent-rose);
       color: #FFFFFF;
-      border-color: #E11D48;
-      box-shadow: 0 4px 16px rgba(225, 29, 72, 0.4);
     }
     .btn-call-action.end:disabled {
-      opacity: 0.3;
+      opacity: 0.35;
       cursor: not-allowed;
     }
 
-    /* Dialogue Stream */
+    /* Chat Stream Viewport */
     .chat-stream {
-      height: 400px;
+      height: 380px;
       overflow-y: auto;
-      padding: 24px;
+      padding: 18px 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      background: rgba(8, 10, 16, 0.65);
+      gap: 14px;
+      background: #FFFFFF;
     }
 
     .chat-empty-state {
       margin: auto;
       text-align: center;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       font-size: 13.5px;
-      max-width: 420px;
+      font-weight: 500;
+      max-width: 440px;
       line-height: 1.6;
-      padding: 32px;
+      padding: 24px;
     }
 
     .bubble-wrapper {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
       max-width: 82%;
     }
     .bubble-wrapper.caller {
@@ -604,212 +665,80 @@
 
     .bubble-sender-tag {
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
     .bubble-wrapper.caller .bubble-sender-tag {
-      color: #93C5FD;
+      color: var(--accent-blue);
     }
     .bubble-wrapper.agent .bubble-sender-tag {
-      color: #D8B4FE;
+      color: var(--accent-purple);
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
     .bubble-card {
-      font-size: 14px;
-      line-height: 1.5;
-      padding: 12px 18px;
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 1.55;
+      padding: 10px 15px;
       border-radius: var(--radius-lg);
       word-break: break-word;
     }
 
     .bubble-wrapper.caller .bubble-card {
-      background: linear-gradient(145deg, #2563EB 0%, #1D4ED8 100%);
-      color: #FFFFFF;
+      background: var(--accent-blue-subtle);
+      border: 1px solid var(--accent-blue-border);
+      color: #1E3A8A;
+      font-weight: 500;
       border-bottom-right-radius: 4px;
-      box-shadow: 0 4px 18px rgba(37, 99, 235, 0.3);
     }
 
     .bubble-wrapper.agent .bubble-card {
-      background: linear-gradient(145deg, rgba(30, 39, 58, 0.9) 0%, rgba(20, 26, 40, 0.95) 100%);
-      color: #F8FAFC;
-      border: 1px solid var(--border-glass-light);
-      border-bottom-left-radius: 4px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    }
-
-    /* Test Chips Section */
-    .quick-chips-box {
-      padding: 16px 24px;
-      background: rgba(18, 24, 36, 0.85);
-      border-top: 1px solid var(--border-glass);
-    }
-
-    .chips-label-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 12px;
-    }
-
-    .chips-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .interactive-chip {
-      font-size: 12.5px;
+      background: #F8FAFC;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
       font-weight: 500;
-      padding: 7px 14px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-glass-light);
-      background: rgba(10, 13, 20, 0.8);
-      color: var(--text-main);
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    }
-    .interactive-chip:hover {
-      background: rgba(30, 42, 65, 0.9);
-      border-color: var(--accent-blue);
-      color: #FFFFFF;
-      transform: translateY(-1px);
+      border-bottom-left-radius: 4px;
+      box-shadow: var(--shadow-xs);
     }
 
-    .interactive-chip.chip-good {
-      border-color: rgba(16, 185, 129, 0.4);
-      background: rgba(16, 185, 129, 0.08);
-      color: #6EE7B7;
-    }
-    .interactive-chip.chip-good:hover {
-      background: rgba(16, 185, 129, 0.22);
-      border-color: #34D399;
-    }
-
-    .interactive-chip.chip-bad {
-      border-color: rgba(244, 63, 94, 0.4);
-      background: rgba(244, 63, 94, 0.08);
-      color: #FDA4AF;
-    }
-    .interactive-chip.chip-bad:hover {
-      background: rgba(244, 63, 94, 0.22);
-      border-color: #FB7185;
-    }
-
-    .interactive-chip.chip-interrupt {
-      border-color: rgba(245, 158, 11, 0.4);
-      background: rgba(245, 158, 11, 0.08);
-      color: #FDE68A;
-    }
-    .interactive-chip.chip-interrupt:hover {
-      background: rgba(245, 158, 11, 0.22);
-      border-color: #FBBF24;
-    }
-
-    /* Input Bar */
-    .sim-type-bar {
-      padding: 14px 24px;
-      background: rgba(14, 18, 28, 0.9);
-      border-top: 1px solid var(--border-glass);
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .sim-input-chat {
-      flex: 1;
-      background: rgba(8, 11, 18, 0.9);
-      border: 1px solid var(--border-glass-light);
-      color: #FFFFFF;
-      font-size: 13.5px;
-      border-radius: var(--radius-md);
-      padding: 9px 16px;
-      outline: none;
-      transition: all 0.2s ease;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
-    }
-    .sim-input-chat:focus {
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-    }
-    .sim-input-chat:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    .btn-mic-glow {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius-md);
-      background: rgba(24, 32, 48, 0.85);
-      border: 1px solid var(--border-glass-light);
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .btn-mic-glow:hover:not(:disabled) {
-      color: #FFFFFF;
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 14px rgba(59, 130, 246, 0.35);
-    }
-    .btn-mic-glow.recording {
-      background: #E11D48;
-      color: #FFFFFF;
-      border-color: #E11D48;
-      box-shadow: 0 0 20px rgba(225, 29, 72, 0.6);
-      animation: pulse-ring 1.5s infinite ease-in-out;
-    }
-
-    /* Conversational Voice Bar & Soundwaves */
+    /* Conversational Status Ribbon */
     .conversational-status-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 9px 16px;
-      background: rgba(14, 18, 28, 0.75);
-      border: 1px solid var(--border-glass-light);
-      border-radius: var(--radius-md);
+      padding: 8px 18px;
+      background: #F8FAFC;
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
       font-size: 12px;
       color: var(--text-secondary);
-      transition: all 0.25s ease;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
     .conversational-status-bar.listening {
-      border-color: rgba(244, 63, 94, 0.45);
-      background: rgba(244, 63, 94, 0.08);
-      color: #FECDD3;
-      box-shadow: 0 0 18px rgba(244, 63, 94, 0.15), inset 0 1px 0 rgba(244, 63, 94, 0.15);
+      border-color: var(--accent-rose-border);
+      background: var(--accent-rose-subtle);
+      color: var(--accent-rose);
     }
     .conversational-status-bar.speaking {
-      border-color: rgba(168, 85, 247, 0.45);
-      background: rgba(168, 85, 247, 0.08);
-      color: #E9D5FF;
-      box-shadow: 0 0 18px rgba(168, 85, 247, 0.15), inset 0 1px 0 rgba(168, 85, 247, 0.15);
+      border-color: var(--accent-purple-border);
+      background: var(--accent-purple-subtle);
+      color: var(--accent-purple);
     }
     .conversational-status-bar.thinking {
-      border-color: rgba(59, 130, 246, 0.45);
-      background: rgba(59, 130, 246, 0.08);
-      color: #BFDBFE;
-      box-shadow: 0 0 18px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(59, 130, 246, 0.15);
+      border-color: var(--accent-blue-border);
+      background: var(--accent-blue-subtle);
+      color: var(--accent-blue);
     }
+
     .soundwave-container {
       display: inline-flex;
       align-items: center;
       gap: 3px;
-      height: 16px;
+      height: 14px;
     }
     .soundwave-bar {
       width: 3px;
@@ -825,48 +754,213 @@
     .soundwave-container.active .soundwave-bar:nth-child(5) { animation: wave-anim 0.8s infinite ease-in-out 0.3s; }
 
     @keyframes wave-anim {
-      0%, 100% { height: 4px; }
-      50% { height: 16px; }
+      0%, 100% { height: 3px; }
+      50% { height: 14px; }
     }
 
-    /* Simulator Sidebar Cards */
+    /* Quick Test Chips Section */
+    .quick-chips-box {
+      padding: 12px 18px;
+      background: #FCFDFE;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .chips-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+
+    .chips-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .interactive-chip {
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-light);
+      background: #FFFFFF;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: var(--shadow-xs);
+    }
+    .interactive-chip:hover {
+      background: var(--accent-blue-subtle);
+      border-color: var(--accent-blue-border);
+      color: var(--accent-blue);
+      transform: translateY(-1px);
+    }
+
+    .interactive-chip.chip-good {
+      border-color: var(--accent-emerald-border);
+      background: var(--accent-emerald-subtle);
+      color: var(--accent-emerald);
+    }
+    .interactive-chip.chip-good:hover {
+      background: #D1FAE5;
+    }
+
+    .interactive-chip.chip-bad {
+      border-color: var(--accent-rose-border);
+      background: var(--accent-rose-subtle);
+      color: var(--accent-rose);
+    }
+    .interactive-chip.chip-bad:hover {
+      background: #FEE2E2;
+    }
+
+    .interactive-chip.chip-interrupt {
+      border-color: var(--accent-amber-border);
+      background: var(--accent-amber-subtle);
+      color: var(--accent-amber);
+    }
+    .interactive-chip.chip-interrupt:hover {
+      background: #FEF3C7;
+    }
+
+    /* Console Chat Input Bar */
+    .sim-type-bar {
+      padding: 12px 18px;
+      background: #F8FAFC;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .sim-input-chat {
+      flex: 1;
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-md);
+      padding: 8px 14px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .sim-input-chat:focus {
+      border-color: var(--border-focus);
+    }
+    .sim-input-chat:disabled {
+      background: #F1F5F9;
+      cursor: not-allowed;
+    }
+
+    .btn-mic-glow {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .btn-mic-glow:hover:not(:disabled) {
+      color: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+    .btn-mic-glow.recording {
+      background: var(--accent-rose);
+      color: #FFFFFF;
+      border-color: var(--accent-rose);
+      animation: pulse-ring 1.5s infinite ease-in-out;
+    }
+
+    /* Sidebar Widgets / Right Column */
     .sidebar-widget {
-      background: linear-gradient(180deg, rgba(20, 26, 39, 0.8) 0%, rgba(12, 16, 25, 0.9) 100%);
-      border: 1px solid var(--border-glass);
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
-      padding: 20px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      gap: 12px;
+      box-shadow: var(--shadow-xs);
     }
 
     .widget-heading {
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 700;
-      color: #FFFFFF;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .select-luxury {
       width: 100%;
-      background: rgba(8, 11, 18, 0.95);
-      border: 1px solid var(--border-glass-light);
-      color: #FFFFFF;
-      font-size: 13px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      color: var(--text-primary);
+      font-size: 12.5px;
+      font-weight: 600;
       border-radius: var(--radius-md);
-      padding: 9px 12px;
+      padding: 8px 10px;
       outline: none;
       cursor: pointer;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
     }
     .select-luxury:focus {
-      border-color: var(--accent-blue);
+      border-color: var(--border-focus);
     }
 
-    /* Classy Tables */
+    /* Toggle Switch */
+    .switch-toggle {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .switch-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .switch-toggle .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #CBD5E1;
+      transition: all 0.2s ease;
+      border-radius: 22px;
+    }
+    .switch-toggle .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #FFFFFF;
+      transition: all 0.2s ease;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    .switch-toggle input:checked + .slider {
+      background-color: var(--accent-emerald);
+    }
+    .switch-toggle input:checked + .slider:before {
+      transform: translateX(18px);
+    }
+
+    /* Enterprise Data Tables */
     .table-viewport {
       width: 100%;
       overflow-x: auto;
@@ -877,74 +971,75 @@
       border-collapse: collapse;
       text-align: left;
       font-size: 13px;
+      font-weight: 500;
     }
 
     table.luxury-table th {
-      background: rgba(255, 255, 255, 0.02);
-      padding: 14px 22px;
-      font-weight: 600;
-      color: var(--text-muted);
+      background: #F8FAFC;
+      padding: 11px 16px;
+      font-weight: 700;
+      color: var(--text-secondary);
       text-transform: uppercase;
       font-size: 11px;
-      letter-spacing: 0.06em;
-      border-bottom: 1px solid var(--border-glass);
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-subtle);
       white-space: nowrap;
     }
 
     table.luxury-table td {
-      padding: 16px 22px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.035);
-      color: var(--text-main);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      font-weight: 500;
+      font-size: 13px;
       vertical-align: middle;
-      transition: background 0.15s ease;
     }
 
     table.luxury-table tbody tr:hover td {
-      background: rgba(255, 255, 255, 0.025);
+      background: #F8FAFC;
     }
 
     /* Badges */
     .badge-capsule {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       font-size: 11.5px;
       font-weight: 600;
-      padding: 3.5px 10px;
+      padding: 3px 9px;
       border-radius: 999px;
       white-space: nowrap;
     }
     .badge-capsule.good {
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.32);
-      color: #34D399;
-      box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
+      background: var(--accent-emerald-subtle);
+      border: 1px solid var(--accent-emerald-border);
+      color: var(--accent-emerald);
     }
     .badge-capsule.bad {
-      background: rgba(244, 63, 94, 0.12);
-      border: 1px solid rgba(244, 63, 94, 0.32);
-      color: #FB7185;
-      box-shadow: 0 0 12px rgba(244, 63, 94, 0.15);
+      background: var(--accent-rose-subtle);
+      border: 1px solid var(--accent-rose-border);
+      color: var(--accent-rose);
     }
     .badge-outline {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #F1F5F9;
+      border: 1px solid var(--border-light);
       color: var(--text-secondary);
-      padding: 2.5px 8px;
+      padding: 2px 7px;
       border-radius: var(--radius-sm);
       font-size: 11px;
       font-family: var(--font-mono);
+      font-weight: 600;
     }
 
-    /* Filter Row */
+    /* Filter Deck */
     .filter-deck {
-      padding: 14px 24px;
-      background: rgba(255, 255, 255, 0.015);
-      border-bottom: 1px solid var(--border-glass);
+      padding: 12px 18px;
+      background: #F8FAFC;
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
@@ -954,1226 +1049,559 @@
     }
 
     .filter-item {
-      font-size: 12.5px;
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: 600;
       color: var(--text-secondary);
-      background: transparent;
-      border: 1px solid var(--border-glass);
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
       border-radius: var(--radius-md);
-      padding: 6px 14px;
+      padding: 5px 12px;
       cursor: pointer;
       transition: all 0.15s ease;
     }
     .filter-item:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: #FFFFFF;
+      background: var(--bg-subtle);
+      color: var(--text-primary);
     }
     .filter-item.active {
-      background: rgba(30, 42, 65, 0.9);
-      border-color: rgba(255, 255, 255, 0.2);
-      color: #FFFFFF;
-      font-weight: 600;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    /* Self-Learning Grid */
-    .flywheel-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-      gap: 18px;
-      padding: 24px;
-    }
-
-    .flywheel-card {
-      background: linear-gradient(180deg, rgba(22, 28, 42, 0.75) 0%, rgba(14, 18, 28, 0.85) 100%);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-md);
-      padding: 18px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-      transition: all 0.2s ease;
-    }
-    .flywheel-card:hover {
-      border-color: var(--border-glass-light);
-      transform: translateY(-1px);
-    }
-
-    .flywheel-quote {
-      font-size: 12.5px;
-      color: var(--text-secondary);
-      background: rgba(8, 11, 18, 0.85);
-      border-left: 2px solid var(--accent-blue);
-      padding: 8px 12px;
-      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      background: var(--accent-blue-subtle);
+      border-color: var(--accent-blue-border);
+      color: var(--accent-blue);
+      font-weight: 700;
     }
 
     /* Webhook Box */
     .webhook-wrapper {
-      padding: 26px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     .code-pill {
       display: flex;
       align-items: center;
-      background: rgba(8, 11, 18, 0.95);
-      border: 1px solid var(--border-glass-light);
+      background: #F8FAFC;
+      border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
-      padding: 12px 16px;
-      gap: 12px;
+      padding: 10px 14px;
+      gap: 10px;
       font-family: var(--font-mono);
-      font-size: 13.5px;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+      font-size: 13px;
     }
 
     .btn-copy-tag {
       margin-left: auto;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
       color: var(--text-secondary);
       cursor: pointer;
       display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11.5px;
-      font-weight: 600;
-      padding: 5px 10px;
-      border-radius: var(--radius-sm);
-      transition: all 0.15s ease;
-    }
-    /* ==========================================================================
-       DYLAN DSOUZA VOICE STUDIO & OBJECTION SOUNDBOARD STYLES
-       ========================================================================== */
-    .dylan-layout {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      padding: 4px 0 32px 0;
-    }
-    .dylan-player-dock {
-      background: linear-gradient(180deg, rgba(22, 28, 44, 0.9) 0%, rgba(14, 18, 28, 0.95) 100%);
-      border: 1px solid var(--border-glass-light);
-      border-radius: var(--radius-lg);
-      padding: 18px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    }
-    .dylan-dock-info {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex: 1;
-    }
-    .dylan-card-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 16px;
-    }
-    .dylan-card {
-      background: linear-gradient(180deg, rgba(20, 26, 38, 0.75) 0%, rgba(12, 16, 25, 0.85) 100%);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-md);
-      padding: 18px 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 14px;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    }
-    .dylan-card:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-    }
-    .dylan-card.active-playing {
-      border-color: var(--accent-blue);
-      background: rgba(59, 130, 246, 0.08);
-    }
-    .dylan-card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .dylan-tag {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: rgba(59, 130, 246, 0.14);
-      color: #60A5FA;
-      border: 1px solid rgba(59, 130, 246, 0.25);
-    }
-    .dylan-tag.objection {
-      background: rgba(245, 158, 11, 0.14);
-      color: #FBBF24;
-      border-color: rgba(245, 158, 11, 0.25);
-    }
-    .dylan-tag.rejection {
-      background: rgba(244, 63, 94, 0.14);
-      color: #FB7185;
-      border-color: rgba(244, 63, 94, 0.25);
-    }
-    .dylan-quote {
-      font-size: 13.5px;
-      color: var(--text-main);
-      line-height: 1.55;
-      font-style: italic;
-      background: rgba(8, 11, 18, 0.7);
-      border-left: 2px solid var(--accent-blue);
-      padding: 10px 12px;
-      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    }
-    .dylan-card.objection .dylan-quote {
-      border-left-color: var(--accent-amber);
-    }
-    .dylan-card.rejection .dylan-quote {
-      border-left-color: var(--accent-rose);
-    }
-    .dylan-action-bar {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .dylan-play-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(59, 130, 246, 0.18);
-      border: 1px solid rgba(59, 130, 246, 0.35);
-      color: #93C5FD;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .dylan-play-btn:hover {
-      background: var(--accent-blue);
-      color: #FFFFFF;
-    }
-    .dylan-sim-btn {
-      display: inline-flex;
       align-items: center;
       gap: 4px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-glass);
-      color: var(--text-secondary);
       font-size: 11.5px;
-      padding: 6px 10px;
+      font-weight: 600;
+      padding: 4px 8px;
       border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: all 0.15s ease;
-      margin-left: auto;
     }
-    .dylan-sim-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #FFFFFF;
+    .btn-copy-tag:hover {
+      color: var(--text-primary);
+      border-color: #CBD5E1;
     }
   </style>
 </head>
 <body>
 
-  <!-- Classy Top Navigation Bar -->
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand-cluster">
-        <div class="brand-emblem">
-          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
-          </svg>
-        </div>
-        <div class="brand-meta">
-          <h1>
-            GETMORE.OS
-            <span class="status-capsule">
-              <span class="pulse-dot"></span> Live Telephony
-            </span>
-          </h1>
-          <p>Mittal Palms, Jakkur — Real Estate Inbound Voice AI</p>
-        </div>
-      </div>
+  <div class="app-shell">
 
-      <div class="topbar-actions">
-        <button onclick="testSheetsSync()" id="btn-test-sheets" class="action-btn">
-          <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          <span id="test-sheets-label">Test Sheet</span>
-        </button>
-        <a id="sheet-link" href="#" target="_blank" class="action-btn">
-          <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <span>Google Sheet</span>
-        </a>
-        <a href="/admin/export-leads.csv" class="action-btn">
-          <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          <span>Export CSV</span>
-        </a>
-        <a href="/proposal.pdf" target="_blank" class="action-btn btn-featured">
-          <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <span>Proposal (PDF)</span>
-        </a>
-      </div>
-    </div>
-  </header>
-
-  <!-- Main Container -->
-  <main class="dashboard-shell">
-
-    <!-- KPI Metric Cards Grid -->
-    <section class="kpi-row">
-      <div class="kpi-card glow-blue">
-        <div class="kpi-header">
-          <span>Total Inbound Calls</span>
-          <span style="color: var(--accent-blue);">●</span>
-        </div>
-        <div class="kpi-num" id="stat-total-calls">0</div>
-        <div class="kpi-footer">
-          <span>Telephony Inbound</span>
-          <span style="color: #93C5FD; font-family: var(--font-mono);">8kHz G.711 μ-law</span>
-        </div>
-      </div>
-
-      <div class="kpi-card glow-green">
-        <div class="kpi-header">
-          <span>Qualified Good Leads</span>
-          <span style="color: var(--accent-emerald);">●</span>
-        </div>
-        <div class="kpi-num num-emerald" id="kpi-good-count">0</div>
-        <div class="kpi-footer">
-          <span>Walkthrough Booked</span>
-          <span>Raghavendra (9945577935)</span>
-        </div>
-      </div>
-
-      <div class="kpi-card glow-amber">
-        <div class="kpi-header">
-          <span>Filtered Bad Leads</span>
-          <span style="color: var(--accent-amber);">●</span>
-        </div>
-        <div class="kpi-num num-amber" id="kpi-bad-count">0</div>
-        <div class="kpi-footer">
-          <span>Budget &lt; ₹50L / Rentals</span>
-          <span>Filtered from Sales Team</span>
-        </div>
-      </div>
-
-      <div class="kpi-card glow-purple">
-        <div class="kpi-header">
-          <span>Voice Synthesis Engine</span>
-          <span style="color: var(--accent-purple);">●</span>
-        </div>
-        <div class="kpi-num" style="font-size: 22px; margin-top: 4px; color: #E9D5FF;">Sarvam Bulbul</div>
-        <div class="kpi-footer">
-          <span style="color: #C084FC;">Native Indian Accent</span>
-          <span>&lt; 50ms Barge-In</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Navigation Tabs -->
-    <nav class="tab-nav">
-      <button class="tab-item active" onclick="switchTab('sim')">
-        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
-        Live Simulator
-      </button>
-      <button class="tab-item" onclick="switchTab('leads')">
-        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Lead Buckets
-        <span class="tab-pill" id="leads-tab-badge">0</span>
-      </button>
-      <button class="tab-item" onclick="switchTab('calls')">
-        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-        Call Logs
-        <span class="tab-pill" id="calls-tab-badge">0</span>
-      </button>
-      <button class="tab-item" onclick="switchTab('learnings')">
-        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        AI Self-Learning
-        <span class="tab-pill" id="learnings-tab-badge">Active</span>
-      </button>
-      <button class="tab-item" onclick="switchTab('settings')">
-        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        Telephony Setup
-      </button>
-      <button class="tab-item" onclick="switchTab('dylan')">
-        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
-        Dylan Script & Objections
-        <span class="tab-pill" style="background: rgba(59, 130, 246, 0.25); color: #60A5FA;">Voice Studio</span>
-      </button>
-    </nav>
-
-    <!-- TAB 1: LIVE SIMULATOR -->
-    <div id="view-sim" class="tab-pane active">
-      <div class="sim-layout">
-        <!-- Main Simulator Panel -->
-        <div class="glass-panel">
-          <!-- Call Controls -->
-          <div class="sim-bar">
-            <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 280px;">
-              <input id="sim-phone" type="text" value="+91-9880199221" class="sim-input-phone" placeholder="Caller Number"/>
-              <button id="btn-start-call" onclick="startSimulatedCall()" class="btn-call-action start">
-                <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/></svg>
-                Start Call
-              </button>
-              <button id="btn-end-call" onclick="endSimulatedCall()" disabled class="btn-call-action end">
-                End Call
-              </button>
-            </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <span class="badge-outline" id="call-status-badge">Simulator Idle</span>
-              <span id="mic-status-label" style="font-size: 11.5px; color: var(--text-muted);">Mic Ready</span>
-            </div>
+    <!-- Fixed Left Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <div class="sidebar-top">
+        <!-- Brand Cluster -->
+        <div class="brand-cluster">
+          <div class="brand-emblem">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
+            </svg>
           </div>
-
-          <!-- Live Chat Stream -->
-          <div id="dialogue-box" class="chat-stream">
-            <div class="chat-empty-state">
-              Click <strong style="color: #34D399;">"Start Call"</strong> to speak with Priya. She will guide the prospective homebuyer through the 5 qualification questions for Mittal Palms.
-            </div>
+          <div class="brand-meta">
+            <h1>Mittal Palms</h1>
+            <p>Voice AI Telephony OS</p>
           </div>
+        </div>
 
-          <!-- Conversational Voice AI Status Bar -->
-          <div id="voice-conversation-bar" class="conversational-status-bar">
-            <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
-              <div id="voice-wave" class="soundwave-container">
-                <span class="soundwave-bar"></span>
-                <span class="soundwave-bar"></span>
-                <span class="soundwave-bar"></span>
-                <span class="soundwave-bar"></span>
-                <span class="soundwave-bar"></span>
+        <!-- Vertical Nav Links -->
+        <nav class="sidebar-nav">
+          <div class="nav-section">
+            <div class="nav-section-title">Operations</div>
+            <button class="nav-item tab-item active" onclick="switchTab('sim')">
+              <div class="nav-item-left">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+                <span>Live Simulator</span>
               </div>
-              <div style="display: flex; align-items: baseline; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                <span id="voice-mode-label" style="font-weight: 700; color: #FFFFFF;">Conversational Voice AI</span>
-                <span id="voice-sub-label" style="color: var(--text-muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis;">(Click "Start Call" — speaks & listens hands-free)</span>
+            </button>
+            <button class="nav-item tab-item" onclick="switchTab('leads')">
+              <div class="nav-item-left">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Lead Inquiries</span>
               </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0;">
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; cursor: pointer; user-select: none;">
-                <input type="checkbox" id="hands-free-toggle" checked style="accent-color: #34D399;">
-                <span style="color: #A7F3D0; font-weight: 600;">Hands-Free Voice</span>
-              </label>
-              <label title="Enable only if using headphones/earphones for hands-free voice interruption without speaker feedback" style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; cursor: pointer; user-select: none;">
-                <input type="checkbox" id="earphones-mode-toggle" style="accent-color: #60A5FA;">
-                <span style="color: #93C5FD; font-weight: 500;">🎧 Earphones Barge-In</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Quick Test Question Chips -->
-          <div class="quick-chips-box">
-            <div class="chips-label-row">
-              <span>Quick Utterances (Simulate buyer answers)</span>
-              <span style="color: #60A5FA;">1-Click Qualification Flow</span>
-            </div>
-            <div class="chips-group">
-              <button onclick="sendQuickUtterance('Yes Rahul speaking, who is this?')" class="interactive-chip">
-                1. "Yes Rahul speaking"
-              </button>
-              <button onclick="sendQuickUtterance('Yes, I am exploring properties in Bangalore.')" class="interactive-chip">
-                2. "Yes exploring properties"
-              </button>
-              <button onclick="sendQuickUtterance('Sure, please go ahead.')" class="interactive-chip">
-                3. "Sure, go ahead"
-              </button>
-              <button onclick="sendQuickUtterance('I am looking for a 2 BHK apartment for my family.')" class="interactive-chip">
-                4. 2 BHK (1235–1340 sqft)
-              </button>
-              <button onclick="sendQuickUtterance('I am looking for a spacious 3 BHK apartment.')" class="interactive-chip">
-                4. 3 BHK (1750–1980 sqft)
-              </button>
-              <button onclick="sendQuickUtterance('It is for self-use with my family.')" class="interactive-chip">
-                5. Self-Use
-              </button>
-              <button onclick="sendQuickUtterance('It is for investment purposes.')" class="interactive-chip">
-                5. Investment
-              </button>
-              <button onclick="sendQuickUtterance('My budget is around 1.8 to 2 Crore rupees.')" class="interactive-chip">
-                6. Budget: 1.8 – 2.0 Cr
-              </button>
-              <button onclick="sendQuickUtterance('My budget is around 1.25 to 1.35 Crore rupees.')" class="interactive-chip">
-                6. Budget: 1.25 – 1.35 Cr
-              </button>
-              <button onclick="sendQuickUtterance('Tomorrow 4 PM works great for a walkthrough with Raghavendra.')" class="interactive-chip chip-good">
-                ✓ 7. Walkthrough Tomorrow 4 PM
-              </button>
-              <button onclick="sendQuickUtterance('I want a 3 BHK in Jakkur for 35 Lakhs only.')" class="interactive-chip chip-bad">
-                ⚠️ Bad Lead: Budget Mismatch (35L)
-              </button>
-              <button onclick="sendQuickUtterance('I am busy right now, please do not call, just WhatsApp me everything.')" class="interactive-chip" style="border-color: rgba(245, 158, 11, 0.4);">
-                Dylan Obj: "Just WhatsApp"
-              </button>
-              <button onclick="triggerBargeIn()" class="interactive-chip chip-interrupt">
-                ⚡ Barge-In Interruption
-              </button>
-            </div>
-          </div>
-
-          <!-- Chat Input Bar -->
-          <div class="sim-type-bar">
-            <input id="caller-input" type="text" disabled placeholder="Type buyer reply or click a question chip above..." class="sim-input-chat" onkeydown="if(event.key==='Enter') sendCustomUtterance()"/>
-            <button id="btn-mic" onclick="toggleMicrophone()" disabled title="Microphone" class="btn-mic-glow">
-              <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+              <span class="nav-badge" id="leads-tab-badge">0</span>
             </button>
-            <button id="btn-send-utterance" onclick="sendCustomUtterance()" disabled class="action-btn btn-featured">
-              Send
+            <button class="nav-item tab-item" onclick="switchTab('calls')">
+              <div class="nav-item-left">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                <span>Call Logs</span>
+              </div>
+              <span class="nav-badge" id="calls-tab-badge">0</span>
             </button>
           </div>
-        </div>
 
-        <!-- Sidebar Config & Project Info -->
-        <div style="display: flex; flex-direction: column; gap: 18px;">
-          <div class="sidebar-widget">
-            <div class="widget-heading">
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
-              Voice Persona
-            </div>
-            <select id="voice-select" class="select-luxury">
-              <option value="dylan_dsouza" selected>👨 Dylan Dsouza (Sarvam AI — Shubh • Advisor)</option>
-              <option value="female-priya">👩 Priya (Sarvam AI — Kavya)</option>
-              <option value="male-raghavendra">👨 Raghavendra (Sarvam AI — Arvind)</option>
-            </select>
-            <button id="btn-preview-voice" type="button" onclick="previewPriyaVoice()" class="action-btn" style="justify-content: center; width: 100%;">
-              <span id="preview-btn-text">▶ Test Voice Preview</span>
+          <div class="nav-section">
+            <div class="nav-section-title">Integrations & Data</div>
+            <button class="nav-item tab-item" onclick="switchTab('settings')">
+              <div class="nav-item-left">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>Telephony Setup</span>
+              </div>
             </button>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer; margin-top: 4px;">
-              <input type="checkbox" id="tts-audio-toggle" checked style="accent-color: var(--accent-blue);">
-              <span>Play Audio Output</span>
-            </label>
-          </div>
-
-          <div class="sidebar-widget">
-            <div class="widget-heading">
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              Project Inventory
-            </div>
-            <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.65;">
-              <div><strong>Project:</strong> Mittal Palms (3.2 Acres)</div>
-              <div><strong>Location:</strong> Jakkur, North Bangalore</div>
-              <div><strong>Units:</strong> 2 & 3 BHK (1235–1980 sq.ft)</div>
-              <div><strong>Price:</strong> ₹1.15 Cr – ₹1.95 Cr</div>
-              <div><strong>Status:</strong> Ready to Move In</div>
-              <div><strong>Site Walkthrough:</strong> Raghavendra (9945577935)</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 2: LEAD BUCKETS (GOOD VS BAD PROSPECTS) -->
-    <div id="view-leads" class="tab-pane">
-      <div class="glass-panel">
-        <div class="panel-head">
-          <div>
-            <div class="panel-title">
-              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              Automated Lead Buckets
-            </div>
-            <div class="panel-subtitle">Leads instantly segmented into Good vs. Filtered Bad prospects with CRM sync.</div>
-          </div>
-          <div style="display: flex; gap: 10px;">
-            <a href="/admin/export-leads.csv" class="action-btn">
-              <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-              Download CSV
+            <a id="sheet-link" href="#" target="_blank" class="nav-item">
+              <div class="nav-item-left">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span>Google Sheet CRM</span>
+              </div>
+              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
             </a>
-            <button onclick="loadData()" class="action-btn">
-              <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        <!-- Filter Deck -->
-        <div class="filter-deck">
-          <div class="pill-group">
-            <button class="filter-item active" onclick="filterLeadsTable('all', this)">All Leads</button>
-            <button class="filter-item" onclick="filterLeadsTable('good', this)">✓ Good Prospects</button>
-            <button class="filter-item" onclick="filterLeadsTable('bad', this)">⚠️ Bad / Filtered</button>
-          </div>
-          <input type="text" id="lead-search" oninput="searchLeadsTable()" placeholder="Search phone or status..." class="sim-input-phone" style="width: 240px;"/>
-        </div>
-
-        <!-- Table Viewport -->
-        <div class="table-viewport">
-          <table class="luxury-table">
-            <thead>
-              <tr>
-                <th>Caller Phone</th>
-                <th>Bucket</th>
-                <th>Configuration</th>
-                <th>Location / Workplace</th>
-                <th>Budget Range</th>
-                <th>Site Visit</th>
-                <th>Qualification Reason</th>
-              </tr>
-            </thead>
-            <tbody id="leads-tbody">
-              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 36px;">No leads recorded yet. Use the simulator or call in to record leads.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 3: CALL LOGS -->
-    <div id="view-calls" class="tab-pane">
-      <div class="glass-panel">
-        <div class="panel-head">
-          <div>
-            <div class="panel-title">
-              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-              Inbound Call Logs & AI Transcripts
-            </div>
-            <div class="panel-subtitle">Comprehensive record of telephony sessions, talk time, and LLM post-call summaries.</div>
-          </div>
-          <button onclick="loadData()" class="action-btn">
-            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            Refresh
-          </button>
-        </div>
-
-        <div class="table-viewport">
-          <table class="luxury-table">
-            <thead>
-              <tr>
-                <th>Call Time</th>
-                <th>Caller Number</th>
-                <th>Duration</th>
-                <th>AI Conversation Summary</th>
-              </tr>
-            </thead>
-            <tbody id="calls-tbody">
-              <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 36px;">No calls recorded yet.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 4: AUTONOMOUS SELF-LEARNING -->
-    <div id="view-learnings" class="tab-pane">
-      <div class="glass-panel">
-        <div class="panel-head">
-          <div>
-            <div class="panel-title">
-              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              Autonomous Self-Training Flywheel
-            </div>
-            <div class="panel-subtitle">The LLM analyzes every conversation transcript immediately upon call end, extracts buyer patterns, and dynamically adapts future prompts.</div>
-          </div>
-          <button onclick="loadData()" class="action-btn">
-            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            Refresh Insights
-          </button>
-        </div>
-
-        <div id="learnings-container" class="flywheel-grid">
-          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 36px;">
-            Self-training flywheel active. As calls conclude, extracted buyer objections and adaptation strategies appear here.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 5: TELEPHONY SETTINGS -->
-    <div id="view-settings" class="tab-pane">
-      <div class="glass-panel">
-        <div class="panel-head">
-          <div>
-            <div class="panel-title">
-              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              Carrier Inbound Trunking & Webhook Settings
-            </div>
-            <div class="panel-subtitle">Configure your virtual telephony provider (Twilio, Exotel, Plivo, Tata Tele) to route calls to the Voice AI agent.</div>
-          </div>
-        </div>
-
-        <div class="webhook-wrapper">
-          <div style="font-size: 13.5px; font-weight: 600; color: #FFFFFF;">
-            Inbound Telephony Webhook Endpoint (POST)
-          </div>
-          <div class="code-pill">
-            <span style="color: var(--accent-blue); font-weight: 700;">POST</span>
-            <span id="webhook-url">https://your-domain/incoming-call</span>
-            <button onclick="copyWebhookUrl()" class="btn-copy-tag" title="Copy Webhook URL">
-              <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-              <span id="copy-feedback">Copy</span>
-            </button>
-          </div>
-
-          <div style="font-size: 13.5px; font-weight: 600; color: #FFFFFF; margin-top: 10px;">
-            Audio Stream Specifications
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px;">
-            <div class="sidebar-widget">
-              <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Sampling Rate</div>
-              <div style="font-size: 17px; font-weight: 700; color: #FFFFFF;">8,000 Hz (8kHz)</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">G.711 μ-law cellular standard</div>
-            </div>
-            <div class="sidebar-widget">
-              <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Streaming Protocol</div>
-              <div style="font-size: 17px; font-weight: 700; color: #60A5FA;">Bidirectional WebSocket</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Sub-50ms clear buffer flush</div>
-            </div>
-            <div class="sidebar-widget">
-              <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Speech-to-Text</div>
-              <div style="font-size: 17px; font-weight: 700; color: #34D399;">Deepgram Nova-2</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Indian English real estate tuned</div>
-            </div>
-            <div class="sidebar-widget">
-              <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Voice Synthesis</div>
-              <div style="font-size: 17px; font-weight: 700; color: #C084FC;">Sarvam AI Bulbul</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Bangalore dialect real estate voices</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 6: DYLAN DSOUZA VOICE STUDIO & OBJECTION SOUNDBOARD -->
-    <div id="view-dylan" class="tab-pane">
-      <div class="dylan-layout">
-
-        <!-- Top Header & Meta Banner -->
-        <div class="glass-panel" style="padding: 24px;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <span class="status-capsule" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); color: #93C5FD;">
-                  <span class="pulse-dot" style="background: #3B82F6;"></span> Dylan Dsouza Persona
-                </span>
-                <span style="font-size: 12px; color: var(--text-muted);">Bangalore Residential Property Advisor</span>
+            <a href="/admin/export-leads.csv" class="nav-item">
+              <div class="nav-item-left">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Export Leads CSV</span>
               </div>
-              <h2 style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">Spoken Voice Script & Objection Soundboard</h2>
-              <p style="font-size: 13.5px; color: var(--text-secondary); max-width: 750px; margin-top: 4px; line-height: 1.5;">
-                Audition the complete outbound qualification flow, test 12 battle-tested objection rejection strategies, and inject any turn directly into the live call simulator. Powered by <strong>Sarvam AI Bulbul (Voice: Shubh • en-IN)</strong>.
-              </p>
+            </a>
+          </div>
+        </nav>
+      </div>
+
+      <!-- Agent Status in Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="agent-status-card">
+          <div class="agent-avatar">P</div>
+          <div class="agent-meta">
+            <div class="agent-name">
+              Priya
+              <span class="status-capsule" style="padding: 1px 6px; font-size: 10px;">
+                <span class="pulse-dot"></span> Online
+              </span>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <button onclick="switchTab('sim')" class="action-btn" style="border-color: var(--accent-blue);">
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                <span>Open Live Call Simulator</span>
-              </button>
-            </div>
+            <div class="agent-sub">Sarvam AI Bulbul v3</div>
           </div>
         </div>
+      </div>
+    </aside>
 
-        <!-- Sticky Global Audio Player Dock -->
-        <div id="dylan-dock" class="dylan-player-dock">
-          <div class="dylan-dock-info">
-            <div id="dylan-soundwave" class="soundwave-container" style="height: 22px; gap: 3px;">
-              <div class="soundwave-bar"></div>
-              <div class="soundwave-bar"></div>
-              <div class="soundwave-bar"></div>
-              <div class="soundwave-bar"></div>
-            </div>
-            <div>
-              <div id="dylan-dock-title" style="font-size: 14.5px; font-weight: 700; color: #FFFFFF;">Click any card below to play voice clip</div>
-              <div id="dylan-dock-text" style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">Synthesized with authentic Bangalore property advisor cadence (Sarvam Bulbul)</div>
-            </div>
-          </div>
-          <button id="dylan-dock-stop" onclick="stopDylanAudio()" class="action-btn" style="display: none; padding: 6px 14px; font-size: 12px; border-color: rgba(244, 63, 94, 0.4); color: #FDA4AF;">
-            ⏹ Stop Playback
-          </button>
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- Top Sticky Header -->
+      <header class="app-topbar">
+        <div class="breadcrumb-trail">
+          <span>Mittal Palms</span>
+          <span class="crumb-divider">/</span>
+          <strong id="topbar-crumb-active">Live Voice Simulator</strong>
         </div>
 
-        <!-- Filter Navigation -->
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-          <div class="pill-group">
-            <button class="filter-item active" onclick="filterDylanCards('all', this)">All Items (18)</button>
-            <button class="filter-item" onclick="filterDylanCards('script', this)">Master Script (Stages 1-6)</button>
-            <button class="filter-item" onclick="filterDylanCards('objection', this)">Objection Matrix (12)</button>
-            <button class="filter-item" onclick="filterDylanCards('specs', this)">Project Walkthrough</button>
-            <button class="filter-item" onclick="filterDylanCards('rules', this)">Spoken Rules</button>
-          </div>
-          <span style="font-size: 12px; color: var(--text-muted);">
-            Tip: Click <strong>"Inject into Simulator"</strong> to test any utterance live
+        <div class="topbar-actions">
+          <button onclick="testSheetsSync()" id="btn-test-sheets" style="display:none"></button>
+          <span class="status-capsule">
+            <span class="pulse-dot"></span> Priya Ready (Jakkur)
           </span>
+          <button onclick="loadData()" class="action-btn" title="Refresh Dashboard Data">
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>Refresh</span>
+          </button>
         </div>
+      </header>
 
-        <!-- SECTION 1: MASTER QUALIFICATION SCRIPT (STAGES 1 - 6) -->
-        <div class="dylan-section-block" data-category="script">
-          <div style="font-size: 15px; font-weight: 700; color: #60A5FA; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-            Sequential 6-Stage Master Script Flow
+      <!-- Dashboard Body Content -->
+      <div class="dashboard-content">
+
+        <!-- Compact KPI Strip -->
+        <section class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span>Total Inbound Calls</span>
+              <span style="color: var(--accent-blue);">●</span>
+            </div>
+            <div class="kpi-num" id="stat-total-calls">0</div>
+            <div class="kpi-footer">
+              <span>Telephony Inbound</span>
+              <span style="font-family: var(--font-mono);">8kHz G.711 μ-law</span>
+            </div>
           </div>
 
-          <div class="dylan-card-grid">
-
-            <!-- Stage 1 -->
-            <div class="dylan-card" data-category="script">
-              <div class="dylan-card-top">
-                <span class="dylan-tag">Stage 1: Opening</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Contact Verification</span>
-              </div>
-              <div class="dylan-quote">"Hi, good morning — am I speaking with Rahul?"</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Waits for confirmation before revealing pitch. Respects wrong numbers immediately.</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_1_greeting.wav', 'Stage 1: Greeting & Verification', 'Hi, good morning — am I speaking with Rahul?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Yes Rahul speaking, who is this?')">
-                  Inject Reply ↗
-                </button>
-              </div>
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span>Qualified Good Leads</span>
+              <span style="color: var(--accent-emerald);">●</span>
             </div>
-
-            <!-- Stage 2 -->
-            <div class="dylan-card" data-category="script">
-              <div class="dylan-card-top">
-                <span class="dylan-tag">Stage 2: Intro & Hook</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Advisory Check</span>
-              </div>
-              <div class="dylan-quote">"Hi, I’m Dylan Dsouza, a property advisor. I just wanted to check if you are exploring properties in Bangalore?"</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Low-pressure intro establishing identity and qualifying current market interest.</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_2_intro.wav', 'Stage 2: Intro & Hook', 'Hi, I’m Dylan Dsouza, a property advisor. I just wanted to check if you are exploring properties in Bangalore?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Yes, I am looking for a flat in Bangalore.')">
-                  Inject Reply ↗
-                </button>
-              </div>
+            <div class="kpi-num num-emerald" id="kpi-good-count">0</div>
+            <div class="kpi-footer">
+              <span>Walkthrough Booked</span>
+              <span>Raghavendra</span>
             </div>
-
-            <!-- Stage 3 -->
-            <div class="dylan-card" data-category="script">
-              <div class="dylan-card-top">
-                <span class="dylan-tag">Stage 3: Permission</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Requirement Gathering</span>
-              </div>
-              <div class="dylan-quote">"I just need to ask a few quick questions to better understand your requirements — would that be alright?"</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Secures buyer consent before diving into the 5-point qualification framework.</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_3_permission.wav', 'Stage 3: Permission to Qualify', 'I just need to ask a few quick questions to better understand your requirements — would that be alright?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Yes sure, ask away.')">
-                  Inject Reply ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Stage 4: Q1 -->
-            <div class="dylan-card" data-category="script">
-              <div class="dylan-card-top">
-                <span class="dylan-tag">Stage 4: Q1 Config</span>
-                <span style="font-size: 11px; color: var(--text-muted);">2 BHK vs 3 BHK</span>
-              </div>
-              <div class="dylan-quote">"Are you looking for a 2 or 3 BHK?"</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Immediate configuration filter. Skipped dynamically if already volunteered.</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_4_config.wav', 'Stage 4: Q1 Configuration', 'Are you looking for a 2 or 3 BHK?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Looking for a 3 BHK.')">
-                  Inject Reply ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Stage 4: Q2-Q5 Combined -->
-            <div class="dylan-card" data-category="script">
-              <div class="dylan-card-top">
-                <span class="dylan-tag">Stage 4: Q2–Q5 Framework</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Size, Location, Purpose, Budget</span>
-              </div>
-              <div class="dylan-quote">"Any particular size in mind? ... And which location do you prefer? ... Is it for self-use or investment? ... May I know your budget?"</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Spoken one by one with conversational active listening markers ("Got it!", "Understood").</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_3_permission.wav', 'Stage 4: Qualification Flow', 'Are you looking for a 2 or 3 BHK?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Around 1800 sqft in North Bangalore for self-use, budget 1.8 Cr.')">
-                  Inject All ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Stage 5: Pitch -->
-            <div class="dylan-card" data-category="script">
-              <div class="dylan-card-top">
-                <span class="dylan-tag">Stage 5: Pitch</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Mittal Palms Walkthrough</span>
-              </div>
-              <div class="dylan-quote">"Mittal Palms is spread across 3.2 acres in Jakkur, offering ready-to-move 2 and 3 BHK residences with a clubhouse and landscaped gardens."</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Spoken walkthrough: 3.2 Acres, S+G+7 Floors, 2 & 3 BHK ready-to-move-in with OC, clubhouse, pool & gardens in Jakkur.</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_5_pitch.wav', 'Stage 5: Mittal Palms Pitch', 'Mittal Palms is spread across 3.2 acres in Jakkur, offering ready-to-move 2 and 3 BHK residences with a clubhouse and landscaped gardens.')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Sounds good, what are the floor plans like?')">
-                  Inject Reply ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Stage 6: Callback -->
-            <div class="dylan-card" data-category="script">
-              <div class="dylan-card-top">
-                <span class="dylan-tag">Stage 6: Close</span>
-                <span style="font-size: 11px; color: var(--text-muted);">WhatsApp & Callback</span>
-              </div>
-              <div class="dylan-quote">"I’ll share the complete details with you on WhatsApp so you can take a look at the floor plans. Could we connect tomorrow to discuss this further? Please let me know a suitable time for you."</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Delivers instant floor plans via WhatsApp and locks down a scheduled next-day callback.</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_6_callback.wav', 'Stage 6: WhatsApp & Callback Booking', 'I’ll share the complete details with you on WhatsApp so you can take a look at the floor plans. Could we connect tomorrow to discuss this further? Please let me know a suitable time for you.')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Yes, call me tomorrow at 4 PM.')">
-                  Inject Time ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Stage 6: Goodbye -->
-            <div class="dylan-card" data-category="script">
-              <div class="dylan-card-top">
-                <span class="dylan-tag">Stage 6: Sign-off</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Courteous Goodbye</span>
-              </div>
-              <div class="dylan-quote">"Thank you for your time. Have an amazing day. Goodbye!"</div>
-              <div style="font-size: 11.5px; color: var(--text-muted);">Polite and warm sign-off leaving a premium brand impression.</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_7_goodbye.wav', 'Stage 6: Courteous Sign-off', 'Thank you for your time. Have an amazing day. Goodbye!')">
-                  ▶ Play Voice
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- SECTION 2: 12-POINT OBJECTION REJECTION MATRIX -->
-        <div class="dylan-section-block" data-category="objection">
-          <div style="font-size: 15px; font-weight: 700; color: #FBBF24; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            12-Point Objection & Rejection Handling Matrix
           </div>
 
-          <div class="dylan-card-grid">
-
-            <!-- Obj 1 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Caller is Busy / Meeting</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Instant Respect</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"I'm in a meeting right now / driving."</em></div>
-              <div class="dylan-quote">"Completely understand! When would be a convenient time for me to give you a quick callback later today?"</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_obj_busy.wav', 'Objection: Busy / Meeting', 'Completely understand! When would be a convenient time for me to give you a quick callback later today?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('I am in a meeting, can not talk.')">
-                  Test In Sim ↗
-                </button>
-              </div>
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span>Filtered Inquiries</span>
+              <span style="color: var(--accent-amber);">●</span>
             </div>
-
-            <!-- Obj 2 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Send on WhatsApp Only</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Agree + 1 Micro Question</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"Don't call me, just WhatsApp brochure."</em></div>
-              <div class="dylan-quote">"Absolutely! I will share the brochure on WhatsApp right away. Just to send the right floor plan, are you considering a 2 or 3 BHK?"</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_obj_whatsapp.wav', 'Objection: Send on WhatsApp Only', 'Absolutely! I will share the brochure on WhatsApp right away. Just to send the right floor plan, are you considering a 2 or 3 BHK?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Just WhatsApp me the brochure, do not call.')">
-                  Test In Sim ↗
-                </button>
-              </div>
+            <div class="kpi-num num-amber" id="kpi-bad-count">0</div>
+            <div class="kpi-footer">
+              <span>Budget &lt; ₹50L / Mismatch</span>
+              <span>Filtered</span>
             </div>
-
-            <!-- Obj 3 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Budget Out of Range</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Validate & Pivot</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"That's way too expensive for me."</em></div>
-              <div class="dylan-quote">"Understood! We also have flexible layouts and upcoming phases with convenient payment plans. What budget range were you ideally targeting?"</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_obj_budget.wav', 'Objection: Budget Out of Range', 'Understood! We also have flexible layouts and upcoming phases with convenient payment plans. What budget range were you ideally targeting?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('That is way too expensive, my budget is only 80 Lakhs.')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 4 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Not Interested Right Now</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Horizon Inquiry</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"I'm not interested in buying right now."</em></div>
-              <div class="dylan-quote">"Understood, thank you for letting me know! Are you planning to explore something in the next 6 to 12 months, or should I take this off for now?"</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_obj_not_interested.wav', 'Objection: Not Interested Right Now', 'Understood, thank you for letting me know! Are you planning to explore something in the next 6 to 12 months, or should I take this off for now?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('I am not interested in buying right now.')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 5 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Where Did You Get Number?</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Full Transparency</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"How did you get my phone number?"</em></div>
-              <div class="dylan-quote">"You had enquired regarding residential properties in Bangalore through an online portal. If this was by mistake, I can immediately update our records."</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('/audio/dylan_obj_not_interested.wav', 'Objection: Number Source Inquiry', 'You had enquired regarding residential properties in Bangalore through an online portal. If this was by mistake, I can immediately update our records.')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Who gave you my number? Why are you calling?')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 6 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Location Mismatch</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Mittal Palms Exclusive Focus</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"I only want Whitefield or Sarjapur."</em></div>
-              <div class="dylan-quote">"Mittal Palms is located in Jakkur, North Bangalore, very close to Manyata Tech Park and Hebbal. At the moment, this is our exclusive project. Would that North Bangalore commute work for you?"</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_location.wav', 'Objection: Location Focus', 'Mittal Palms is located in Jakkur, North Bangalore, very close to Manyata Tech Park and Hebbal. At the moment, this is our exclusive project. Would that North Bangalore commute work for you?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('I am looking in other parts of Bangalore.')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 7 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Ready to Move vs Under Construction</span>
-                <span style="font-size: 11px; color: var(--text-muted);">OC Status Clarity</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"I only want ready with OC, no risk."</em></div>
-              <div class="dylan-quote">"That is smart. This project is 100% ready-to-move with full Occupancy Certificate in hand, so there is zero construction risk."</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('/audio/dylan_5_pitch.wav', 'Objection: Ready to Move / OC Status', 'That is smart. This project is 100% ready-to-move with full Occupancy Certificate in hand, so there is zero construction risk.')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Do you have OC? I will only buy ready to move.')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 8 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">RERA & Bank Approvals</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Tier-1 Bank Backing</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"Is it RERA approved? Which banks fund it?"</em></div>
-              <div class="dylan-quote">"Yes, fully RERA approved with clear titles. Leading banks including SBI, HDFC, and ICICI have already approved up to 80% funding."</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('/audio/dylan_5_pitch.wav', 'Objection: Legal & Bank Approvals', 'Yes, fully RERA approved with clear titles. Leading banks including SBI, HDFC, and ICICI have already approved up to 80% funding.')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Is bank loan approved by SBI or HDFC?')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 9 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Plots / Villas Only</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Filter & Referral</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"I only want an independent villa or plot."</em></div>
-              <div class="dylan-quote">"Got it! While this specific community offers luxury high-rise apartments, I can check our villa options for you. Would that be helpful?"</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('/audio/dylan_4_config.wav', 'Objection: Villas or Plots Only', 'Got it! While this specific community offers luxury high-rise apartments, I can check our villa options for you. Would that be helpful?')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('I am only looking for independent villas, not apartments.')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 10 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Already Booked Property</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Congratulate & Close</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"I already bought an apartment last month."</em></div>
-              <div class="dylan-quote">"Congratulations on your new home! Thank you so much for your time, and I wish you all the best."</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('/audio/dylan_7_goodbye.wav', 'Objection: Already Booked Elsewhere', 'Congratulations on your new home! Thank you so much for your time, and I wish you all the best.')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('I already booked a 3 BHK elsewhere last week.')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 11 -->
-            <div class="dylan-card objection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag objection">Discount / Negotiation</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Invite for On-Site Spot Offer</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"Is the price negotiable? What discount can you give?"</em></div>
-              <div class="dylan-quote">"Our base pricing is standardized, but our relationship manager can offer unit-specific spot incentives during your site visit."</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('/audio/dylan_obj_budget.wav', 'Objection: Discount & Negotiation', 'Our base pricing is standardized, but our relationship manager can offer unit-specific spot incentives during your site visit.')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Is the price negotiable? What discount do you give on spot booking?')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
-            <!-- Obj 12 -->
-            <div class="dylan-card rejection" data-category="objection">
-              <div class="dylan-card-top">
-                <span class="dylan-tag rejection">Hard Rejection / Do Not Call</span>
-                <span style="font-size: 11px; color: var(--text-muted);">Immediate DNC Compliance</span>
-              </div>
-              <div style="font-size: 12px; color: var(--text-muted);">Caller: <em>"Remove my number immediately. Don't call again."</em></div>
-              <div class="dylan-quote">"I truly apologize for any disturbance. I will mark your number on our Do Not Call list right away. Have a good day."</div>
-              <div class="dylan-action-bar">
-                <button class="dylan-play-btn" onclick="playDylanAudio('dylan_obj_dnc.wav', 'Objection: Hard Rejection / DNC Compliance', 'I truly apologize for any disturbance. I will mark your number on our Do Not Call list right away. Have a good day.')">
-                  ▶ Play Voice
-                </button>
-                <button class="dylan-sim-btn" onclick="sendToSimulator('Stop calling me! Remove my number right now.')">
-                  Test In Sim ↗
-                </button>
-              </div>
-            </div>
-
           </div>
-        </div>
 
-        <!-- SECTION 3: PROJECT WALKTHROUGH TEMPLATE -->
-        <div class="dylan-section-block" data-category="specs">
-          <div class="glass-panel" style="padding: 24px;">
-            <div style="font-size: 15px; font-weight: 700; color: #34D399; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-              Project Details — Mittal Palms, Jakkur (Exclusive Project)
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span>Voice AI Persona</span>
+              <span style="color: var(--accent-purple);">●</span>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; font-size: 13px;">
-              <div class="sidebar-widget">
-                <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Land Parcel</div>
-                <div style="font-size: 15px; font-weight: 700; color: #FFFFFF; margin-top: 2px;">3.2 Acres</div>
-                <div style="font-size: 11.5px; color: var(--text-secondary);">Thoughtfully planned development in Jakkur</div>
+            <div class="kpi-num" style="font-size: 20px; margin-top: 4px; color: var(--accent-purple);">Priya (Sarvam)</div>
+            <div class="kpi-footer">
+              <span>Native Indian Accent</span>
+              <span>Sub-50ms Barge-In</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Hidden elements for backward compatibility -->
+        <span id="learnings-tab-badge" style="display:none"></span>
+
+        <!-- TAB 1: LIVE SIMULATOR -->
+        <div id="view-sim" class="tab-pane active">
+          <div class="sim-layout">
+            <!-- Left: Telephony Command Console -->
+            <div class="glass-panel">
+              <!-- Call Controls Toolbar -->
+              <div class="sim-bar">
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 280px;">
+                  <input id="sim-phone" type="text" value="+91-9880199221" class="sim-input-phone" placeholder="Caller Number"/>
+                  <button id="btn-start-call" onclick="startSimulatedCall()" class="btn-call-action start">
+                    <svg width="13" height="13" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/></svg>
+                    Start Call
+                  </button>
+                  <button id="btn-end-call" onclick="endSimulatedCall()" disabled class="btn-call-action end">
+                    End Call
+                  </button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="badge-outline" id="call-status-badge">Simulator Idle</span>
+                  <span id="mic-status-label" style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">Mic Ready</span>
+                </div>
               </div>
-              <div class="sidebar-widget">
-                <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Structure & Elevation</div>
-                <div style="font-size: 15px; font-weight: 700; color: #60A5FA; margin-top: 2px;">Stilt + Ground + 7 Floors</div>
-                <div style="font-size: 11.5px; color: var(--text-secondary);">Low-density community for families</div>
+
+              <!-- Live Chat Stream -->
+              <div id="dialogue-box" class="chat-stream">
+                <div class="chat-empty-state">
+                  Click <strong style="color: var(--accent-emerald);">"Start Call"</strong> to speak with Priya. She handles buyer inquiries about ready 2 & 3 BHK homes at Mittal Palms, Jakkur.
+                </div>
               </div>
-              <div class="sidebar-widget">
-                <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Configurations & Sizes</div>
-                <div style="font-size: 15px; font-weight: 700; color: #C084FC; margin-top: 2px;">2 BHK: 1235–1340 | 3 BHK: 1750–1980 sqft</div>
-                <div style="font-size: 11.5px; color: var(--text-secondary);">Spacious, ventilated floor plans</div>
+
+              <!-- Conversational Audio Status Ribbon -->
+              <div id="voice-conversation-bar" class="conversational-status-bar">
+                <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+                  <div id="voice-wave" class="soundwave-container">
+                    <span class="soundwave-bar"></span>
+                    <span class="soundwave-bar"></span>
+                    <span class="soundwave-bar"></span>
+                    <span class="soundwave-bar"></span>
+                    <span class="soundwave-bar"></span>
+                  </div>
+                  <div style="display: flex; align-items: baseline; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <span id="voice-mode-label" style="font-weight: 700; color: var(--text-primary);">Conversational Voice AI</span>
+                    <span id="voice-sub-label" style="color: var(--text-muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis;">(Click "Start Call" to begin)</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0;">
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="hands-free-toggle" checked style="accent-color: var(--accent-emerald);">
+                    <span style="color: var(--accent-emerald); font-weight: 600;">Hands-Free Voice</span>
+                  </label>
+                  <label title="Enable only if using headphones for interruption without feedback" style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="earphones-mode-toggle" style="accent-color: var(--accent-blue);">
+                    <span style="color: var(--accent-blue); font-weight: 500;">🎧 Earphones Barge-In</span>
+                  </label>
+                </div>
               </div>
-              <div class="sidebar-widget">
-                <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Lifestyle Amenities</div>
-                <div style="font-size: 15px; font-weight: 700; color: #F59E0B; margin-top: 2px;">Clubhouse, Pool, Gardens, Play Area</div>
-                <div style="font-size: 11.5px; color: var(--text-secondary);">Ample Parking, 24/7 Security & Power Backup</div>
+
+              <!-- Quick Test Question Chips -->
+              <div class="quick-chips-box">
+                <div class="chips-label-row">
+                  <span>Quick Test Inquiries (1-Click Buyer Prompts)</span>
+                </div>
+                <div class="chips-group">
+                  <button onclick="sendQuickUtterance('What are the prices and sizes for ready 2 and 3 BHK homes in Mittal Palms?')" class="interactive-chip">
+                    🏠 2 & 3 BHK Pricing & OC
+                  </button>
+                  <button onclick="sendQuickUtterance('Tell me about the location in Jakkur and distance to Manyata Tech Park.')" class="interactive-chip">
+                    📍 Jakkur Location & Connectivity
+                  </button>
+                  <button onclick="sendQuickUtterance('Can we book a walkthrough with Raghavendra this Saturday at 11 AM?')" class="interactive-chip chip-good">
+                    ✓ Book Walkthrough (Sat 11 AM)
+                  </button>
+                  <button onclick="sendQuickUtterance('I want a 3 BHK in Jakkur for 35 Lakhs only.')" class="interactive-chip chip-bad">
+                    ⚠️ Budget Mismatch (₹35L)
+                  </button>
+                  <button onclick="triggerBargeIn()" class="interactive-chip chip-interrupt">
+                    ⚡ Interrupt (Barge-In)
+                  </button>
+                </div>
               </div>
-              <div class="sidebar-widget">
-                <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Possession & Title</div>
-                <div style="font-size: 15px; font-weight: 700; color: #34D399; margin-top: 2px;">100% Ready to Move In (OC Received)</div>
-                <div style="font-size: 11.5px; color: var(--text-secondary);">Move in today, zero construction waiting</div>
+
+              <!-- Chat Input Dock -->
+              <div class="sim-type-bar">
+                <input id="caller-input" type="text" disabled placeholder="Type buyer reply or click a question chip above..." class="sim-input-chat" onkeydown="if(event.key==='Enter') sendCustomUtterance()"/>
+                <button id="btn-mic" onclick="toggleMicrophone()" disabled title="Microphone" class="btn-mic-glow">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+                </button>
+                <button id="btn-send-utterance" onclick="sendCustomUtterance()" disabled class="action-btn btn-featured">
+                  Send
+                </button>
               </div>
+            </div>
+
+            <!-- Right Column: Inspector & Dossier -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- Voice Engine Settings -->
               <div class="sidebar-widget">
-                <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Site Walkthrough & Lead Registration</div>
-                <div style="font-size: 15px; font-weight: 700; color: #10B981; margin-top: 2px;">Raghavendra (9945577935)</div>
-                <div style="font-size: 11.5px; color: var(--text-secondary);">Register leads to: niraj@mittal.com</div>
+                <div class="widget-heading">
+                  <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                  Voice Persona & Synthesis
+                </div>
+                <select id="voice-select" class="select-luxury">
+                  <option value="kavya" selected>👩 Priya — Sarvam AI Bulbul (Kavya • Warm & Natural)</option>
+                  <option value="roopa">👩 Priya — Sarvam AI Bulbul (Roopa • Crisp & Direct)</option>
+                  <option value="priya">👩 Priya — Sarvam AI Bulbul (Priya • Classic)</option>
+                </select>
+                <button id="btn-preview-voice" type="button" onclick="previewPriyaVoice()" class="action-btn" style="justify-content: center; width: 100%;">
+                  <span id="preview-btn-text">▶ Test Voice Preview</span>
+                </button>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer; margin-top: 2px;">
+                  <input type="checkbox" id="tts-audio-toggle" checked style="accent-color: var(--accent-blue);">
+                  <span>Play Live Audio Output</span>
+                </label>
+
+                <!-- Sarvam AI Credit Saver Toggle -->
+                <div style="background: #F8FAFC; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 10px 12px; margin-top: 4px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-primary);">
+                        <span>Sarvam Neural Voice</span>
+                        <span id="sarvam-toggle-badge" class="badge-capsule good">ON</span>
+                      </div>
+                      <div id="sarvam-toggle-subtext" style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">
+                        Bulbul v3 neural voice (Uses Sarvam credits)
+                      </div>
+                    </div>
+                    <label class="switch-toggle" title="Turn OFF to use free browser speech and save Sarvam credits">
+                      <input type="checkbox" id="sarvam-usage-toggle" checked onchange="handleSarvamUsageToggle(this.checked)">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Sarvam AI Quota & Key Status -->
+                <div id="sarvam-key-box" style="margin-top: 6px; padding: 12px; border-radius: 8px; background: #ECFDF5; border: 1px solid #A7F3D0; font-size: 12px; transition: all 0.2s ease;">
+                  <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 6px; font-weight: 700;">
+                      <span id="sarvam-status-icon" style="color: #059669; font-size: 13px;">✓</span>
+                      <span id="sarvam-status-text" style="color: #059669;">Sarvam Bulbul: Active (Credits Valid)</span>
+                    </div>
+                    <button type="button" onclick="toggleKeyInputBox()" id="btn-toggle-key-input" style="background: transparent; border: none; font-size: 11px; color: var(--text-muted); text-decoration: underline; cursor: pointer; font-weight: 600;">Update Key</button>
+                  </div>
+                  <p id="sarvam-status-desc" style="color: #065F46; font-size: 11.5px; font-weight: 500; line-height: 1.4; margin-top: 4px;">
+                    Connected to Sarvam AI cloud. Neural synthesis active.
+                  </p>
+                  <div id="sarvam-key-input-row" style="display: none; margin-top: 8px; gap: 6px;">
+                    <input id="sarvam-new-key-input" type="password" placeholder="sk_..." style="flex: 1; padding: 6px 8px; font-size: 11.5px; border-radius: 6px; border: 1px solid #CBD5E1; background: #FFFFFF; color: #0A0F1D; font-family: monospace; font-weight: 600;" />
+                    <button type="button" onclick="updateSarvamKey()" style="padding: 6px 12px; font-size: 11.5px; background: var(--accent-blue); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 700;">Save</button>
+                  </div>
+                  <div id="sarvam-update-msg" style="margin-top: 6px; font-size: 11px; display: none; font-weight: 600;"></div>
+                </div>
+              </div>
+
+              <!-- Property Cheat Sheet -->
+              <div class="sidebar-widget">
+                <div class="widget-heading">
+                  <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Mittal Palms Project Dossier
+                </div>
+                <div style="font-size: 12.5px; font-weight: 500; color: var(--text-primary); line-height: 1.8;">
+                  <div><strong style="color: var(--text-muted);">Project:</strong> Mittal Palms (3.2 Acres)</div>
+                  <div><strong style="color: var(--text-muted);">Location:</strong> Jakkur, North Bangalore</div>
+                  <div><strong style="color: var(--text-muted);">Units:</strong> Ready 2 & 3 BHK (1235–1980 sq.ft)</div>
+                  <div><strong style="color: var(--text-muted);">Price:</strong> ₹1.15 Cr – ₹1.95 Cr</div>
+                  <div><strong style="color: var(--text-muted);">Status:</strong> Ready to Move In (OC Received)</div>
+                  <div><strong style="color: var(--text-muted);">Site Lead:</strong> Raghavendra (+91-9945577935)</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- SECTION 4: BANGALORE REAL ESTATE PHONETIC PRONUNCIATION RULES -->
-        <div class="dylan-section-block" data-category="rules">
-          <div class="glass-panel" style="padding: 24px;">
-            <div style="font-size: 15px; font-weight: 700; color: #C084FC; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
-              Telephony Speech Cadence & Spoken Normalizer Guide
+        <!-- TAB 2: LEAD BUCKETS -->
+        <div id="view-leads" class="tab-pane">
+          <div class="glass-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Automated Lead Inquiries
+                </div>
+                <div class="panel-subtitle">Buyer inquiries qualified and segmented by configuration, budget, and walkthrough interest.</div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <a href="/admin/export-leads.csv" class="action-btn">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  Download CSV
+                </a>
+                <button onclick="loadData()" class="action-btn">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  Refresh
+                </button>
+              </div>
             </div>
+
+            <!-- Filter Deck -->
+            <div class="filter-deck">
+              <div class="pill-group">
+                <button class="filter-item active" onclick="filterLeadsTable('all', this)">All Inquiries</button>
+                <button class="filter-item" onclick="filterLeadsTable('good', this)">✓ Qualified Leads</button>
+                <button class="filter-item" onclick="filterLeadsTable('bad', this)">⚠️ Filtered Leads</button>
+              </div>
+              <input type="text" id="lead-search" oninput="searchLeadsTable()" placeholder="Search phone or status..." class="sim-input-phone" style="width: 220px;"/>
+            </div>
+
+            <!-- Table Viewport -->
             <div class="table-viewport">
               <table class="luxury-table">
                 <thead>
                   <tr>
-                    <th>Raw Written Input</th>
-                    <th>Spoken Cadence Output</th>
-                    <th>Engineering Rationale</th>
+                    <th>Caller Phone</th>
+                    <th>Status</th>
+                    <th>Configuration</th>
+                    <th>Workplace / Commute</th>
+                    <th>Budget Range</th>
+                    <th>Site Visit</th>
+                    <th>Qualification Reason</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr>
-                    <td><code>2 BHK / 3 BHK</code></td>
-                    <td><strong style="color: #60A5FA;">"two B H K" / "three B H K"</strong></td>
-                    <td>Prevents TTS engines from mispronouncing as robotic acronym.</td>
-                  </tr>
-                  <tr>
-                    <td><code>₹1.35 Cr</code></td>
-                    <td><strong style="color: #34D399;">"one point three five crore rupees"</strong></td>
-                    <td>Standard spoken Indian real estate financial notation.</td>
-                  </tr>
-                  <tr>
-                    <td><code>85 L</code></td>
-                    <td><strong style="color: #FBBF24;">"eighty-five lakh rupees"</strong></td>
-                    <td>Instant clarity on cellular bandwidth without symbol drops.</td>
-                  </tr>
-                  <tr>
-                    <td><code>1400 sq.ft</code></td>
-                    <td><strong style="color: #C084FC;">"fourteen hundred square feet"</strong></td>
-                    <td>Conversational human speech cadence.</td>
-                  </tr>
-                  <tr>
-                    <td><code>OC / CC</code></td>
-                    <td><strong style="color: #FFFFFF;">"O C" / "C C"</strong></td>
-                    <td>Occupancy Certificate clear letter spelling.</td>
-                  </tr>
+                <tbody id="leads-tbody">
+                  <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 36px;">No leads recorded yet. Use the simulator or call in to record leads.</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-      </div>
-    </div>
+        <!-- TAB 3: CALL LOGS -->
+        <div id="view-calls" class="tab-pane">
+          <div class="glass-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                  Inbound Call Logs & Summaries
+                </div>
+                <div class="panel-subtitle">Comprehensive record of telephony sessions, duration, and post-call summaries.</div>
+              </div>
+              <button onclick="loadData()" class="action-btn">
+                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Refresh
+              </button>
+            </div>
 
-  </main>
+            <div class="table-viewport">
+              <table class="luxury-table">
+                <thead>
+                  <tr>
+                    <th>Call Time</th>
+                    <th>Caller Number</th>
+                    <th>Duration</th>
+                    <th>AI Conversation Summary</th>
+                  </tr>
+                </thead>
+                <tbody id="calls-tbody">
+                  <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 36px;">No calls recorded yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: TELEPHONY SETTINGS -->
+        <div id="view-settings" class="tab-pane">
+          <div class="glass-panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  Carrier Trunking & Telephony Setup
+                </div>
+                <div class="panel-subtitle">Configure your virtual telephony provider (Twilio, Exotel, Plivo, Tata Tele) to route calls to Priya.</div>
+              </div>
+            </div>
+
+            <div class="webhook-wrapper">
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--text-primary);">
+                Inbound Telephony Webhook Endpoint (POST)
+              </div>
+              <div class="code-pill">
+                <span style="color: var(--accent-blue); font-weight: 700;">POST</span>
+                <span id="webhook-url">https://your-domain/incoming-call</span>
+                <button onclick="copyWebhookUrl()" class="btn-copy-tag" title="Copy Webhook URL">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                  <span id="copy-feedback">Copy</span>
+                </button>
+              </div>
+
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-top: 6px;">
+                Audio Stream Specifications
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+                <div class="sidebar-widget">
+                  <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Sampling Rate</div>
+                  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">8,000 Hz (8kHz)</div>
+                  <div style="font-size: 11.5px; color: var(--text-muted);">G.711 μ-law cellular standard</div>
+                </div>
+                <div class="sidebar-widget">
+                  <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Streaming Protocol</div>
+                  <div style="font-size: 16px; font-weight: 700; color: var(--accent-blue);">Bidirectional WebSocket</div>
+                  <div style="font-size: 11.5px; color: var(--text-muted);">Sub-50ms clear buffer flush</div>
+                </div>
+                <div class="sidebar-widget">
+                  <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Speech-to-Text</div>
+                  <div style="font-size: 16px; font-weight: 700; color: var(--accent-emerald);">Deepgram Nova-2</div>
+                  <div style="font-size: 11.5px; color: var(--text-muted);">Indian English real estate tuned</div>
+                </div>
+                <div class="sidebar-widget">
+                  <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Voice Synthesis</div>
+                  <div style="font-size: 16px; font-weight: 700; color: var(--accent-purple);">Sarvam AI Bulbul</div>
+                  <div style="font-size: 11.5px; color: var(--text-muted);">Natural Indian English (Kavya/Roopa)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hidden containers for backward compatibility with polling JS -->
+        <div id="view-learnings" style="display:none">
+          <div id="learnings-container"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
 
   <!-- JavaScript Logic -->
   <script>
@@ -2181,21 +1609,85 @@
     let recognition = null;
     let isRecording = false;
     let activeAudio = null;
-    let selectedNeuralVoiceId = 'roopa_en_conversational';
+    let selectedNeuralVoiceId = 'kavya';
     let allLeadsData = [];
     let activeLeadFilter = 'all';
     let clientDialogueHistory = [];
+
+    // Sarvam Cloud Speech Control (Toggle on/off to preserve credits)
+    let isSarvamCloudEnabled = localStorage.getItem('sarvam_enabled') !== 'false';
+
+    function isSarvamActive() {
+      const toggle = document.getElementById('sarvam-usage-toggle');
+      if (toggle) return toggle.checked;
+      return isSarvamCloudEnabled;
+    }
+
+    function toggleKeyInputBox() {
+      const row = document.getElementById('sarvam-key-input-row');
+      const btn = document.getElementById('btn-toggle-key-input');
+      if (!row) return;
+      const isHidden = row.style.display === 'none' || !row.style.display;
+      row.style.display = isHidden ? 'flex' : 'none';
+      if (btn) btn.innerText = isHidden ? 'Hide' : 'Update Key';
+    }
+
+    function handleSarvamUsageToggle(enabled) {
+      isSarvamCloudEnabled = !!enabled;
+      try {
+        localStorage.setItem('sarvam_enabled', isSarvamCloudEnabled ? 'true' : 'false');
+      } catch (e) {}
+
+      const badge = document.getElementById('sarvam-toggle-badge');
+      const subtext = document.getElementById('sarvam-toggle-subtext');
+      const previewBtn = document.getElementById('preview-btn-text');
+
+      if (isSarvamCloudEnabled) {
+        if (badge) {
+          badge.className = 'badge-capsule good';
+          badge.style.background = '';
+          badge.style.borderColor = '';
+          badge.style.color = '';
+          badge.innerText = 'ON';
+        }
+        if (subtext) subtext.innerText = 'Bulbul v3 neural voice (Uses Sarvam credits)';
+        if (previewBtn) previewBtn.innerHTML = '▶ Test Voice (Sarvam Bulbul)';
+      } else {
+        if (badge) {
+          badge.className = 'badge-capsule';
+          badge.style.background = '#F1F5F9';
+          badge.style.borderColor = '#CBD5E1';
+          badge.style.color = '#475569';
+          badge.innerText = 'OFF (SAVING CREDITS)';
+        }
+        if (subtext) subtext.innerText = 'Free local browser speech (0 Sarvam credits used)';
+        if (previewBtn) previewBtn.innerHTML = '▶ Test Voice (Free Browser Speech)';
+      }
+
+      checkSarvamStatus();
+    }
 
     // Tab Navigation & Hash Management
     function switchTab(tabId) {
       document.querySelectorAll('.tab-item').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(view => view.classList.remove('active'));
 
-      const targetBtn = Array.from(document.querySelectorAll('.tab-item')).find(b => b.getAttribute('onclick')?.includes(tabId));
-      if (targetBtn) targetBtn.classList.add('active');
+      const targetBtns = Array.from(document.querySelectorAll('.tab-item')).filter(b => b.getAttribute('onclick')?.includes(tabId));
+      targetBtns.forEach(b => b.classList.add('active'));
 
       const targetView = document.getElementById('view-' + tabId);
       if (targetView) targetView.classList.add('active');
+
+      const crumb = document.getElementById('topbar-crumb-active');
+      if (crumb) {
+        const titles = {
+          sim: 'Live Voice Simulator',
+          leads: 'Lead Inquiries & CRM',
+          calls: 'Inbound Call Logs',
+          settings: 'Carrier Trunking & Telephony Setup'
+        };
+        crumb.innerText = titles[tabId] || 'Live Voice Simulator';
+      }
 
       try {
         history.replaceState(null, '', '#' + tabId);
@@ -2206,6 +1698,11 @@
       const hash = window.location.hash.replace('#', '');
       if (hash && document.getElementById('view-' + hash)) {
         switchTab(hash);
+      }
+      const toggle = document.getElementById('sarvam-usage-toggle');
+      if (toggle) {
+        toggle.checked = isSarvamCloudEnabled;
+        handleSarvamUsageToggle(isSarvamCloudEnabled);
       }
     });
 
@@ -2549,16 +2046,42 @@
       });
     }
 
+    function getBestBrowserVoice() {
+      const voices = window.speechSynthesis.getVoices();
+      if (!voices || voices.length === 0) return null;
+
+      // Filter out joke / robotic Mac novelty voices
+      const filtered = voices.filter(v => {
+        const name = (v.name || '').toLowerCase();
+        return !['fred', 'albert', 'bad news', 'bahh', 'bells', 'boing', 'bubbles', 'cellos', 'deranged', 'good news', 'hysterical', 'pipe organ', 'trinoids', 'whisper', 'zarvox', 'junior', 'ralph', 'jester', 'organ', 'wobble', 'superstar'].some(r => name.includes(r));
+      });
+
+      const pool = filtered.length > 0 ? filtered : voices;
+      // Priya: MUST be a natural female voice. Never pick Rishi or male voice.
+      return pool.find(v => (v.lang === 'en-IN' || v.lang === 'en_IN') && (v.name.includes('Tara') || v.name.includes('Veena') || v.name.includes('Neerja') || v.name.includes('Kavya') || v.name.includes('Female')))
+          || pool.find(v => v.name.includes('Samantha') || v.name.includes('Victoria') || v.name.includes('Karen') || v.name.includes('Serena') || v.name.includes('Tessa'))
+          || pool.find(v => (v.lang && v.lang.startsWith('en')) && !v.name.includes('Rishi') && !v.name.includes('Aman') && !v.name.includes('Male') && !v.name.includes('Daniel'))
+          || pool[0];
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+      window.speechSynthesis.getVoices();
+    }
+
     function fallbackToSpeechSynthesis(text, previewBtnText) {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const utt = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis.getVoices();
-        const inVoice = voices.find(v => v.lang === 'en-IN' || (v.lang && v.lang.startsWith('en') && v.name && v.name.toLowerCase().includes('india'))) 
-                     || voices.find(v => v.lang && v.lang.startsWith('en')) 
-                     || voices[0];
-        if (inVoice) utt.voice = inVoice;
-        utt.rate = 1.05;
+        const inVoice = getBestBrowserVoice();
+        if (inVoice) {
+          utt.voice = inVoice;
+          console.log(`[Browser Voice Fallback] Speaking via "${inVoice.name}" (${inVoice.lang})`);
+        }
+        utt.rate = 1.0;
+        utt.pitch = 1.0;
         utt.onend = () => {
           isPriyaSpeaking = false;
           if (previewBtnText) previewBtnText.innerHTML = '▶ Test Voice Preview';
@@ -2597,11 +2120,16 @@
       } else {
         if (!isRecording && activeStreamSid) startMicrophone();
       }
-      const voiceLabel = selectedNeuralVoiceId === 'dylan_dsouza' ? 'Dylan Dsouza' : ((selectedNeuralVoiceId && (selectedNeuralVoiceId === 'shubh' || selectedNeuralVoiceId === 'aditya')) ? 'Raghavendra' : 'Priya');
-      updateVoiceStatusBar('speaking', `🔊 ${voiceLabel} Speaking...`, 'Press Spacebar or click Mic to interrupt');
+      updateVoiceStatusBar('speaking', '🔊 Priya Speaking...', 'Press Spacebar or click Mic to interrupt');
 
       const previewBtnText = document.getElementById('preview-btn-text');
       if (previewBtnText) previewBtnText.innerHTML = '🔊 Speaking...';
+
+      // If Sarvam cloud speech is toggled off, immediately use free local browser speech (0 credits used)
+      if (!isSarvamActive()) {
+        fallbackToSpeechSynthesis(text, previewBtnText);
+        return;
+      }
 
       try {
         const res = await fetch('/api/tts/synthesize', {
@@ -2609,7 +2137,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             text,
-            voice: selectedNeuralVoiceId || 'dylan_dsouza'
+            voice: selectedNeuralVoiceId || 'kavya'
           }),
           signal: AbortSignal.timeout(10000)
         });
@@ -2690,8 +2218,7 @@
       } else {
         if (!isRecording && activeStreamSid) startMicrophone();
       }
-      const voiceLabel = selectedNeuralVoiceId === 'dylan_dsouza' ? 'Dylan Dsouza' : ((selectedNeuralVoiceId && (selectedNeuralVoiceId === 'shubh' || selectedNeuralVoiceId === 'aditya')) ? 'Raghavendra' : 'Priya');
-      updateVoiceStatusBar('speaking', `🔊 ${voiceLabel} Speaking...`, 'Press Spacebar or click Mic to interrupt');
+      updateVoiceStatusBar('speaking', '🔊 Priya Speaking...', 'Press Spacebar or click Mic to interrupt');
 
       try {
         const audioUrl = base64ToAudioUrl(base64, contentType || 'audio/wav');
@@ -2748,9 +2275,15 @@
     }
 
     function previewPriyaVoice() {
-      const isMale = selectedNeuralVoiceId === 'shubh' || selectedNeuralVoiceId === 'aditya';
-      const name = isMale ? 'Raghavendra' : 'Priya';
-      const sample = `Hello! This is ${name} from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+      const sample = `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+      const previewBtnText = document.getElementById('preview-btn-text');
+
+      if (!isSarvamActive()) {
+        if (previewBtnText) previewBtnText.innerHTML = '🔊 Speaking (Free Speech)...';
+        fallbackToSpeechSynthesis(sample, previewBtnText);
+        return;
+      }
+
       speakPriyaResponse(sample);
     }
 
@@ -2777,9 +2310,103 @@
       }, 4000);
     }
 
+    // Sarvam AI Status & Key Updater
+    async function checkSarvamStatus() {
+      try {
+        const res = await fetch('/api/sarvam/status');
+        const data = await res.json();
+        const box = document.getElementById('sarvam-key-box');
+        const icon = document.getElementById('sarvam-status-icon');
+        const text = document.getElementById('sarvam-status-text');
+        const desc = document.getElementById('sarvam-status-desc');
+        const inputRow = document.getElementById('sarvam-key-input-row');
+        if (!box || !text) return;
+
+        const sarvamEnabled = isSarvamActive();
+
+        if (!sarvamEnabled) {
+          box.style.background = '#F8FAFC';
+          box.style.borderColor = '#CBD5E1';
+          if (icon) { icon.innerText = '⚡'; icon.style.color = '#64748B'; }
+          text.style.color = '#334155';
+          text.innerHTML = 'Sarvam Speech: Paused (Saving Credits)';
+          if (desc) {
+            desc.style.color = '#64748B';
+            desc.innerHTML = 'Zero credits consumed. Priya uses free local browser speech synthesis.';
+          }
+        } else if (data.status === 'valid') {
+          box.style.background = '#ECFDF5';
+          box.style.borderColor = '#A7F3D0';
+          if (icon) { icon.innerText = '✓'; icon.style.color = '#059669'; }
+          text.style.color = '#059669';
+          text.innerHTML = 'Sarvam Bulbul: Active (Credits Valid)';
+          if (desc) {
+            desc.style.color = '#065F46';
+            desc.innerHTML = 'Connected to Sarvam AI cloud. Neural synthesis active.';
+          }
+        } else if (data.status === 'quota_exhausted') {
+          box.style.background = '#FFFBEB';
+          box.style.borderColor = '#FCD34D';
+          if (icon) { icon.innerText = '⚠️'; icon.style.color = '#B45309'; }
+          text.style.color = '#B45309';
+          text.innerHTML = 'Sarvam: Quota Exhausted (0 Credits)';
+          if (desc) {
+            desc.style.color = '#92400E';
+            desc.innerHTML = 'Account has 0 credits. Automatically falls back to free browser speech. Enter a recharged key:';
+          }
+          if (inputRow) inputRow.style.display = 'flex';
+        } else {
+          box.style.background = '#FFF1F2';
+          box.style.borderColor = '#FECDD3';
+          if (icon) { icon.innerText = '⚠️'; icon.style.color = '#DC2626'; }
+          text.style.color = '#DC2626';
+          text.innerHTML = 'Sarvam: ' + (data.message || 'Key Error');
+          if (desc) {
+            desc.style.color = '#9F1239';
+            desc.innerHTML = 'Please check your API key below:';
+          }
+          if (inputRow) inputRow.style.display = 'flex';
+        }
+      } catch (e) {}
+    }
+
+    async function updateSarvamKey() {
+      const input = document.getElementById('sarvam-new-key-input');
+      const msg = document.getElementById('sarvam-update-msg');
+      const key = (input?.value || '').trim();
+      if (!key) return;
+
+      msg.style.display = 'block';
+      msg.style.color = '#93C5FD';
+      msg.innerText = 'Validating key with Sarvam...';
+
+      try {
+        const res = await fetch('/api/sarvam/key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: key })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          msg.style.color = '#34D399';
+          msg.innerText = '✓ Key verified! Sarvam Bulbul voice active.';
+          input.value = '';
+          checkSarvamStatus();
+        } else {
+          msg.style.color = '#F87171';
+          msg.innerText = '✗ ' + (data.error || 'Validation failed');
+        }
+      } catch (err) {
+        msg.style.color = '#F87171';
+        msg.innerText = '✗ Error: ' + err.message;
+      }
+    }
+
     // Load Data
     async function loadData() {
       try {
+        checkSarvamStatus();
         const [callsRes, leadsRes, statsRes, learningsRes] = await Promise.all([
           fetch('/api/calls').catch(() => ({ json: () => [] })),
           fetch('/api/leads').catch(() => ({ json: () => [] })),
@@ -2820,9 +2447,9 @@
           callsTbody.innerHTML = calls.map(c => `
             <tr>
               <td style="color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap;">${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
-              <td style="font-family: var(--font-mono); font-weight: 600; color: #FFFFFF;">${c.caller_number || '-'}</td>
-              <td style="font-family: var(--font-mono); color: #60A5FA;">${c.duration_seconds || 0}s</td>
-              <td style="color: var(--text-main); font-size: 13px;">${c.summary || '<span style="color: var(--text-muted); font-style: italic;">In progress</span>'}</td>
+              <td style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">${c.caller_number || '-'}</td>
+              <td style="font-family: var(--font-mono); color: var(--accent-blue);">${c.duration_seconds || 0}s</td>
+              <td style="color: var(--text-secondary); font-size: 13px;">${c.summary || '<span style="color: var(--text-muted); font-style: italic;">In progress</span>'}</td>
             </tr>
           `).join('');
         }
@@ -2862,19 +2489,19 @@
       leadsTbody.innerHTML = filtered.map(l => {
         const isBad = (l.lead_quality && l.lead_quality.includes('Bad')) || (l.status && (l.status.includes('Bad') || l.status.includes('Cold') || l.status.includes('Unqualified')));
         const bucketBadge = isBad 
-          ? `<span class="badge-capsule bad">⚠️ Bad Prospect</span>`
-          : `<span class="badge-capsule good">✓ Good Prospect</span>`;
+          ? `<span class="badge-capsule bad">⚠️ Filtered</span>`
+          : `<span class="badge-capsule good">✓ Qualified</span>`;
 
         return `
           <tr>
-            <td style="font-family: var(--font-mono); font-weight: 600; color: #FFFFFF;">${l.caller_phone || '-'}</td>
+            <td style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">${l.caller_phone || '-'}</td>
             <td>${bucketBadge}</td>
             <td><span class="badge-outline">${l.config || '-'}</span></td>
             <td>${l.location || '-'}</td>
-            <td style="color: ${isBad ? 'var(--text-muted)' : '#34D399'}; font-weight: 600;">${l.budget || '-'}</td>
-            <td style="color: #FBBF24;">${l.visit_day || '-'}</td>
+            <td style="color: ${isBad ? 'var(--text-muted)' : 'var(--accent-emerald)'}; font-weight: 600;">${l.budget || '-'}</td>
+            <td style="color: var(--accent-amber);">${l.visit_day || '-'}</td>
             <td>
-              <div style="font-size: 12.5px; font-weight: 600; color: ${isBad ? '#FB7185' : '#34D399'};">
+              <div style="font-size: 12.5px; font-weight: 600; color: ${isBad ? 'var(--accent-rose)' : 'var(--accent-emerald)'};">
                 ${l.status || (isBad ? 'Filtered Out' : 'Qualified Lead')}
               </div>
               ${l.summary ? `<div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">${l.summary}</div>` : ''}
@@ -2897,6 +2524,7 @@
 
     function renderLearnings(learnings) {
       const container = document.getElementById('learnings-container');
+      if (!container) return;
       if (!learnings || learnings.length === 0) {
         container.innerHTML = `
           <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 36px;">
@@ -2912,9 +2540,9 @@
             <span class="badge-capsule good">${item.learning_type || 'Buyer Preference'}</span>
             <span style="color: var(--text-muted); font-family: var(--font-mono);">${new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
-          <div style="font-size: 13.5px; font-weight: 600; color: #FFFFFF; line-height: 1.45;">${item.key_insight}</div>
+          <div style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); line-height: 1.45;">${item.key_insight}</div>
           ${item.caller_utterance ? `<div class="flywheel-quote"><strong>Caller:</strong> "${item.caller_utterance}"</div>` : ''}
-          ${item.best_response ? `<div style="font-size: 12px; color: #34D399; background: rgba(16, 185, 129, 0.08); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2);"><strong>AI Optimization:</strong> ${item.best_response}</div>` : ''}
+          ${item.best_response ? `<div style="font-size: 12px; color: var(--accent-emerald); background: #ECFDF5; padding: 8px 12px; border-radius: 6px; border: 1px solid #A7F3D0;"><strong>AI Optimization:</strong> ${item.best_response}</div>` : ''}
         </div>
       `).join('');
     }
@@ -2934,44 +2562,44 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           callerNumber: phone,
-          voice: selectedNeuralVoiceId || 'dylan_dsouza'
+          voice: selectedNeuralVoiceId || 'kavya',
+          enableSarvam: isSarvamActive()
         })
       });
       const data = await res.json();
       if (data.success) {
         activeStreamSid = data.streamSid;
         document.getElementById('call-status-badge').innerText = 'Connected';
-        document.getElementById('call-status-badge').style.color = '#34D399';
-        document.getElementById('call-status-badge').style.borderColor = 'rgba(16, 185, 129, 0.5)';
+        document.getElementById('call-status-badge').style.color = '#059669';
+        document.getElementById('call-status-badge').style.borderColor = '#A7F3D0';
         document.getElementById('btn-start-call').disabled = true;
         document.getElementById('btn-end-call').disabled = false;
         document.getElementById('caller-input').disabled = false;
         document.getElementById('btn-send-utterance').disabled = false;
         if (document.getElementById('btn-mic')) document.getElementById('btn-mic').disabled = false;
 
-        const isDylan = selectedNeuralVoiceId === 'dylan_dsouza';
-        const isMale = isDylan || (selectedNeuralVoiceId && (selectedNeuralVoiceId === 'shubh' || selectedNeuralVoiceId === 'aditya'));
-        const agentName = data.agentName || (isDylan ? 'Dylan Dsouza' : (isMale ? 'Raghavendra' : 'Priya'));
-        const greeting = data.greetingText || (isDylan ? "Hi, good morning — am I speaking with Rahul?" : `Hello! This is ${agentName} from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here. Are you looking for a 2 BHK or a 3 BHK for your family?`);
+        const agentName = 'Priya';
+        const greeting = data.greetingText || `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
         
         clientDialogueHistory = [{ role: 'assistant', content: greeting }];
 
         const mem = data.callerMemory;
         const memoryBanner = (mem && mem.isReturningCaller)
-          ? `<div style="padding: 8px 12px; margin-bottom: 12px; border-radius: 8px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 11px; color: #93C5FD; display: flex; align-items: center; gap: 8px;">
+          ? `<div style="padding: 8px 12px; margin-bottom: 12px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; font-size: 11px; color: #1E40AF; display: flex; align-items: center; gap: 8px;">
                <span>🧠</span>
                <span><strong>Caller Memory Active:</strong> Returning Buyer recognized (${mem.existingLead?.config || 'Preferences loaded'}${mem.existingLead?.budget ? ' • ' + mem.existingLead.budget : ''} • Prior interactions remembered)</span>
              </div>`
-          : `<div style="padding: 6px 10px; margin-bottom: 12px; border-radius: 8px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); font-size: 11px; color: #6EE7B7; display: flex; align-items: center; gap: 8px;">
+          : `<div style="padding: 6px 10px; margin-bottom: 12px; border-radius: 8px; background: #ECFDF5; border: 1px solid #A7F3D0; font-size: 11px; color: #065F46; display: flex; align-items: center; gap: 8px;">
                <span>🧠</span>
-               <span><strong>In-Call Memory Active:</strong> Multi-turn scratchpad tracking configuration, commute, budget & walkthrough.</span>
+               <span><strong>In-Call Memory Active:</strong> Tracking configuration, commute, budget & walkthrough.</span>
              </div>`;
 
+        const engineTag = isSarvamActive() ? 'Sarvam AI Bulbul' : 'Free Browser Speech';
         const box = document.getElementById('dialogue-box');
         box.innerHTML = `
           ${memoryBanner}
           <div class="bubble-wrapper agent">
-            <span class="bubble-sender-tag">${agentName} • Sarvam AI Bulbul</span>
+            <span class="bubble-sender-tag">${agentName} • ${engineTag}</span>
             <div class="bubble-card">
               ${greeting}
             </div>
@@ -2979,7 +2607,7 @@
         `;
 
         const audioEnabled = isAudioActive();
-        if (data.greetingAudioBase64 && audioEnabled) {
+        if (data.greetingAudioBase64 && audioEnabled && isSarvamActive()) {
           playBundledAudio(data.greetingAudioBase64, data.audioContentType, greeting);
         } else if (audioEnabled) {
           speakPriyaResponse(greeting);
@@ -3021,15 +2649,12 @@
       `;
       box.scrollTop = box.scrollHeight;
 
-      const isDylan = selectedNeuralVoiceId === 'dylan_dsouza';
-      const agentDisplayName = isDylan ? 'Dylan Dsouza' : 'Priya';
-
-      // Classy Thinking Pill
+      // Thinking Pill
       const tempId = 'thinking-' + Date.now();
       box.innerHTML += `
-        <div id="${tempId}" style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #94A3B8; padding: 6px 0;">
-          <span style="width: 7px; height: 7px; border-radius: 50%; background: #3B82F6; box-shadow: 0 0 10px #3B82F6; animation: pulse-ring 1s infinite ease-in-out;"></span>
-          ${agentDisplayName} is listening & qualifying requirements...
+        <div id="${tempId}" style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-muted); padding: 6px 0;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent-blue); animation: pulse-ring 1s infinite ease-in-out;"></span>
+          Priya is listening & assisting...
         </div>
       `;
       box.scrollTop = box.scrollHeight;
@@ -3042,8 +2667,9 @@
           body: JSON.stringify({ 
             streamSid: activeStreamSid, 
             text,
-            voice: selectedNeuralVoiceId || 'dylan_dsouza',
+            voice: selectedNeuralVoiceId || 'kavya',
             includeAudio: audioEnabled,
+            enableSarvam: isSarvamActive(),
             history: clientDialogueHistory
           }),
           signal: AbortSignal.timeout(25000)
@@ -3056,18 +2682,16 @@
         let reply = data.replyText;
         if (!reply && data.transcript) {
           const lines = data.transcript.split('\n');
-          const priyaLines = lines.filter(l => l.startsWith('Priya: ') || l.startsWith('Raghavendra: '));
-          reply = priyaLines[priyaLines.length - 1]?.replace(/^(Priya|Raghavendra):\s*/, '');
+          const agentLines = lines.filter(l => l.startsWith('Priya: '));
+          reply = agentLines[agentLines.length - 1]?.replace(/^Priya:\s*/, '');
         }
 
         if (reply) {
           clientDialogueHistory.push({ role: 'assistant', content: reply });
-          const isDylan = selectedNeuralVoiceId === 'dylan_dsouza';
-          const isMale = isDylan || (selectedNeuralVoiceId && (selectedNeuralVoiceId === 'shubh' || selectedNeuralVoiceId === 'aditya'));
-          const agentName = isDylan ? 'Dylan Dsouza' : (isMale ? 'Raghavendra' : 'Priya');
+          const engineTag = isSarvamActive() ? 'Sarvam AI Bulbul' : 'Free Browser Speech';
           box.innerHTML += `
             <div class="bubble-wrapper agent">
-              <span class="bubble-sender-tag">${agentName} • Sarvam AI Bulbul</span>
+              <span class="bubble-sender-tag">Priya • ${engineTag}</span>
               <div class="bubble-card">
                 ${reply}
               </div>
@@ -3075,7 +2699,7 @@
           `;
           box.scrollTop = box.scrollHeight;
 
-          if (data.audioBase64 && audioEnabled) {
+          if (data.audioBase64 && audioEnabled && isSarvamActive()) {
             playBundledAudio(data.audioBase64, data.audioContentType, reply);
           } else if (audioEnabled) {
             speakPriyaResponse(reply);
@@ -3085,8 +2709,8 @@
         } else {
           box.innerHTML += `
             <div class="bubble-wrapper agent">
-              <span class="bubble-sender-tag" style="color: #F87171;">System Notice</span>
-              <div class="bubble-card" style="border: 1px solid rgba(239, 68, 68, 0.35); color: #FCA5A5;">
+              <span class="bubble-sender-tag" style="color: var(--accent-rose);">System Notice</span>
+              <div class="bubble-card" style="border: 1px solid #FECDD3; background: #FFF1F2; color: #9F1239;">
                 ${data.error || 'Response took longer than usual. Please retry.'}
               </div>
             </div>
@@ -3099,8 +2723,8 @@
         if (el) el.remove();
         box.innerHTML += `
           <div class="bubble-wrapper agent">
-            <span class="bubble-sender-tag" style="color: #F87171;">Connection Alert</span>
-            <div class="bubble-card" style="border: 1px solid rgba(239, 68, 68, 0.35); color: #FCA5A5;">
+            <span class="bubble-sender-tag" style="color: var(--accent-rose);">Connection Alert</span>
+            <div class="bubble-card" style="border: 1px solid #FECDD3; background: #FFF1F2; color: #9F1239;">
               Network timed out. Click any question chip below to send again.
             </div>
           </div>
@@ -3131,13 +2755,10 @@
         body: JSON.stringify({ streamSid: activeStreamSid })
       });
 
-      const isDylan = selectedNeuralVoiceId === 'dylan_dsouza';
-      const agentDisplayName = isDylan ? 'Dylan Dsouza' : 'Priya';
-
       const box = document.getElementById('dialogue-box');
       box.innerHTML += `
-        <div style="font-family: var(--font-mono); font-size: 11.5px; color: #FBBF24; text-align: center; padding: 8px 12px; background: rgba(245, 158, 11, 0.1); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.25);">
-          ⚡ [Barge-In Interruption]: PBX audio buffer cleared (&lt;50ms). ${agentDisplayName} is listening.
+        <div style="font-family: var(--font-mono); font-size: 11.5px; color: #B45309; text-align: center; padding: 8px 12px; background: #FEF3C7; border-radius: 8px; border: 1px solid #FCD34D;">
+          ⚡ [Barge-In Interruption]: PBX audio buffer cleared (&lt;50ms). Priya is listening.
         </div>
       `;
       box.scrollTop = box.scrollHeight;
@@ -3166,7 +2787,7 @@
       activeStreamSid = null;
       document.getElementById('call-status-badge').innerText = 'Completed';
       document.getElementById('call-status-badge').style.color = 'var(--text-muted)';
-      document.getElementById('call-status-badge').style.borderColor = 'var(--border-glass)';
+      document.getElementById('call-status-badge').style.borderColor = 'var(--border-subtle)';
       document.getElementById('btn-start-call').disabled = false;
       document.getElementById('btn-end-call').disabled = true;
       document.getElementById('caller-input').disabled = true;
@@ -3177,113 +2798,12 @@
 
       const box = document.getElementById('dialogue-box');
       box.innerHTML += `
-        <div style="font-size: 12px; color: #34D399; text-align: center; padding: 10px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.25);">
-          ✓ Call concluded. Conversation analyzed & learnings saved to self-training flywheel.
+        <div style="font-size: 12px; color: #065F46; text-align: center; padding: 10px; background: #ECFDF5; border-radius: 8px; border: 1px solid #A7F3D0;">
+          ✓ Call concluded. Conversation analyzed & lead inquiries updated.
         </div>
       `;
       box.scrollTop = box.scrollHeight;
       setTimeout(loadData, 800);
-    }
-
-    // =========================================================================
-    // DYLAN DSOUZA VOICE STUDIO & OBJECTION SOUNDBOARD LOGIC
-    // =========================================================================
-    let dylanAudioPlayer = null;
-
-    function playDylanAudio(fileOrText, title, spokenText) {
-      if (!dylanAudioPlayer) {
-        dylanAudioPlayer = new Audio();
-      }
-
-      const dock = document.getElementById('dylan-dock');
-      const titleEl = document.getElementById('dylan-dock-title');
-      const textEl = document.getElementById('dylan-dock-text');
-      const wave = document.getElementById('dylan-soundwave');
-      const stopBtn = document.getElementById('dylan-dock-stop');
-
-      if (titleEl) titleEl.innerText = title;
-      if (textEl) textEl.innerText = spokenText;
-      if (dock) dock.style.display = 'flex';
-      if (stopBtn) stopBtn.style.display = 'inline-flex';
-
-      document.querySelectorAll('.dylan-card').forEach(c => c.classList.remove('active-playing'));
-      if (window.event && window.event.currentTarget) {
-        const card = window.event.currentTarget.closest('.dylan-card');
-        if (card) card.classList.add('active-playing');
-      }
-
-      // Try pre-rendered audio first
-      const audioUrl = fileOrText.startsWith('/') ? fileOrText : '/audio/' + fileOrText;
-      dylanAudioPlayer.src = audioUrl;
-
-      dylanAudioPlayer.play().then(() => {
-        if (wave) wave.classList.add('playing');
-      }).catch(async (err) => {
-        console.log('[Dylan Player] Static playback failed, synthesizing on-the-fly with Sarvam Shubh:', err);
-        try {
-          const res = await fetch('/api/tts/synthesize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: spokenText, voice: 'shubh' })
-          });
-          if (res.ok) {
-            const blob = await res.blob();
-            dylanAudioPlayer.src = URL.createObjectURL(blob);
-            dylanAudioPlayer.play();
-            if (wave) wave.classList.add('playing');
-          }
-        } catch (synthErr) {
-          console.warn('[Dylan Player] Live synthesis failed:', synthErr);
-        }
-      });
-
-      dylanAudioPlayer.onended = () => {
-        if (wave) wave.classList.remove('playing');
-        if (stopBtn) stopBtn.style.display = 'none';
-        document.querySelectorAll('.dylan-card').forEach(c => c.classList.remove('active-playing'));
-      };
-    }
-
-    function stopDylanAudio() {
-      if (dylanAudioPlayer) {
-        dylanAudioPlayer.pause();
-        dylanAudioPlayer.currentTime = 0;
-      }
-      const wave = document.getElementById('dylan-soundwave');
-      if (wave) wave.classList.remove('playing');
-      const stopBtn = document.getElementById('dylan-dock-stop');
-      if (stopBtn) stopBtn.style.display = 'none';
-      document.querySelectorAll('.dylan-card').forEach(c => c.classList.remove('active-playing'));
-    }
-
-    function sendToSimulator(text) {
-      switchTab('sim');
-      const input = document.getElementById('caller-input');
-      if (input) {
-        input.value = text;
-        input.focus();
-      }
-      const sendBtn = document.getElementById('btn-send-utterance');
-      if (sendBtn && !sendBtn.disabled) {
-        sendCustomUtterance();
-      }
-    }
-
-    function filterDylanCards(category, btn) {
-      document.querySelectorAll('#view-dylan .filter-item').forEach(b => {
-        b.classList.remove('active');
-      });
-      if (btn) btn.classList.add('active');
-
-      const blocks = document.querySelectorAll('.dylan-section-block');
-      blocks.forEach(block => {
-        const cat = block.getAttribute('data-category');
-        if (category === 'all' || cat === category) {
-          block.style.display = 'block';
-        } else {
-          block.style.display = 'none';
-        }
-      });
     }
 
     // Initial Load & Poll

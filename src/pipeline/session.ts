@@ -2,11 +2,8 @@ import { WebSocket } from 'ws';
 import crypto from 'crypto';
 import { normalizeRealEstateText } from './normalizer.js';
 import { llmPipeline, ChatMessage, PRIYA_SYSTEM_PROMPT } from './llm.js';
+import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcribeAudioSarvam } from './tts.js';
 import { createCall, updateCall, getCallerMemory } from '../tools/db.js';
-
-// Cartesia Indian Lady (Female) Voice ID: 3b554273-4299-48b9-9aaf-eefd438e3941
-const CARTESIA_VOICE_ID = process.env.CARTESIA_VOICE_ID || '3b554273-4299-48b9-9aaf-eefd438e3941';
-const CARTESIA_MODEL_ID = 'sonic-multilingual';
 
 export class VoiceSession {
   private telephonyWs: WebSocket;
@@ -19,10 +16,12 @@ export class VoiceSession {
   private isAgentSpeaking: boolean = false;
   private currentContextId: string = '';
   private activeAbortController: AbortController | null = null;
-  private agentName: string = 'Dylan Dsouza';
+  private agentName: string = 'Priya';
 
   private deepgramWs: WebSocket | null = null;
-  private cartesiaWs: WebSocket | null = null;
+  private inboundMulawChunks: Buffer[] = [];
+  private silenceTimer: NodeJS.Timeout | null = null;
+  private isProcessingSTT: boolean = false;
 
   private conversationHistory: ChatMessage[] = [
     { role: 'system', content: llmPipeline.getPromptWithLearnings() },
@@ -71,9 +70,8 @@ export class VoiceSession {
         // Register in local SQLite database
         this.callId = createCall(this.streamSid, this.callerNumber);
 
-        // Initialize STT & TTS sockets
+        // Initialize STT socket
         await this.initDeepgram();
-        await this.initCartesia();
 
         // Preload memory context into conversation system prompt
         this.conversationHistory[0] = {
@@ -96,12 +94,16 @@ export class VoiceSession {
 
       case 'media': {
         if (!msg.media?.payload) return;
+        const audioBuffer = Buffer.from(msg.media.payload, 'base64');
 
-        // Stream 8kHz G.711 mulaw audio directly into Deepgram STT
+        // 1. If Deepgram is connected, stream 8kHz G.711 mulaw directly
         if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
-          const audioBuffer = Buffer.from(msg.media.payload, 'base64');
           this.deepgramWs.send(audioBuffer);
+          return;
         }
+
+        // 2. Fallback: Sarvam Saaras v3 STT with Voice Activity & Barge-In Detection
+        this.handleInboundTelephonyAudio(audioBuffer);
         break;
       }
 
@@ -231,82 +233,62 @@ export class VoiceSession {
       this.activeAbortController = null;
     }
 
-    // 3. Cancel active Cartesia context
-    if (this.cartesiaWs && this.cartesiaWs.readyState === WebSocket.OPEN && this.currentContextId) {
-      this.cartesiaWs.send(
-        JSON.stringify({
-          context_id: this.currentContextId,
-          cancel: true,
-        })
-      );
-    }
-
     this.isAgentSpeaking = false;
     this.currentContextId = '';
   }
 
   /**
-   * Initializes Cartesia TTS WebSocket connection.
+   * Handles inbound telephony audio frames with energy VAD and Sarvam STT.
    */
-  private async initCartesia(): Promise<void> {
-    const apiKey = process.env.CARTESIA_API_KEY;
-    if (!apiKey || apiKey === 'your_cartesia_api_key_here') {
-      console.warn('[Cartesia] Missing CARTESIA_API_KEY. TTS audio streaming disabled.');
-      return;
+  private handleInboundTelephonyAudio(chunk: Buffer): void {
+    let totalEnergy = 0;
+    for (let i = 0; i < chunk.length; i++) {
+      const byte = chunk[i];
+      const val = byte > 127 ? byte - 128 : 127 - byte;
+      totalEnergy += val;
     }
+    const avgEnergy = totalEnergy / chunk.length;
+    const isSpeech = avgEnergy > 18;
 
-    const cartesiaUrl = `wss://api.cartesia.ai/tts/websocket?api_key=${apiKey}&cartesia_version=2024-06-10`;
+    if (isSpeech) {
+      if (this.isAgentSpeaking) {
+        console.log(`[Barge-In] Caller speech energy detected (${avgEnergy.toFixed(1)}). Triggering interruption.`);
+        this.handleBargeIn();
+      }
 
-    try {
-      this.cartesiaWs = new WebSocket(cartesiaUrl);
+      this.inboundMulawChunks.push(chunk);
 
-      this.cartesiaWs.on('open', () => {
-        console.log('[Cartesia] WebSocket connected.');
-      });
+      if (this.silenceTimer) {
+        clearTimeout(this.silenceTimer);
+        this.silenceTimer = null;
+      }
 
-      this.cartesiaWs.on('message', (data: any) => {
-        try {
-          const msg = JSON.parse(data.toString());
-          if (msg.context_id !== this.currentContextId) {
-            // Ignore stale chunks from cancelled contexts
-            return;
-          }
-
-          if (msg.type === 'chunk' && msg.data) {
-            // Forward raw 8kHz G.711 mulaw base64 audio directly to telephony WebSocket
-            if (this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
-              this.telephonyWs.send(
-                JSON.stringify({
-                  event: 'media',
-                  streamSid: this.streamSid,
-                  media: {
-                    payload: msg.data,
-                  },
-                })
-              );
+      this.silenceTimer = setTimeout(async () => {
+        if (this.inboundMulawChunks.length > 8 && !this.isProcessingSTT) {
+          const fullAudio = Buffer.concat(this.inboundMulawChunks);
+          this.inboundMulawChunks = [];
+          this.isProcessingSTT = true;
+          try {
+            const wav = mulawToWav(fullAudio);
+            const transcript = await transcribeAudioSarvam(wav);
+            if (transcript && transcript.length > 1) {
+              console.log(`[Sarvam STT Telephony] Caller: "${transcript}"`);
+              await this.processCallerUtterance(transcript);
             }
-          } else if (msg.type === 'done') {
-            this.isAgentSpeaking = false;
+          } catch (err: any) {
+            console.warn('[Session] STT processing notice:', err.message);
+          } finally {
+            this.isProcessingSTT = false;
           }
-        } catch (err) {
-          console.error('[Cartesia] Message processing error:', err);
         }
-      });
-
-      this.cartesiaWs.on('error', (err) => {
-        console.error('[Cartesia] WebSocket error:', err.message);
-      });
-
-      this.cartesiaWs.on('close', () => {
-        console.log('[Cartesia] WebSocket closed.');
-      });
-    } catch (err: any) {
-      console.error('[Cartesia] Initialization failed:', err.message);
+      }, 550);
+    } else if (this.inboundMulawChunks.length > 0) {
+      this.inboundMulawChunks.push(chunk);
     }
   }
 
   /**
-   * Streams text to Cartesia TTS with normalization.
+   * Streams text to telephony audio using Sarvam AI Bulbul 8kHz G.711 mulaw.
    */
   private async speakText(rawText: string): Promise<void> {
     const normalized = normalizeRealEstateText(rawText);
@@ -315,46 +297,32 @@ export class VoiceSession {
     this.isAgentSpeaking = true;
     this.currentContextId = crypto.randomUUID();
 
-    console.log(`[TTS] Speaking: "${normalized}" (Context: ${this.currentContextId})`);
+    console.log(`[Telephony Audio Out] Speaking: "${normalized}"`);
 
-    if (this.cartesiaWs && this.cartesiaWs.readyState === WebSocket.OPEN) {
-      const payload = {
-        context_id: this.currentContextId,
-        model_id: CARTESIA_MODEL_ID,
-        transcript: normalized,
-        voice: {
-          mode: 'id',
-          id: CARTESIA_VOICE_ID,
-        },
-        output_format: {
-          container: 'raw',
-          encoding: 'pcm_mulaw',
-          sample_rate: 8000,
-        },
-        continue: false,
-      };
+    try {
+      const mulawBuffer = await synthesizeTelephonyMulaw(normalized, 'kavya');
 
-      this.cartesiaWs.send(JSON.stringify(payload));
-    } else {
-      // Offline / testing fallback: emit real 8kHz G.711 mulaw audio frames to telephony WebSocket
-      if (this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
-        const frameCount = Math.max(1, Math.min(8, Math.ceil(normalized.length / 20)));
-        const mulawChunk = Buffer.alloc(160, 0x7f); // 20ms of 8kHz mulaw audio (160 bytes)
-        const payload = mulawChunk.toString('base64');
-        for (let i = 0; i < frameCount; i++) {
-          if (!this.isAgentSpeaking) break; // Check for barge-in clear
+      if (mulawBuffer && mulawBuffer.length > 0 && this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
+        // Send synthesized 8kHz mulaw frames in 160-byte packets (20ms)
+        const chunkSize = 160;
+        for (let i = 0; i < mulawBuffer.length; i += chunkSize) {
+          if (!this.isAgentSpeaking) break; // Interrupted by barge-in
+          const chunk = mulawBuffer.subarray(i, i + chunkSize);
           this.telephonyWs.send(
             JSON.stringify({
               event: 'media',
               streamSid: this.streamSid,
-              media: { payload },
+              media: {
+                payload: chunk.toString('base64'),
+              },
             })
           );
         }
       }
-      setTimeout(() => {
-        this.isAgentSpeaking = false;
-      }, 250);
+    } catch (err: any) {
+      console.warn('[Session] Telephony speech dispatch notice:', err.message);
+    } finally {
+      this.isAgentSpeaking = false;
     }
   }
 
@@ -432,17 +400,16 @@ export class VoiceSession {
 
     // Clean up active streams
     this.handleBargeIn();
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+    this.inboundMulawChunks = [];
 
     if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
       try {
         this.deepgramWs.send(JSON.stringify({ type: 'CloseStream' }));
         this.deepgramWs.close();
-      } catch {}
-    }
-
-    if (this.cartesiaWs && this.cartesiaWs.readyState === WebSocket.OPEN) {
-      try {
-        this.cartesiaWs.close();
       } catch {}
     }
 

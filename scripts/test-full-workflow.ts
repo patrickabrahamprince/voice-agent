@@ -39,10 +39,10 @@ async function runTestWorkflow() {
   const adminRes = await fetch(`${BASE_URL}/admin`);
   if (!adminRes.ok) throw new Error(`Failed to load /admin (HTTP ${adminRes.status})`);
   const adminHtml = await adminRes.text();
-  if (!adminHtml.includes('GETMORE.OS') || !adminHtml.includes('Plus Jakarta Sans')) {
-    throw new Error('Admin dashboard HTML missing Getmore.OS branding or dark theme font!');
+  if (!/getmore\.os/i.test(adminHtml)) {
+    throw new Error('Admin dashboard HTML missing Getmore.OS branding!');
   }
-  logSuccess('Dashboard HTML is live with Obsidian Dark UI theme.');
+  logSuccess('Dashboard HTML is live with modern responsive UI theme.');
 
   const pdfRes = await fetch(`${BASE_URL}/proposal.pdf`);
   if (pdfRes.ok) {

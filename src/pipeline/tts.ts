@@ -1,7 +1,5 @@
 import 'dotenv/config';
-import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import { normalizeRealEstateText } from './normalizer.js';
-
 import fs from 'fs';
 import path from 'path';
 
@@ -14,178 +12,142 @@ export interface TTSVoiceInfo {
   provider: 'sarvam';
 }
 
-// Curated Top Sarvam AI Bulbul Voices for Real Estate
+// Exclusive Voice Provider: Sarvam AI Bulbul (India's Premier Voice AI)
 export const AVAILABLE_VOICES: TTSVoiceInfo[] = [
   {
-    id: 'dylan_dsouza',
-    name: '👨 Dylan Dsouza (Sarvam AI Bulbul • Shubh • Default)',
-    gender: 'Male',
-    accent: 'Bangalore Indian English (Property Advisor)',
+    id: 'kavya',
+    name: '👩 Priya — Sarvam AI Bulbul (Kavya • Warm & Conversational)',
+    gender: 'Female',
+    accent: 'Bangalore Indian English',
     provider: 'sarvam',
     isDefault: true,
   },
   {
-    id: 'kavya',
-    name: '👩 Priya — Kavya (Sarvam AI Bulbul)',
+    id: 'roopa',
+    name: '👩 Priya — Sarvam AI Bulbul (Roopa • Crisp & Direct)',
     gender: 'Female',
-    accent: 'Indian English (Warm, Expressive & Conversational)',
+    accent: 'Bangalore Indian English',
     provider: 'sarvam',
     isDefault: false,
   },
   {
     id: 'priya',
-    name: '👩 Priya — Priya (Sarvam AI Bulbul • Classic)',
+    name: '👩 Priya — Sarvam AI Bulbul (Priya • Classic)',
     gender: 'Female',
-    accent: 'Indian English (Friendly & Natural)',
-    provider: 'sarvam',
-    isDefault: false,
-  },
-  {
-    id: 'roopa_en_conversational',
-    name: '👩 Priya — Roopa (Sarvam AI Bulbul Flash)',
-    gender: 'Female',
-    accent: 'Indian English (Natural & Friendly)',
-    provider: 'sarvam',
-    isDefault: false,
-  },
-  {
-    id: 'simran_en_sales',
-    name: '👩 Priya — Simran (Sarvam AI Bulbul Flash)',
-    gender: 'Female',
-    accent: 'Indian English (Energetic Sales Specialist)',
-    provider: 'sarvam',
-    isDefault: false,
-  },
-  {
-    id: 'shubh',
-    name: '👨 Raghavendra — Shubh (Sarvam AI Bulbul)',
-    gender: 'Male',
-    accent: 'Indian English (Deep, Confident & Professional)',
-    provider: 'sarvam',
-    isDefault: false,
-  },
-  {
-    id: 'aditya',
-    name: '👨 Raghavendra — Aditya (Sarvam AI Bulbul)',
-    gender: 'Male',
-    accent: 'Indian English (Authoritative Real Estate Advisor)',
+    accent: 'Indian English',
     provider: 'sarvam',
     isDefault: false,
   },
 ];
 
-// Backwards compatibility alias
 export const AVAILABLE_FEMALE_VOICES = AVAILABLE_VOICES;
+
+import { spawn } from 'child_process';
+import os from 'os';
+import crypto from 'crypto';
 
 // In-memory cache for instant playback
 const audioCache = new Map<string, { buffer: Buffer; contentType: string }>();
 
-// Preload local Dylan studio WAV files for instant 0ms latency playback
-function preloadDylanStudioAudio(): void {
-  const mappings: [string, string[]][] = [
-    ['dylan_1_greeting.wav', ['Hi, good morning — am I speaking with Rahul?']],
-    ['dylan_2_intro.wav', [
-      'Hi, I’m Dylan Dsouza, a property advisor. I just wanted to check if you are exploring properties in Bangalore?',
-      'Hi, I’m Dylan Dsouza, a property advisor from Bangalore.'
-    ]],
-    ['dylan_3_permission.wav', [
-      'I just need to ask a few quick questions to better understand your requirements — would that be alright?',
-      'Great! I just need to ask a few quick questions to better understand your requirements — would that be alright?',
-      'Great! May I know your requirements?'
-    ]],
-    ['dylan_4_config.wav', [
-      'Are you looking for a 2 or 3 BHK?'
-    ]],
-    ['dylan_location.wav', [
-      'Understood. And may I know which location in Bangalore you are most interested in?',
-      'Mittal Palms is located in Jakkur, North Bangalore, very close to Manyata Tech Park and Hebbal. At the moment, this is our exclusive project. Would that North Bangalore commute work for you?'
-    ]],
-    ['dylan_intent.wav', [
-      'Makes complete sense! Is it for self-use or an investment?'
-    ]],
-    ['dylan_budget.wav', [
-      'And may I know your budget?'
-    ]],
-    ['dylan_repeat_bhk.wav', [
-      'Got it, 3 BHK! We have prime options in North Bangalore near Jakkur and Hebbal. Which area do you prefer?'
-    ]],
-    ['dylan_repeat_2bhk.wav', [
-      'Got it, 2 BHK! We have prime options in North Bangalore near Jakkur and Hebbal. Which area do you prefer?',
-      'Got it, 2 BHK! My apologies. For our ready 2 BHKs at Mittal Palms, we have 1235 to 1340 square feet starting around 1.25 Crore. Could we connect tomorrow for a walkthrough?'
-    ]],
-    ['dylan_5_pitch.wav', [
-      'Thank you so much for the information! Mittal Palms is spread across 3.2 acres in Jakkur, offering ready-to-move 2 and 3 BHK residences with a clubhouse and landscaped gardens. I’ll share the complete floor plans with you on WhatsApp so you can take a look. Could we connect tomorrow to discuss this further? Please let me know a suitable time for you.',
-      'Mittal Palms is spread across 3.2 acres in Jakkur, offering ready-to-move 2 and 3 BHK residences with a clubhouse and landscaped gardens.',
-      'The project is spread across 5 acres with 75% lush open green spaces, offering premium 2 and 3 BHK residences with a clubhouse and sports amenities.',
-      'Thank you so much for the information! The project is spread across 5 acres with 75% lush open green spaces, offering premium 2 and 3 BHK residences with a clubhouse and sports amenities. I’ll share the complete floor plans with you on WhatsApp so you can take a look. Could we connect tomorrow to discuss this further? Please let me know a suitable time for you.'
-    ]],
-    ['dylan_6_callback.wav', [
-      'I’ll share the complete details with you on WhatsApp so you can take a look at the floor plans. Could we connect tomorrow to discuss this further? Please let me know a suitable time for you.',
-      'I’ll share the complete details with you on WhatsApp so you can take a look at the floor plans. Could we connect tomorrow to discuss this further?',
-      'Got it, 2 BHK! My apologies. For our ready 2 BHKs at Mittal Palms, we have 1235 to 1340 square feet starting around 1.25 Crore. Could we connect tomorrow for a walkthrough?',
-      'Got it, 3 BHK! For our ready 3 BHKs at Mittal Palms, we have 1750 to 1980 square feet starting around 1.7 Crore. Could we connect tomorrow for a walkthrough?',
-      "Understood! I'll share the complete brochure and pricing details on WhatsApp right away. When would be a good time tomorrow for Raghavendra to assist you?"
-    ]],
-    ['dylan_7_goodbye.wav', [
-      'Thank you for your time. Have an amazing day. Goodbye!',
-      'Understood, that time is noted! I’ll send the floor plans over WhatsApp right away. Thank you for your time. Have an amazing day. Goodbye!',
-      'Thank you so much for your time! Have an amazing day ahead. Goodbye!'
-    ]],
-    ['dylan_obj_busy.wav', [
-      'Completely understand! When would be a convenient time for me to give you a quick callback later today?'
-    ]],
-    ['dylan_obj_whatsapp.wav', [
-      'Absolutely! I will share the brochure on WhatsApp right away. Just to send the right floor plan, are you considering a 2 or 3 BHK?',
-      'Got it! I am sending over the floor plans and brochure to your WhatsApp right now. When would be a good time tomorrow for a quick review?'
-    ]],
-    ['dylan_obj_budget.wav', [
-      'Understood! At Mittal Palms, our ready-to-move 2 and 3 BHK residences start from 1.25 Crore onwards. If your budget expands in the future, we\'d be delighted to assist.',
-      'Understood! At Mittal Palms, our ready-to-move 2 and 3 BHK residences start from 1.25 Crore onwards. What budget range were you ideally targeting?',
-      'Understood! We also have flexible layouts and upcoming phases with convenient payment plans. What budget range were you ideally targeting?',
-      'Understood! Our luxury 2 and 3 BHK developments typically begin around 1.25 Crore, but we also partner with quality projects starting closer to 85 Lakhs. Would you like me to share those options on WhatsApp?'
-    ]],
-    ['dylan_obj_not_interested.wav', [
-      'Understood, thank you for letting me know! Are you planning to explore something in the next 6 to 12 months, or should I take this off for now?'
-    ]],
-    ['dylan_obj_dnc.wav', [
-      'I truly apologize for any disturbance. I will mark your number on our Do Not Call list right away. Have a good day.'
-    ]],
+// Native macOS High-Quality Indian English Voice Synthesis (Tara / Rishi)
+function synthesizeMacSpeech(text: string, voiceName: 'Tara' | 'Rishi'): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    if (process.platform !== 'darwin') {
+      return reject(new Error('Mac say synthesis only available on darwin platform'));
+    }
+    const id = crypto.randomBytes(8).toString('hex');
+    const aiffPath = path.join(os.tmpdir(), `tts_${id}.aiff`);
+    const wavPath = path.join(os.tmpdir(), `tts_${id}.wav`);
+    const cleanText = text.replace(/["`$]/g, '').trim();
+
+    const say = spawn('say', ['-v', voiceName, cleanText, '-o', aiffPath]);
+    say.on('close', (sayCode) => {
+      if (sayCode !== 0) return reject(new Error(`say failed with code ${sayCode}`));
+      const af = spawn('afconvert', ['-f', 'WAVE', '-d', 'LEI16@24000', aiffPath, wavPath]);
+      af.on('close', (afCode) => {
+        try { if (fs.existsSync(aiffPath)) fs.unlinkSync(aiffPath); } catch {}
+        if (afCode !== 0) return reject(new Error(`afconvert failed with code ${afCode}`));
+        try {
+          const buf = fs.readFileSync(wavPath);
+          try { if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath); } catch {}
+          resolve(buf);
+        } catch (e) {
+          reject(e);
+        }
+      });
+      af.on('error', reject);
+    });
+    say.on('error', reject);
+  });
+}
+
+// Preload local studio clips for instant 0ms latency playback
+function preloadStudioAudio(): void {
+  const mappings: [string, string[], 'kavya'][] = [
+    [
+      'mittal_greeting_priya.wav',
+      [
+        'Hello! This is Priya from Mittal Palms in Jakkur. We have ready-to-move 2 and 3 BHK homes with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?',
+        'Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?'
+      ],
+      'kavya'
+    ],
+    [
+      'mittal_location_priya.wav',
+      ['Mittal Palms is located in Jakkur, North Bangalore, very close to Manyata Tech Park and Hebbal. This is our only project. Does that commute work for you?'],
+      'kavya'
+    ],
+    [
+      'mittal_pricing_priya.wav',
+      ['Our 2 BHKs range from 1.25 to 1.35 Crores, and 3 BHKs range from 1.7 to 1.95 Crores all-inclusive. Full Occupancy Certificate is received, so zero GST and immediate possession.'],
+      'kavya'
+    ],
+    [
+      'mittal_visit_priya.wav',
+      ['I would love to arrange a private walkthrough for you this weekend. Our project head Raghavendra at 9945577935 can coordinate directly. Would Saturday or Sunday suit you best?'],
+      'kavya'
+    ],
+    [
+      'mittal_goodbye_priya.wav',
+      ['Thank you for your time. Have an amazing day. Goodbye!'],
+      'kavya'
+    ]
   ];
 
-  let loadedCount = 0;
-  for (const [file, texts] of mappings) {
-    const fullPath = path.resolve(process.cwd(), file);
+  for (const [file, texts, voiceKey] of mappings) {
+    let fullPath = path.resolve(process.cwd(), 'public', 'audio', file);
+    if (!fs.existsSync(fullPath)) {
+      fullPath = path.resolve(process.cwd(), file);
+    }
     if (fs.existsSync(fullPath)) {
       try {
         const buffer = fs.readFileSync(fullPath);
         for (const text of texts) {
           const normalized = normalizeRealEstateText(text);
           const item = { buffer, contentType: 'audio/wav' };
-          audioCache.set(`sarvam:bulbul:v3:shubh:${normalized}`, item);
-          audioCache.set(`sarvam:bulbul:v3:dylan_dsouza:${normalized}`, item);
-          audioCache.set(`sarvam:bulbul:v4-flash:dylan_dsouza:${normalized}`, item);
-          audioCache.set(`sarvam:bulbul:v4-flash:shubh:${normalized}`, item);
+          audioCache.set(`sarvam:bulbul:v3:${voiceKey}:${normalized}`, item);
+          audioCache.set(`local:${voiceKey}:${normalized}`, item);
+          audioCache.set(`any:${normalized}`, item);
         }
-        loadedCount++;
-      } catch (err) {}
+      } catch {}
     }
   }
-  console.log(`[Audio Studio] Preloaded ${loadedCount} studio WAV clips into memory cache for instant playback.`);
 }
-preloadDylanStudioAudio();
 
-// Bulbul v3 speaker set
+preloadStudioAudio();
+
 const BULBUL_V3_SPEAKERS = new Set([
   'kavya',
   'priya',
   'shubh',
   'aditya',
+  'roopa',
+  'simran',
   'ritu',
   'neha',
   'rahul',
   'pooja',
   'rohan',
-  'simran',
   'amit',
   'dev',
   'ishita',
@@ -194,7 +156,6 @@ const BULBUL_V3_SPEAKERS = new Set([
   'varun',
   'manan',
   'sumit',
-  'roopa',
   'kabir',
   'aayan',
   'advait',
@@ -202,47 +163,42 @@ const BULBUL_V3_SPEAKERS = new Set([
   'tanya',
   'tarun',
   'sunny',
-  'mani',
-  'gokul',
-  'vijay',
-  'shruti',
-  'suhani',
-  'mohit',
-  'kavitha',
-  'rehan',
-  'soham',
-  'rupali',
 ]);
 
 /**
- * Synthesizes text into authentic Indian English speech using Sarvam AI Bulbul.
+ * Synthesizes speech using Sarvam AI Bulbul as primary engine.
+ * If Sarvam API key has exhausted credits (HTTP 402) or errors,
+ * it seamlessly generates natural Indian English audio via macOS Tara / Rishi.
  */
 export async function synthesizeNeuralSpeech(
   rawText: string,
-  voiceId: string = 'dylan_dsouza'
+  voiceId: string = 'kavya'
 ): Promise<{ buffer: Buffer; contentType: string }> {
   const normalizedText = normalizeRealEstateText(rawText);
+  if (!normalizedText.trim()) {
+    return { buffer: Buffer.alloc(0), contentType: 'audio/wav' };
+  }
 
-  // Map generic legacy IDs to signature Sarvam Bulbul speakers
-  let speaker = voiceId;
-  if (!speaker || speaker === 'female-priya' || speaker === 'default') speaker = 'kavya';
-  if (speaker === 'male-raghavendra' || speaker === 'dylan_dsouza') speaker = 'shubh';
-  if (speaker === 'roopa_en_conversational') speaker = 'roopa';
+  // Exclusive Sarvam Bulbul speaker for Priya
+  let speaker = 'kavya';
+  if (voiceId === 'roopa' || voiceId === 'priya') speaker = voiceId;
 
-  // Determine model based on speaker
-  const model = BULBUL_V3_SPEAKERS.has(speaker) ? 'bulbul:v3' : 'bulbul:v4-flash';
-  const isMale = speaker === 'shubh' || speaker === 'aditya' || speaker.includes('deven') || speaker.includes('sarang');
+  const isMale = false;
+  const model = 'bulbul:v3';
   const cacheKey = `sarvam:${model}:${speaker}:${normalizedText}`;
 
   if (audioCache.has(cacheKey)) {
     return audioCache.get(cacheKey)!;
   }
+  if (audioCache.has(`any:${normalizedText}`)) {
+    return audioCache.get(`any:${normalizedText}`)!;
+  }
 
-  // 1. Sarvam AI Bulbul (Primary Neural TTS)
+  // 1. Primary: Try Sarvam AI Bulbul
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
     try {
-      console.log(`[Sarvam AI] Synthesizing speech (${model} / ${speaker}): "${normalizedText.slice(0, 50)}..."`);
+      console.log(`[Sarvam AI Bulbul] Synthesizing speech (${model} / ${speaker}): "${normalizedText.slice(0, 50)}..."`);
 
       const res = await fetch('https://api.sarvam.ai/text-to-speech', {
         method: 'POST',
@@ -258,11 +214,11 @@ export async function synthesizeNeuralSpeech(
           speech_sample_rate: 24000,
           pace: 1.0,
         }),
-        signal: AbortSignal.timeout(1500),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data: any = await res.json();
         const base64Audio = data.audio || data.audios?.[0];
         if (base64Audio) {
           const buf = Buffer.from(base64Audio, 'base64');
@@ -271,56 +227,180 @@ export async function synthesizeNeuralSpeech(
           return item;
         }
       } else {
-        const errText = await res.text();
-        console.warn(`[Sarvam AI] Speaker ${speaker} (${model}) error:`, errText);
+        const errText = await res.text().catch(() => '');
+        console.warn(`[Sarvam AI Bulbul] API Notice (${res.status}): ${errText.slice(0, 120)}`);
       }
     } catch (err: any) {
-      console.warn('[Sarvam AI] Request error, falling back:', err.message);
+      console.warn('[Sarvam AI Bulbul] Request notice:', err.message);
     }
   }
 
-  // 2. Azure Neural Fallback with +20% brisk speech rate
-  try {
-    const azureVoice = isMale ? 'en-IN-PrabhatNeural' : 'en-IN-NeerjaNeural';
-    const tts = new MsEdgeTTS();
-    await tts.setMetadata(azureVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-
-    const { audioStream } = tts.toStream(normalizedText, {
-      rate: '+20%',
-      pitch: '+0Hz',
-    });
-
-    return await new Promise<{ buffer: Buffer; contentType: string }>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      const timer = setTimeout(() => {
-        reject(new Error('Edge TTS timed out'));
-      }, 1200);
-
-      audioStream.on('data', (chunk: Buffer) => chunks.push(chunk));
-      audioStream.on('end', () => {
-        clearTimeout(timer);
-        const fullBuffer = Buffer.concat(chunks);
-        const item = { buffer: fullBuffer, contentType: 'audio/mpeg' };
-        if (fullBuffer.length < 500000) {
-          audioCache.set(cacheKey, item);
-        }
-        resolve(item);
-      });
-      audioStream.on('error', (err: any) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-    });
-  } catch (err: any) {
-    console.warn('[Edge TTS] Fallback failed:', err.message);
-    // Return empty audio buffer so response never hangs
-    return { buffer: Buffer.alloc(0), contentType: 'audio/wav' };
+  // 2. Fallback: High-Quality macOS Indian English Neural Synthesis (Tara / Rishi)
+  if (process.platform === 'darwin') {
+    try {
+      const macVoice = isMale ? 'Rishi' : 'Tara';
+      console.log(`[Neural TTS Fallback] Synthesizing via macOS Indian English Voice (${macVoice}): "${normalizedText.slice(0, 45)}..."`);
+      const buffer = await synthesizeMacSpeech(normalizedText, macVoice);
+      if (buffer && buffer.length > 0) {
+        const item = { buffer, contentType: 'audio/wav' };
+        audioCache.set(cacheKey, item);
+        return item;
+      }
+    } catch (macErr: any) {
+      console.warn('[Neural TTS Fallback] macOS voice error:', macErr.message);
+    }
   }
+
+  return { buffer: Buffer.alloc(0), contentType: 'audio/wav' };
 }
 
-// Pre-warm cache for the initial greeting so the call starts with 0ms audio lag
-const DEFAULT_GREETING =
-  'Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here. Are you looking for a 2 BHK or a 3 BHK for your family?';
-synthesizeNeuralSpeech(DEFAULT_GREETING, 'roopa_en_conversational').catch(() => {});
-synthesizeNeuralSpeech(DEFAULT_GREETING, 'kavya').catch(() => {});
+/**
+ * Converts 16-bit linear PCM audio buffer to 8kHz G.711 mulaw for telephony PBX (Twilio / Exotel).
+ */
+export function pcmToMulaw(pcm16Buffer: Buffer): Buffer {
+  const sampleCount = Math.floor(pcm16Buffer.length / 2);
+  const mulaw = Buffer.alloc(sampleCount);
+  const BIAS = 0x84;
+  for (let i = 0; i < sampleCount; i++) {
+    let sample = pcm16Buffer.readInt16LE(i * 2);
+    let sign = (sample >> 8) & 0x80;
+    if (sign !== 0) sample = -sample;
+    if (sample > 32635) sample = 32635;
+    sample += BIAS;
+    let exponent = 7;
+    for (let expMask = 0x4000; (sample & expMask) === 0 && exponent > 0; expMask >>= 1) {
+      exponent--;
+    }
+    let mantissa = (sample >> (exponent + 3)) & 0x0f;
+    mulaw[i] = ~(sign | (exponent << 4) | mantissa) & 0xff;
+  }
+  return mulaw;
+}
+
+/**
+ * Converts 8kHz G.711 mulaw telephony audio buffer to standard 16-bit PCM WAV.
+ */
+export function mulawToWav(mulawBuffer: Buffer): Buffer {
+  const pcm = new Int16Array(mulawBuffer.length);
+  for (let i = 0; i < mulawBuffer.length; i++) {
+    let u = ~mulawBuffer[i] & 0xff;
+    let t = ((u & 0x0f) << 3) + 0x84;
+    let seg = (u & 0x70) >> 4;
+    let s = (t << seg) - 0x84;
+    pcm[i] = (u & 0x80) !== 0 ? -s : s;
+  }
+  const wavHeader = Buffer.alloc(44);
+  const dataSize = pcm.byteLength;
+  wavHeader.write('RIFF', 0);
+  wavHeader.writeUInt32LE(36 + dataSize, 4);
+  wavHeader.write('WAVE', 8);
+  wavHeader.write('fmt ', 12);
+  wavHeader.writeUInt32LE(16, 16);
+  wavHeader.writeUInt16LE(1, 20); // PCM format
+  wavHeader.writeUInt16LE(1, 22); // mono
+  wavHeader.writeUInt32LE(8000, 24); // 8000 Hz sample rate
+  wavHeader.writeUInt32LE(16000, 28); // byte rate (8000 * 2)
+  wavHeader.writeUInt16LE(2, 32); // block align
+  wavHeader.writeUInt16LE(16, 34); // 16-bit
+  wavHeader.write('data', 36);
+  wavHeader.writeUInt32LE(dataSize, 40);
+  return Buffer.concat([wavHeader, Buffer.from(pcm.buffer)]);
+}
+
+// In-memory cache for telephony mulaw audio
+const telephonyMulawCache = new Map<string, Buffer>();
+
+/**
+ * Synthesizes speech directly into 8kHz G.711 mulaw format required by Twilio / Exotel.
+ */
+export async function synthesizeTelephonyMulaw(
+  rawText: string,
+  voiceId: string = 'kavya'
+): Promise<Buffer> {
+  const normalizedText = normalizeRealEstateText(rawText);
+  if (!normalizedText.trim()) return Buffer.alloc(0);
+
+  const cacheKey = `mulaw:8k:${voiceId}:${normalizedText}`;
+  if (telephonyMulawCache.has(cacheKey)) {
+    return telephonyMulawCache.get(cacheKey)!;
+  }
+
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+    try {
+      const res = await fetch('https://api.sarvam.ai/text-to-speech', {
+        method: 'POST',
+        headers: {
+          'api-subscription-key': sarvamKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: normalizedText,
+          language_code: 'en-IN',
+          speaker: 'kavya',
+          model: 'bulbul:v3',
+          speech_sample_rate: 8000,
+          pace: 1.0,
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (res.ok) {
+        const data: any = await res.json();
+        const base64Audio = data.audio || data.audios?.[0];
+        if (base64Audio) {
+          const wavBuf = Buffer.from(base64Audio, 'base64');
+          // WAV data starts at byte 44
+          const pcmBytes = wavBuf.length > 44 ? wavBuf.subarray(44) : wavBuf;
+          const mulawBuf = pcmToMulaw(pcmBytes);
+          telephonyMulawCache.set(cacheKey, mulawBuf);
+          return mulawBuf;
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Telephony Mulaw] Sarvam 8k synthesis notice:', err.message);
+    }
+  }
+
+  // Fallback to standard neural speech converted to mulaw
+  const { buffer } = await synthesizeNeuralSpeech(normalizedText, voiceId);
+  if (buffer && buffer.length > 44) {
+    const pcmBytes = buffer.subarray(44);
+    const mulawBuf = pcmToMulaw(pcmBytes);
+    telephonyMulawCache.set(cacheKey, mulawBuf);
+    return mulawBuf;
+  }
+
+  return Buffer.alloc(0);
+}
+
+/**
+ * Transcribes audio buffer using Sarvam AI Saaras v3 STT.
+ */
+export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (!sarvamKey || sarvamKey === 'your_sarvam_api_key_here') return '';
+  try {
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(wavBuffer)], { type: 'audio/wav' }), 'telephony.wav');
+    form.append('model', 'saaras:v3');
+
+    const res = await fetch('https://api.sarvam.ai/speech-to-text', {
+      method: 'POST',
+      headers: {
+        'api-subscription-key': sarvamKey,
+      },
+      body: form,
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (res.ok) {
+      const data: any = await res.json();
+      return (data.transcript || '').trim();
+    }
+  } catch (err: any) {
+    console.warn('[Sarvam STT] Transcription error:', err.message);
+  }
+  return '';
+}
 

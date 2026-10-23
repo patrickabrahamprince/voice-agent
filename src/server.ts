@@ -34,8 +34,9 @@ app.get('/health', async () => {
     timestamp: new Date().toISOString(),
     services: {
       deepgram: Boolean(process.env.DEEPGRAM_API_KEY && process.env.DEEPGRAM_API_KEY !== 'your_deepgram_api_key_here'),
+      openrouter: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here'),
       groq: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here'),
-      cartesia: Boolean(process.env.CARTESIA_API_KEY && process.env.CARTESIA_API_KEY !== 'your_cartesia_api_key_here'),
+      sarvam: Boolean(process.env.SARVAM_API_KEY && process.env.SARVAM_API_KEY !== 'your_sarvam_api_key_here'),
       googleSheets: Boolean(process.env.GOOGLE_SHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
     },
   };
@@ -185,9 +186,8 @@ app.get('/api/debug-sarvam', async () => {
   const sarvamKey = process.env.SARVAM_API_KEY;
   const tests = [
     { model: 'bulbul:v3', speaker: 'kavya' },
+    { model: 'bulbul:v3', speaker: 'roopa' },
     { model: 'bulbul:v3', speaker: 'priya' },
-    { model: 'bulbul:v4-flash', speaker: 'shubh_enhi_ads' },
-    { model: 'bulbul:v4-flash', speaker: 'simran_en_sales' },
   ];
 
   const results: any[] = [];
@@ -220,6 +220,85 @@ app.get('/api/debug-sarvam', async () => {
   }
 
   return { sarvamKeyPresent: !!sarvamKey, results };
+});
+
+app.get('/api/sarvam/status', async () => {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (!sarvamKey || sarvamKey === 'your_sarvam_api_key_here') {
+    return { keyPresent: false, status: 'missing', message: 'No Sarvam API key configured.' };
+  }
+  try {
+    const res = await fetch('https://api.sarvam.ai/text-to-speech', {
+      method: 'POST',
+      headers: {
+        'api-subscription-key': sarvamKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: 'Test',
+        language_code: 'en-IN',
+        speaker: 'kavya',
+        model: 'bulbul:v3',
+      }),
+      signal: AbortSignal.timeout(4000),
+    });
+    if (res.ok) {
+      return { keyPresent: true, status: 'valid', message: 'Sarvam AI Bulbul is active with valid credits.' };
+    }
+    if (res.status === 402) {
+      return { keyPresent: true, status: 'quota_exhausted', message: 'Sarvam AI account has 0 credits (402 Payment Required).' };
+    }
+    return { keyPresent: true, status: 'error', code: res.status, message: `Sarvam returned HTTP ${res.status}` };
+  } catch (err: any) {
+    return { keyPresent: true, status: 'network_error', message: err.message };
+  }
+});
+
+app.post('/api/sarvam/key', async (request: FastifyRequest<{ Body: { apiKey: string } }>, reply) => {
+  const { apiKey } = request.body || {};
+  if (!apiKey || !apiKey.trim().startsWith('sk_')) {
+    return reply.code(400).send({ success: false, error: 'Invalid API key format. Expected sk_...' });
+  }
+
+  try {
+    const res = await fetch('https://api.sarvam.ai/text-to-speech', {
+      method: 'POST',
+      headers: {
+        'api-subscription-key': apiKey.trim(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: 'Hello from Mittal Palms',
+        language_code: 'en-IN',
+        speaker: 'kavya',
+        model: 'bulbul:v3',
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (res.ok) {
+      process.env.SARVAM_API_KEY = apiKey.trim();
+      const envPath = path.resolve(process.cwd(), '.env');
+      if (fs.existsSync(envPath)) {
+        let content = fs.readFileSync(envPath, 'utf8');
+        if (content.includes('SARVAM_API_KEY=')) {
+          content = content.replace(/SARVAM_API_KEY=.*/, `SARVAM_API_KEY=${apiKey.trim()}`);
+        } else {
+          content += `\nSARVAM_API_KEY=${apiKey.trim()}\n`;
+        }
+        fs.writeFileSync(envPath, content, 'utf8');
+      }
+      return { success: true, message: 'Sarvam API key verified and updated successfully!' };
+    }
+
+    if (res.status === 402) {
+      return reply.code(400).send({ success: false, error: 'Key accepted by Sarvam, but has 0 credits (HTTP 402).' });
+    }
+    const errText = await res.text().catch(() => '');
+    return reply.code(400).send({ success: false, error: `Sarvam rejected key (HTTP ${res.status}): ${errText}` });
+  } catch (err: any) {
+    return reply.code(500).send({ success: false, error: `Validation request failed: ${err.message}` });
+  }
 });
 
 function createVirtualSession(streamSid: string, callerNumber: string = '+91-9880012345'): VoiceSession {
@@ -260,42 +339,38 @@ function createVirtualSession(streamSid: string, callerNumber: string = '+91-988
 /**
  * Simulator API: Start Simulated Call
  */
-app.post('/api/simulator/call', async (request: FastifyRequest<{ Body: { callerNumber?: string; voice?: string } }>) => {
+app.post('/api/simulator/call', async (request: FastifyRequest<{ Body: { callerNumber?: string; voice?: string; enableSarvam?: boolean } }>) => {
   const callerNumber = request.body?.callerNumber || '+91-9880012345';
-  const voice = request.body?.voice || 'dylan_dsouza';
+  const voice = request.body?.voice || 'kavya';
+  const enableSarvam = request.body?.enableSarvam !== false && voice !== 'browser';
   const streamSid = `sim_stream_${Date.now()}`;
 
   const session = createVirtualSession(streamSid, callerNumber);
 
-  const isDylan = voice === 'dylan_dsouza';
-  const isMale = isDylan || voice === 'shubh' || voice === 'aditya' || voice.includes('deven') || voice.includes('male');
-  const agentName = isDylan ? 'Dylan Dsouza' : (isMale ? 'Raghavendra' : 'Priya');
-  session.setAgentName(agentName);
+  const agentName = 'Priya';
+  session.setAgentName('Priya');
 
   // Reset any cached qualifier so each simulated call starts completely clean
   clearQualifier();
 
   // Check caller memory context
   const memory = getCallerMemory(callerNumber);
-  let greetingText: string;
-  if (isDylan) {
-    greetingText = "Hi, good morning — am I speaking with Rahul?";
-  } else {
-    greetingText = memory.isReturningCaller
-      ? `Hello! Welcome back to Mittal Palms. This is ${agentName}. Wonderful to connect with you again! Are you looking to schedule your site walkthrough with Raghavendra, or did you have more questions about our homes?`
-      : `Hello! This is ${agentName} from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here. Are you looking for a 2 BHK or a 3 BHK for your family?`;
-  }
+  const greetingText = memory.isReturningCaller
+    ? `Hello! Welcome back to Mittal Palms. This is ${agentName}. Wonderful to connect with you again! Are you looking to schedule your site walkthrough with Raghavendra, or did you have more questions about our ready homes?`
+    : `Hello! This is ${agentName} from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
 
   let greetingAudioBase64: string | undefined;
   let audioContentType: string | undefined;
-  try {
-    const { buffer, contentType } = await synthesizeNeuralSpeech(greetingText, voice);
-    if (buffer.length > 0) {
-      greetingAudioBase64 = buffer.toString('base64');
-      audioContentType = contentType;
+  if (enableSarvam) {
+    try {
+      const { buffer, contentType } = await synthesizeNeuralSpeech(greetingText, voice);
+      if (buffer.length > 0) {
+        greetingAudioBase64 = buffer.toString('base64');
+        audioContentType = contentType;
+      }
+    } catch (err: any) {
+      app.log.warn({ err: err.message }, 'Could not pre-synthesize greeting audio');
     }
-  } catch (err: any) {
-    app.log.warn({ err: err.message }, 'Could not pre-synthesize greeting audio');
   }
 
   return {
@@ -328,6 +403,7 @@ app.post(
         transcript?: string;
         voice?: string;
         includeAudio?: boolean;
+        enableSarvam?: boolean;
         callerNumber?: string;
         history?: any[];
       };
@@ -337,8 +413,9 @@ app.post(
     const body = request.body || ({} as any);
     const streamSid = body.streamSid || `sim_stream_${Date.now()}`;
     const text = body.text || body.transcript || '';
-    const voice = body.voice || 'dylan_dsouza';
-    const includeAudio = body.includeAudio !== false;
+    const voice = body.voice || 'kavya';
+    const enableSarvam = body.enableSarvam !== false && voice !== 'browser';
+    const includeAudio = body.includeAudio !== false && enableSarvam;
     const history = body.history;
 
     let session = activeSimulators.get(streamSid);
@@ -355,10 +432,8 @@ app.post(
       session.setConversationHistory(history);
     }
 
-    const isDylan = voice === 'dylan_dsouza';
-    const isMale = isDylan || voice === 'shubh' || voice === 'aditya' || voice.includes('deven') || voice.includes('male');
-    const agentName = isDylan ? 'Dylan Dsouza' : (isMale ? 'Raghavendra' : 'Priya');
-    session.setAgentName(agentName);
+    const agentName = 'Priya';
+    session.setAgentName('Priya');
 
     if (!text.trim()) {
       return reply.code(400).send({ error: 'Missing or empty utterance text.' });
