@@ -162,7 +162,7 @@ export class LLMPipeline {
     const hasSimpleIntent = simpleKeywords.some((kw) => rawUserText.includes(kw));
 
     if (rawUserText.length > 0 && rawUserText.length < 20 && hasSimpleIntent) {
-      console.log('[LLM] routed to groq reason=simple_intent_fast_route');
+      console.log('[LLM] fast intent route (<20 chars): immediate response');
 
       if (this.groq) {
         try {

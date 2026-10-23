@@ -626,6 +626,21 @@
       cursor: not-allowed;
     }
 
+    .btn-call-action.stop {
+      background: #FEF3C7;
+      border: 1px solid #FCD34D;
+      color: #92400E;
+    }
+    .btn-call-action.stop:hover:not(:disabled) {
+      background: #F59E0B;
+      color: #FFFFFF;
+      border-color: #D97706;
+    }
+    .btn-call-action.stop:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
     /* Chat Stream Viewport */
     .chat-stream {
       height: 380px;
@@ -1289,6 +1304,10 @@
                   <button id="btn-start-call" onclick="startSimulatedCall()" class="btn-call-action start">
                     <svg width="13" height="13" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/></svg>
                     Start Call
+                  </button>
+                  <button id="btn-stop-speech" onclick="stopCurrentSpeech()" disabled class="btn-call-action stop" title="Instantly stop Priya's audio playback">
+                    <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2"/></svg>
+                    Stop Audio
                   </button>
                   <button id="btn-end-call" onclick="endSimulatedCall()" disabled class="btn-call-action end">
                     End Call
@@ -1962,7 +1981,7 @@
 
       // Temporarily pause mic while Priya thinks and speaks to prevent acoustic feedback
       pauseMicrophone();
-      updateVoiceStatusBar('thinking', '⚡ Priya Thinking...', 'Groq LLaMA 3.3 70B generating reply...');
+      updateVoiceStatusBar('thinking', '⚡ Priya Thinking...', 'Sarvam AI 105B generating conversational response...');
 
       try {
         await sendUtterance(text);
@@ -2226,16 +2245,19 @@
         persistentAudio.src = audioUrl;
         persistentAudio.playbackRate = 1.0;
         activeAudio = persistentAudio;
+        setStopButtonEnabled(true);
 
         activeAudio.onended = () => {
           activeAudio = null;
           isPriyaSpeaking = false;
+          setStopButtonEnabled(false);
           resumeListeningIfReady();
         };
 
         activeAudio.onerror = (e) => {
           console.warn('[Audio] Playback error, falling back to speech synthesis:', e);
           activeAudio = null;
+          setStopButtonEnabled(false);
           if (fallbackText) fallbackToSpeechSynthesis(fallbackText);
           else {
             isPriyaSpeaking = false;
@@ -2740,25 +2762,46 @@
       loadData();
     }
 
-    async function triggerBargeIn() {
-      if (!activeStreamSid) return;
+    function setStopButtonEnabled(enabled) {
+      const btn = document.getElementById('btn-stop-speech');
+      if (btn) btn.disabled = !enabled;
+    }
+
+    function stopCurrentSpeech() {
       if (activeAudio) {
-        activeAudio.pause();
+        try {
+          activeAudio.pause();
+          activeAudio.currentTime = 0;
+        } catch (e) {}
         activeAudio = null;
       }
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
       isPriyaSpeaking = false;
+      setStopButtonEnabled(false);
 
       const previewBtnText = document.getElementById('preview-btn-text');
       if (previewBtnText) previewBtnText.innerHTML = '▶ Test Voice Preview';
 
-      updateVoiceStatusBar('listening', '⚡ Interrupted — Listening to you...', 'PBX audio cleared (&lt;50ms barge-in)');
+      updateVoiceStatusBar('idle', 'Audio Stopped', 'Voice playback halted. Mic ready.');
 
-      await fetch('/api/simulator/barge-in', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ streamSid: activeStreamSid })
-      });
+      // If in a simulated call, send barge-in signal to flush server buffers
+      if (activeStreamSid) {
+        fetch('/api/simulator/barge-in', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ streamSid: activeStreamSid })
+        }).catch(() => {});
+      }
+      resumeListeningIfReady();
+    }
+
+    async function triggerBargeIn() {
+      if (!activeStreamSid) return;
+      stopCurrentSpeech();
+
+      updateVoiceStatusBar('listening', '⚡ Interrupted — Listening to you...', 'PBX audio cleared (<50ms barge-in)');
 
       const box = document.getElementById('dialogue-box');
       box.innerHTML += `
@@ -2774,14 +2817,7 @@
 
     async function endSimulatedCall() {
       if (!activeStreamSid) return;
-      if (activeAudio) {
-        activeAudio.pause();
-        activeAudio = null;
-      }
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
-      isPriyaSpeaking = false;
-      const previewBtnText = document.getElementById('preview-btn-text');
-      if (previewBtnText) previewBtnText.innerHTML = '▶ Test Voice Preview';
+      stopCurrentSpeech();
       stopMicrophone();
 
       await fetch('/api/simulator/hangup', {
