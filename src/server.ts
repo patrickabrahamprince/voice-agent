@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
+import fastifyFormbody from '@fastify/formbody';
 import { WebSocket } from 'ws';
 import { VoiceSession } from './pipeline/session.js';
 import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory } from './tools/db.js';
@@ -34,8 +35,9 @@ const activeSimulators = new Map<string, VoiceSession>();
 // Active WebSocket registry for graceful shutdown
 export const activeWebSockets = new Set<WebSocket>();
 
-// Register WebSocket plugin
+// Register WebSocket and form-body plugins
 await app.register(fastifyWebsocket);
+await app.register(fastifyFormbody);
 
 /**
  * CORS Lock: Allow /incoming-call and carrier webhooks unconditionally,
