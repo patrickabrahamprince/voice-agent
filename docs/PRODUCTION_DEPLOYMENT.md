@@ -11,26 +11,28 @@
 
 ---
 
-## Plivo Telephony Setup (3-Step Checklist)
+## Plivo Telephony Status (Configured & Live)
 
-### 1. Create XML Application in Plivo Console
-1. Go to **[Plivo Console -> Voice -> XML Applications](https://console.plivo.com/voice/applications/)**
-2. Click **Add New Application**
-3. Set **Application Name**: `Mittal Palms Voice AI`
-4. Set **Primary Answer URL**: `https://mittal-palms-voice-agent.onrender.com/incoming-call`
-5. Set **HTTP Method**: `POST`
-6. Set **Hangup URL**: `https://mittal-palms-voice-agent.onrender.com/api/simulator/hangup`
-7. Click **Create Application**
+### 1. XML Application Details (Active)
+| Parameter | Value |
+| :--- | :--- |
+| **Application Name** | `Mittal_Palms_Voice_AI` |
+| **Application ID** | `32134225963323005` |
+| **Default Number App** | `true` (Calls automatically route to this app) |
+| **Primary Answer URL** | `https://mittal-palms-voice-agent.onrender.com/incoming-call` (POST) |
+| **Hangup URL** | `https://mittal-palms-voice-agent.onrender.com/api/simulator/hangup` (POST) |
+| **SIP URI** | `sip:32134225963323005@app.plivo.com` |
+| **Bidirectional Stream** | `wss://mittal-palms-voice-agent.onrender.com/media-stream` |
 
-### 2. Link Bangalore Phone Number
-1. In **[Plivo Console -> Numbers](https://console.plivo.com/phone-numbers/)**, select your rented number (`080` Bangalore DID or mobile).
-2. Under **Application Type**, select **XML Application**.
-3. In **Plivo Application**, select `Mittal Palms Voice AI`.
-4. Click **Update Number**.
+### 2. Verified Credentials
+- **Auth ID**: `MAMGM5NDZLOTETZDG4NY` (Verified on Render Singapore & Local)
+- **Billing**: Active standard trial account (`Getmore OS`) with ₹12.50 cash credits
 
-### 3. Verify Live Call Flow
-Dial your Plivo number from any phone.
-- **Answered in <300ms** by Plivo Voice XML
-- **Media Stream connects** to `wss://mittal-palms-voice-agent.onrender.com/media-stream`
-- **Priya greets caller**: *"Hello! Thank you for calling Mittal Palms in Jakkur. This is Priya from the sales lounge..."*
-- **Live transcript & audio** stream in real time to the [Admin Console](https://mittal-palms-voice-agent.onrender.com/admin).
+### 3. Number Provisioning & Live Call Flow
+- **India Number KYC**: To assign an Indian DID (+91 80 or local mobile), Indian telecom regulations require business KYC submission on the [Plivo Phone Numbers Portal](https://cx.plivo.com/phone-numbers/list) (Business Incorporation Proof, Address, PAN).
+- **SIP Calling**: Directly dialable over SIP via `sip:32134225963323005@app.plivo.com`
+- **Call Handling**:
+  1. Plivo answers in <300ms with Voice XML `<Stream>`
+  2. Connects bidirectional 8kHz μ-law WebSocket stream
+  3. Sarvam Bulbul v4-Flash (Kavya voice) delivers instant greeting with LRU cache acceleration
+  4. Live audio & conversation stream to [Admin Console](https://mittal-palms-voice-agent.onrender.com/admin)
