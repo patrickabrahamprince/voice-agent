@@ -1,9 +1,11 @@
 services:
   - type: web
     name: mittal-palms-voice-agent
-    runtime: docker
+    runtime: node
     region: singapore
     plan: starter
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node dist/server.js
     healthCheckPath: /health
     autoDeploy: true
     envVars:
