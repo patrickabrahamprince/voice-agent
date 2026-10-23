@@ -108,11 +108,14 @@ export class LLMPipeline {
   private model: string = 'llama-3.3-70b-versatile';
 
   constructor() {
+    const sarvamKey = process.env.SARVAM_API_KEY;
     const apiKey = process.env.GROQ_API_KEY;
-    if (apiKey && apiKey !== 'your_groq_api_key_here') {
-      this.groq = new Groq({ apiKey });
+    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+      console.log('[LLM] SARVAM_API_KEY active. Using Sarvam AI 105B (sarvam-105b-conversations) as Main Voice Agent.');
     } else if (process.env.OPENROUTER_API_KEY) {
       console.log('[LLM] OPENROUTER_API_KEY active. Using meta-llama/llama-3.3-70b-instruct.');
+    } else if (apiKey && apiKey !== 'your_groq_api_key_here') {
+      this.groq = new Groq({ apiKey });
     } else {
       console.warn('[LLM] No API key configured. Using local Mittal Palms qualification engine.');
     }
@@ -129,7 +132,49 @@ export class LLMPipeline {
     agentName: string = 'Priya',
     abortSignal?: AbortSignal
   ): AsyncGenerator<string, void, unknown> {
-    // 1. High-Performance OpenRouter LLaMA 3.3 70B (Primary LLM)
+    // 1. Primary: Sarvam AI 105B Conversations (India's Premier Voice AI Model)
+    const sarvamKey = process.env.SARVAM_API_KEY;
+    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+      try {
+        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName);
+        const contextualMessages = [
+          { role: 'system', content: contextualSystemPrompt },
+          ...messages.filter((m) => m.role !== 'system'),
+        ];
+
+        const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'api-subscription-key': sarvamKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sarvam-105b-conversations',
+            messages: contextualMessages.map((m) => ({ role: m.role, content: m.content })),
+            temperature: 0.25,
+            max_tokens: 70,
+          }),
+          signal: abortSignal,
+        });
+
+        if (res.ok) {
+          const data: any = await res.json();
+          const reply = data.choices?.[0]?.message?.content?.trim();
+          if (reply) {
+            console.log(`[Sarvam 105B Voice Agent] Reply: "${reply}"`);
+            yield reply;
+            return;
+          }
+        } else {
+          console.warn('[Sarvam 105B LLM] HTTP status:', res.status);
+        }
+      } catch (err: any) {
+        if (abortSignal?.aborted) return;
+        console.warn('[Sarvam 105B LLM] Notice, attempting OpenRouter fallback:', err.message);
+      }
+    }
+
+    // 2. High-Performance OpenRouter LLaMA 3.3 70B (Secondary Fallback)
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     if (openRouterKey && openRouterKey !== 'your_openrouter_api_key_here') {
       try {
@@ -157,7 +202,7 @@ export class LLMPipeline {
         });
 
         if (res.ok) {
-          const data = await res.json();
+          const data: any = await res.json();
           const reply = data.choices?.[0]?.message?.content?.trim();
           if (reply) {
             yield reply;
@@ -232,6 +277,40 @@ export class LLMPipeline {
       return 'No conversation recorded.';
     }
 
+    const sarvamKey = process.env.SARVAM_API_KEY;
+    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+      try {
+        const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'api-subscription-key': sarvamKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sarvam-105b-conversations',
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'Summarize this Bangalore real estate inquiry call in 1-2 concise sentences focusing on requirement (BHK, budget, location) and outcome.',
+              },
+              { role: 'user', content: `Call transcript:\n${transcript}` },
+            ],
+            temperature: 0.2,
+            max_tokens: 80,
+          }),
+        });
+
+        if (res.ok) {
+          const data: any = await res.json();
+          const summary = data.choices?.[0]?.message?.content?.trim();
+          if (summary) return summary;
+        }
+      } catch (err: any) {
+        console.warn('[Sarvam Summary] Notice:', err.message);
+      }
+    }
+
     if (!this.groq) {
       return 'Caller enquired about Bangalore residential projects.';
     }
@@ -267,6 +346,52 @@ export class LLMPipeline {
    */
   async extractAndStoreLearnings(callId: number | null, transcript: string): Promise<void> {
     if (!transcript || transcript.trim().length < 30) return;
+
+    const sarvamKey = process.env.SARVAM_API_KEY;
+    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+      try {
+        const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'api-subscription-key': sarvamKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sarvam-105b-conversations',
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an AI sales coach for Mittal Palms, Jakkur. Analyze this real estate call transcript and extract 1 key learning or buyer objection in JSON format: {"learning_type": "objection" | "pricing" | "commute" | "preference", "key_insight": "string", "caller_utterance": "string", "best_response": "string"}. Return ONLY valid JSON.',
+              },
+              { role: 'user', content: `Call Transcript:\n${transcript}` },
+            ],
+            temperature: 0.2,
+            max_tokens: 150,
+          }),
+        });
+
+        if (res.ok) {
+          const data: any = await res.json();
+          const raw = data.choices?.[0]?.message?.content?.trim();
+          if (raw) {
+            const cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanJson);
+            saveAgentLearning({
+              call_id: callId,
+              learning_type: parsed.learning_type || 'insight',
+              key_insight: parsed.key_insight || 'Buyer inquiry pattern noted.',
+              caller_utterance: parsed.caller_utterance || '',
+              best_response: parsed.best_response || '',
+            });
+            console.log(`[Sarvam AI Self-Training] Learned from Call #${callId}: "${parsed.key_insight}"`);
+            return;
+          }
+        }
+      } catch (err: any) {
+        console.warn('[Sarvam AI Self-Training] Notice:', err.message);
+      }
+    }
 
     try {
       if (this.groq) {

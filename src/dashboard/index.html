@@ -1382,6 +1382,7 @@
                   <option value="kavya" selected>👩 Priya — Sarvam AI Bulbul (Kavya • Warm & Natural)</option>
                   <option value="roopa">👩 Priya — Sarvam AI Bulbul (Roopa • Crisp & Direct)</option>
                   <option value="priya">👩 Priya — Sarvam AI Bulbul (Priya • Classic)</option>
+                  <option value="shubh">👨 Raghavendra — Sarvam AI Bulbul (Shubh • Relationship Manager)</option>
                 </select>
                 <button id="btn-preview-voice" type="button" onclick="previewPriyaVoice()" class="action-btn" style="justify-content: center; width: 100%;">
                   <span id="preview-btn-text">▶ Test Voice Preview</span>
@@ -2275,7 +2276,11 @@
     }
 
     function previewPriyaVoice() {
-      const sample = `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+      const selectedVoice = document.getElementById('voice-select')?.value || 'kavya';
+      const isMale = selectedVoice === 'shubh';
+      const sample = isMale
+        ? `Hello! This is Raghavendra from Mittal Palms in Jakkur. We have premium ready-to-move 2 and 3 BHK residences here. Would you like to schedule an exclusive walkthrough this Saturday or Sunday?`
+        : `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
       const previewBtnText = document.getElementById('preview-btn-text');
 
       if (!isSarvamActive()) {

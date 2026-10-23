@@ -38,6 +38,14 @@ export const AVAILABLE_VOICES: TTSVoiceInfo[] = [
     provider: 'sarvam',
     isDefault: false,
   },
+  {
+    id: 'shubh',
+    name: '👨 Raghavendra — Sarvam AI Bulbul (Shubh • Relationship Manager)',
+    gender: 'Male',
+    accent: 'Bangalore Indian English',
+    provider: 'sarvam',
+    isDefault: false,
+  },
 ];
 
 export const AVAILABLE_FEMALE_VOICES = AVAILABLE_VOICES;
@@ -179,11 +187,11 @@ export async function synthesizeNeuralSpeech(
     return { buffer: Buffer.alloc(0), contentType: 'audio/wav' };
   }
 
-  // Exclusive Sarvam Bulbul speaker for Priya
+  // Exclusive Sarvam Bulbul speaker for Priya & Raghavendra
   let speaker = 'kavya';
-  if (voiceId === 'roopa' || voiceId === 'priya') speaker = voiceId;
+  if (voiceId === 'roopa' || voiceId === 'priya' || voiceId === 'shubh') speaker = voiceId;
 
-  const isMale = false;
+  const isMale = speaker === 'shubh';
   const model = 'bulbul:v3';
   const cacheKey = `sarvam:${model}:${speaker}:${normalizedText}`;
 
