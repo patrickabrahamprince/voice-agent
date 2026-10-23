@@ -132,7 +132,88 @@ export class LLMPipeline {
     agentName: string = 'Priya',
     abortSignal?: AbortSignal
   ): AsyncGenerator<string, void, unknown> {
-    // 1. Primary: Sarvam AI 105B Conversations (India's Premier Voice AI Model)
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content?.trim() || '';
+    const rawUserText = lastUserMsg.toLowerCase().trim();
+
+    // 1. FAST STATIC ROUTE: If utterance is short greeting, acknowledgment, yes, or no (length < 10 chars)
+    if (rawUserText.length > 0 && rawUserText.length < 10) {
+      const isGreeting = /^(hi|hello|hey|hola|namaste|morning|evening)\b/i.test(rawUserText);
+      const isThanks = /^(thanks|thx|thank you|ty)\b/i.test(rawUserText);
+      const isYes = /^(yes|yeah|yep|sure|ok|okay|correct|right|yup)\b/i.test(rawUserText);
+      const isNo = /^(no|nope|nah|not now|never)\b/i.test(rawUserText);
+
+      if (isGreeting || isThanks || isYes || isNo) {
+        console.log('[LLM] routed to static reason=short_greeting_or_acknowledgment');
+        if (isGreeting) {
+          yield 'Hello! How can I assist you with Mittal Palms today?';
+        } else if (isThanks) {
+          yield "You're very welcome! Let us know whenever you would like to visit the site.";
+        } else if (isYes) {
+          yield 'Wonderful! Would Saturday or Sunday at eleven AM suit you best for a site walkthrough with Raghavendra?';
+        } else {
+          yield 'Understood! Feel free to ask if you have any questions about our two or three BHK homes.';
+        }
+        return;
+      }
+    }
+
+    // 2. GROQ / CANNED FAST INTENT ROUTE: If simple intent and length < 20 chars (price, bhk, location, timing)
+    const simpleKeywords = ['price', 'pricing', 'cost', 'rate', 'bhk', '2bhk', '3bhk', 'location', 'where', 'jakkur', 'timing', 'time', 'possession', 'ready'];
+    const hasSimpleIntent = simpleKeywords.some((kw) => rawUserText.includes(kw));
+
+    if (rawUserText.length > 0 && rawUserText.length < 20 && hasSimpleIntent) {
+      console.log('[LLM] routed to groq reason=simple_intent_fast_route');
+
+      if (this.groq) {
+        try {
+          const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName);
+          const res = await this.groq.chat.completions.create(
+            {
+              model: this.model,
+              messages: [
+                { role: 'system', content: contextualSystemPrompt },
+                ...messages.filter((m) => m.role !== 'system'),
+              ] as any,
+              max_tokens: 60,
+              temperature: 0.25,
+            },
+            { signal: abortSignal }
+          );
+          const reply = res.choices[0]?.message?.content?.trim();
+          if (reply) {
+            yield reply;
+            return;
+          }
+        } catch (e: any) {
+          console.warn('[LLM] Groq fast route notice:', e.message);
+        }
+      }
+
+      // High-precision canned Mittal Palms templates
+      if (rawUserText.includes('price') || rawUserText.includes('cost') || rawUserText.includes('rate')) {
+        yield 'Pricing starts at one point two five crore for two BHK, and one point seven crore for three BHK all-inclusive.';
+        return;
+      }
+      if (rawUserText.includes('location') || rawUserText.includes('where') || rawUserText.includes('jakkur')) {
+        yield 'Mittal Palms is located in Jakkur, North Bangalore, very close to Manyata Tech Park and Hebbal.';
+        return;
+      }
+      if (rawUserText.includes('2bhk') || rawUserText.includes('2 bhk')) {
+        yield 'Our ready-to-move two BHK homes range from 1235 to 1340 sq.ft., starting at one point two five crore all-inclusive.';
+        return;
+      }
+      if (rawUserText.includes('3bhk') || rawUserText.includes('3 bhk')) {
+        yield 'Our three BHK homes range from 1750 to 1980 sq.ft., starting at one point seven crore all-inclusive.';
+        return;
+      }
+      if (rawUserText.includes('possession') || rawUserText.includes('ready')) {
+        yield 'All homes at Mittal Palms are ready to move in with Occupancy Certificate received and zero GST.';
+        return;
+      }
+    }
+
+    // 3. COMPLEX REASONING ROUTE: Sarvam AI 105B Conversations (Primary Voice Engine)
+    console.log('[LLM] routed to sarvam-105b reason=complex_real_estate_reasoning');
     const sarvamKey = process.env.SARVAM_API_KEY;
     if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
       try {
@@ -262,7 +343,6 @@ export class LLMPipeline {
     }
 
     qualifier.hydrateFromHistory(messages);
-    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
     const response = await qualifier.handleUtterance(lastUserMsg);
     if (response) {
       yield response;

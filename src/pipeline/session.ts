@@ -20,6 +20,8 @@ export class VoiceSession {
 
   private deepgramWs: WebSocket | null = null;
   private inboundMulawChunks: Buffer[] = [];
+  private speechFramesCount: number = 0;
+  private pendingSpeechChunks: Buffer[] = [];
   private silenceTimer: NodeJS.Timeout | null = null;
   private isProcessingSTT: boolean = false;
 
@@ -239,6 +241,8 @@ export class VoiceSession {
 
   /**
    * Handles inbound telephony audio frames with energy VAD and Sarvam STT.
+   * Only accumulates audio when energy > threshold for >200ms (10 frames).
+   * Drops audio < 0.8s to avoid sending noise/clicks to Saaras STT.
    */
   private handleInboundTelephonyAudio(chunk: Buffer): void {
     let totalEnergy = 0;
@@ -256,7 +260,17 @@ export class VoiceSession {
         this.handleBargeIn();
       }
 
-      this.inboundMulawChunks.push(chunk);
+      this.speechFramesCount++;
+      this.pendingSpeechChunks.push(chunk);
+
+      // Only accumulate audio into main buffer once energy persists for >200ms (10 frames)
+      if (this.speechFramesCount >= 10) {
+        if (this.pendingSpeechChunks.length > 0) {
+          this.inboundMulawChunks.push(...this.pendingSpeechChunks);
+          this.pendingSpeechChunks = [];
+        }
+        this.inboundMulawChunks.push(chunk);
+      }
 
       if (this.silenceTimer) {
         clearTimeout(this.silenceTimer);
@@ -264,9 +278,19 @@ export class VoiceSession {
       }
 
       this.silenceTimer = setTimeout(async () => {
-        if (this.inboundMulawChunks.length > 8 && !this.isProcessingSTT) {
+        if (!this.isProcessingSTT && this.inboundMulawChunks.length > 0) {
           const fullAudio = Buffer.concat(this.inboundMulawChunks);
           this.inboundMulawChunks = [];
+          this.pendingSpeechChunks = [];
+          this.speechFramesCount = 0;
+
+          // 8000 bytes = 1.0s in 8kHz mulaw. Filter out audio < 0.8s (clicks, noise, background)
+          const durationSec = fullAudio.length / 8000;
+          if (durationSec < 0.8) {
+            console.log(`[STT] skipped short audio ${durationSec.toFixed(1)}s`);
+            return;
+          }
+
           this.isProcessingSTT = true;
           try {
             const wav = mulawToWav(fullAudio);
@@ -282,8 +306,15 @@ export class VoiceSession {
           }
         }
       }, 550);
-    } else if (this.inboundMulawChunks.length > 0) {
-      this.inboundMulawChunks.push(chunk);
+    } else {
+      if (this.inboundMulawChunks.length > 0) {
+        // Trailing silence after confirmed speech
+        this.inboundMulawChunks.push(chunk);
+      } else {
+        // Isolated noise spike under 200ms — discard immediately
+        this.speechFramesCount = 0;
+        this.pendingSpeechChunks = [];
+      }
     }
   }
 
@@ -328,10 +359,48 @@ export class VoiceSession {
 
   /**
    * Handles user dialogue turn, invokes LLM with streaming and function calling,
-   * and dispatches TTS chunks at sentence boundaries.
+   * enforces 20s rejection exit and 240s duration cap, and dispatches TTS chunks.
    */
   public async processCallerUtterance(callerText: string): Promise<string> {
     if (!callerText || !callerText.trim()) return '';
+
+    const callDuration = Math.round((Date.now() - this.startTime) / 1000);
+    const lower = callerText.toLowerCase().trim();
+
+    // 1. Early rejection cap: If caller says "not interested", "wrong number", "don't call" within first 20s
+    if (
+      callDuration <= 20 &&
+      (lower.includes('not interested') ||
+        lower.includes('wrong number') ||
+        lower.includes("don't call") ||
+        lower.includes('dont call') ||
+        lower.includes('not looking') ||
+        lower.includes('stop calling') ||
+        lower.includes('remove my number'))
+    ) {
+      console.log(`[Session] Early exit trigger within ${callDuration}s: "${callerText}". Ending call immediately.`);
+      const politeExit = "I completely understand. Thank you for your time, have a wonderful day ahead. Goodbye!";
+      this.conversationHistory.push({ role: 'user', content: callerText });
+      this.fullTranscriptLines.push(`Caller: ${callerText}`);
+      await this.speakText(politeExit);
+      this.conversationHistory.push({ role: 'assistant', content: politeExit });
+      this.fullTranscriptLines.push(`${this.agentName}: ${politeExit}`);
+      await this.closeSession();
+      return politeExit;
+    }
+
+    // 2. Max call duration cap: If call duration > 240s (4 mins)
+    if (callDuration > 240) {
+      console.log(`[Session] Call duration reached ${callDuration}s (>240s cap). Concluding call.`);
+      const wrapUp = "Thank you so much for your time. Our project head Raghavendra will call you back with all details and pricing sheet. Have a great day!";
+      this.conversationHistory.push({ role: 'user', content: callerText });
+      this.fullTranscriptLines.push(`Caller: ${callerText}`);
+      await this.speakText(wrapUp);
+      this.conversationHistory.push({ role: 'assistant', content: wrapUp });
+      this.fullTranscriptLines.push(`${this.agentName}: ${wrapUp}`);
+      await this.closeSession();
+      return wrapUp;
+    }
 
     this.conversationHistory.push({ role: 'user', content: callerText });
     this.fullTranscriptLines.push(`Caller: ${callerText}`);

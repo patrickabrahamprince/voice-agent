@@ -8,7 +8,7 @@ import { WebSocket } from 'ws';
 import { VoiceSession } from './pipeline/session.js';
 import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory } from './tools/db.js';
 import { sheetsService } from './tools/sheets.js';
-import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech } from './pipeline/tts.js';
+import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech, prewarmTtsCache } from './pipeline/tts.js';
 import { clearQualifier } from './pipeline/llm.js';
 import { verifyPlivoSignature, buildStreamResponse, logInboundCall } from './telephony/plivo.js';
 
@@ -656,6 +656,9 @@ async function startServer() {
     console.log(`🎙️ Media Stream WebSocket:   ws://${HOST}/media-stream`);
     console.log(`📊 Admin Console & Tester:   http://${HOST}/admin`);
     console.log(`======================================================\n`);
+
+    // Pre-warm top 25 real estate phrases in background
+    prewarmTtsCache().catch((err) => console.warn('[TTS] Cache prewarming notice:', err.message));
   } catch (err) {
     app.log.error(err);
     process.exit(1);

@@ -188,12 +188,10 @@ export async function synthesizeNeuralSpeech(
   }
 
   // Exclusive Sarvam Bulbul speaker for Priya & Raghavendra
-  let speaker = 'kavya';
-  if (voiceId === 'roopa' || voiceId === 'priya' || voiceId === 'shubh') speaker = voiceId;
-
-  const isMale = speaker === 'shubh';
-  const model = 'bulbul:v3';
-  const cacheKey = `sarvam:${model}:${speaker}:${normalizedText}`;
+  const v4Speaker = (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'shubh') ? 'shubh_en_narration' : 'kavya_hi_conversational');
+  const isMale = voiceId === 'shubh';
+  const model = 'bulbul:v4-flash';
+  const cacheKey = `sarvam:${model}:${voiceId}:${normalizedText}`;
 
   if (audioCache.has(cacheKey)) {
     return audioCache.get(cacheKey)!;
@@ -202,11 +200,11 @@ export async function synthesizeNeuralSpeech(
     return audioCache.get(`any:${normalizedText}`)!;
   }
 
-  // 1. Primary: Try Sarvam AI Bulbul
+  // 1. Primary: Try Sarvam AI Bulbul (v4-flash)
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
     try {
-      console.log(`[Sarvam AI Bulbul] Synthesizing speech (${model} / ${speaker}): "${normalizedText.slice(0, 50)}..."`);
+      console.log(`[TTS] model=v4-flash chars=${normalizedText.length} speaker=${voiceId}`);
 
       const res = await fetch('https://api.sarvam.ai/text-to-speech', {
         method: 'POST',
@@ -217,8 +215,8 @@ export async function synthesizeNeuralSpeech(
         body: JSON.stringify({
           text: normalizedText,
           language_code: 'en-IN',
-          speaker,
-          model,
+          speaker: v4Speaker,
+          model: 'bulbul:v4-flash',
           speech_sample_rate: 24000,
           pace: 1.0,
         }),
@@ -315,11 +313,105 @@ export function mulawToWav(mulawBuffer: Buffer): Buffer {
   return Buffer.concat([wavHeader, Buffer.from(pcm.buffer)]);
 }
 
-// In-memory cache for telephony mulaw audio
-const telephonyMulawCache = new Map<string, Buffer>();
+/**
+ * 500-Item LRU Cache for bit-identical 8kHz G.711 mulaw telephony audio playback.
+ */
+class MulawLruCache {
+  private cache = new Map<string, Buffer>();
+  private readonly maxEntries: number;
+  private hits = 0;
+  private misses = 0;
+
+  constructor(maxEntries: number = 500) {
+    this.maxEntries = maxEntries;
+  }
+
+  public normalizeKey(text: string): string {
+    const clean = text.toLowerCase().trim().replace(/\s+/g, ' ');
+    return crypto.createHash('md5').update(clean).digest('hex');
+  }
+
+  public get(key: string): Buffer | undefined {
+    const val = this.cache.get(key);
+    if (val) {
+      this.hits++;
+      // Move to end (most recently used)
+      this.cache.delete(key);
+      this.cache.set(key, val);
+      this.logStats();
+      return val;
+    }
+    this.misses++;
+    this.logStats();
+    return undefined;
+  }
+
+  public set(key: string, buffer: Buffer): void {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxEntries) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) this.cache.delete(oldestKey);
+    }
+    this.cache.set(key, buffer);
+  }
+
+  public has(key: string): boolean {
+    return this.cache.has(key);
+  }
+
+  private logStats(): void {
+    const total = this.hits + this.misses;
+    const rate = total > 0 ? ((this.hits / total) * 100).toFixed(1) : '0.0';
+    console.log(`[TTS CACHE] hit=${this.hits} miss=${this.misses} hitRate=${rate}%`);
+  }
+}
+
+export const telephonyLruCache = new MulawLruCache(500);
+
+export const TOP_25_PHRASES = [
+  "Welcome to Mittal Palms",
+  "Pricing starts at one point seven crore rupees all inclusive",
+  "Three BHK at Mittal Palms",
+  "Jakkur Bangalore",
+  "Site walkthrough this Saturday at eleven AM with Raghavendra",
+  "Would you like to confirm your site visit",
+  "Hello! This is Priya from Mittal Palms in Jakkur. We have ready-to-move two and three BHK homes with Occupancy Certificate received. Are you looking for a two BHK or a three BHK for your family?",
+  "Hello! Welcome back to Mittal Palms. Wonderful to connect with you again!",
+  "Two BHK pricing starts from one point two five crore rupees all inclusive.",
+  "Three BHK pricing starts from one point seven crore rupees all inclusive.",
+  "Mittal Palms is located in Jakkur, North Bangalore, very close to Manyata Tech Park and Hebbal.",
+  "Full Occupancy Certificate is received, so zero GST and immediate possession.",
+  "Our project head Raghavendra at 9945577935 can coordinate directly.",
+  "Would Saturday or Sunday suit you best for a site visit?",
+  "Thank you for your time. Have an amazing day. Goodbye!",
+  "Yes, we have amenities like swimming pool, clubhouse, gymnasium, and landscaped gardens.",
+  "The carpet area for two BHK is around twelve hundred square feet.",
+  "The carpet area for three BHK is around sixteen hundred square feet.",
+  "Raghavendra will call you back with all details.",
+  "Sure, what is your preferred time for the walkthrough?",
+  "Is Saturday eleven AM good for you?",
+  "Is Sunday eleven AM good for you?",
+  "May I know your good name please?",
+  "Thank you. I have noted your details.",
+  "Have a great day ahead!"
+];
+
+export async function prewarmTtsCache(): Promise<void> {
+  console.log(`[TTS] Pre-warming cache with ${TOP_25_PHRASES.length} top Mittal Palms phrases in background...`);
+  for (const phrase of TOP_25_PHRASES) {
+    try {
+      await synthesizeTelephonyMulaw(phrase, 'kavya');
+    } catch (e: any) {
+      console.warn(`[TTS Prewarm] Failed for "${phrase.slice(0, 30)}":`, e.message);
+    }
+  }
+  console.log(`[TTS] Cache pre-warming complete. Telephony phrases primed.`);
+}
 
 /**
- * Synthesizes speech directly into 8kHz G.711 mulaw format required by Twilio / Exotel.
+ * Synthesizes speech directly into 8kHz G.711 mulaw format required by Plivo / Telephony PBX.
+ * Uses Bulbul v4-flash (40% faster, higher quality, ₹20/10k chars) with Kavya voice.
  */
 export async function synthesizeTelephonyMulaw(
   rawText: string,
@@ -328,10 +420,14 @@ export async function synthesizeTelephonyMulaw(
   const normalizedText = normalizeRealEstateText(rawText);
   if (!normalizedText.trim()) return Buffer.alloc(0);
 
-  const cacheKey = `mulaw:8k:${voiceId}:${normalizedText}`;
-  if (telephonyMulawCache.has(cacheKey)) {
-    return telephonyMulawCache.get(cacheKey)!;
+  const cacheKey = telephonyLruCache.normalizeKey(normalizedText);
+  const cached = telephonyLruCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
+
+  // Model used logging requirement: [TTS] model=v4-flash chars=xxx
+  console.log(`[TTS] model=v4-flash chars=${normalizedText.length}`);
 
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
@@ -345,8 +441,8 @@ export async function synthesizeTelephonyMulaw(
         body: JSON.stringify({
           text: normalizedText,
           language_code: 'en-IN',
-          speaker: 'kavya',
-          model: 'bulbul:v3',
+          speaker: (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'shubh') ? 'shubh_en_narration' : 'kavya_hi_conversational'),
+          model: 'bulbul:v4-flash',
           speech_sample_rate: 8000,
           pace: 1.0,
         }),
@@ -361,7 +457,7 @@ export async function synthesizeTelephonyMulaw(
           // WAV data starts at byte 44
           const pcmBytes = wavBuf.length > 44 ? wavBuf.subarray(44) : wavBuf;
           const mulawBuf = pcmToMulaw(pcmBytes);
-          telephonyMulawCache.set(cacheKey, mulawBuf);
+          telephonyLruCache.set(cacheKey, mulawBuf);
           return mulawBuf;
         }
       }
@@ -375,7 +471,7 @@ export async function synthesizeTelephonyMulaw(
   if (buffer && buffer.length > 44) {
     const pcmBytes = buffer.subarray(44);
     const mulawBuf = pcmToMulaw(pcmBytes);
-    telephonyMulawCache.set(cacheKey, mulawBuf);
+    telephonyLruCache.set(cacheKey, mulawBuf);
     return mulawBuf;
   }
 
