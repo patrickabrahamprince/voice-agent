@@ -33,7 +33,8 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/dashboard ./src/dashboard
 COPY --from=builder /app/public ./public
-COPY data ./data
+RUN mkdir -p data
+COPY data/seed_data.json ./data/
 
 EXPOSE 3001
 
