@@ -11,6 +11,7 @@ import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech, prewarmTtsCache } from './pipeline/tts.js';
 import { clearQualifier } from './pipeline/llm.js';
 import { verifyPlivoSignature, buildStreamResponse, logInboundCall } from './telephony/plivo.js';
+import { callEventsBroadcaster, LiveCallEvent } from './pipeline/events.js';
 
 // Environment Validation: If TELEPHONY_PROVIDER=plivo and PLIVO_AUTH_ID is missing, crash on startup with clear error
 if (process.env.TELEPHONY_PROVIDER === 'plivo' && !process.env.PLIVO_AUTH_ID) {
@@ -48,8 +49,8 @@ app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) =>
   const url = request.raw.url || '';
   const origin = (request.headers.origin || request.headers.referer || '') as string;
 
-  // 1. Allow carrier webhooks, health checks, and media stream unconditionally
-  if (url.startsWith('/incoming-call') || url.startsWith('/health') || url.startsWith('/media-stream')) {
+  // 1. Allow carrier webhooks, health checks, media stream, and live-feed unconditionally
+  if (url.startsWith('/incoming-call') || url.startsWith('/health') || url.startsWith('/media-stream') || url.startsWith('/api/live-feed')) {
     return;
   }
 
@@ -197,6 +198,58 @@ app.get('/api/leads', async () => {
  */
 app.get('/api/stats', async () => {
   return getLeadStats();
+});
+
+/**
+ * API: Real-Time Telephony SSE Stream: GET /api/live-feed
+ * Pushes live agent speech, caller transcripts, barge-ins, and lead intelligence in real time.
+ */
+app.get('/api/live-feed', (request: FastifyRequest, reply: FastifyReply) => {
+  reply.hijack();
+  const raw = reply.raw;
+  raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+
+  // Initial event sending active call state
+  raw.write(`event: init\ndata: ${JSON.stringify({ timestamp: new Date().toISOString(), activeCalls: callEventsBroadcaster.getActiveCalls() })}\n\n`);
+
+  // Subscribe to live call broadcaster
+  const unsubscribe = callEventsBroadcaster.subscribe((event: LiveCallEvent) => {
+    try {
+      raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+    } catch {
+      unsubscribe();
+    }
+  });
+
+  // Keep-alive heartbeat every 15s to keep connections alive through reverse proxies
+  const heartbeat = setInterval(() => {
+    try {
+      raw.write(`: heartbeat ${Date.now()}\n\n`);
+    } catch {
+      clearInterval(heartbeat);
+      unsubscribe();
+    }
+  }, 15000);
+
+  request.raw.on('close', () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+  });
+});
+
+/**
+ * API: Get current active or recent call state: GET /api/live-feed/active
+ */
+app.get('/api/live-feed/active', async () => {
+  return {
+    latest: callEventsBroadcaster.getLatestCall(),
+    allActive: callEventsBroadcaster.getActiveCalls(),
+  };
 });
 
 /**

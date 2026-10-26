@@ -4,6 +4,7 @@ import { normalizeRealEstateText } from './normalizer.js';
 import { llmPipeline, ChatMessage, PRIYA_SYSTEM_PROMPT, activeQualifiers } from './llm.js';
 import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcribeAudioTelephony } from './tts.js';
 import { createCall, updateCall, getCallerMemory } from '../tools/db.js';
+import { callEventsBroadcaster } from './events.js';
 
 export class VoiceSession {
   private telephonyWs: WebSocket;
@@ -101,6 +102,18 @@ export class VoiceSession {
 
         this.conversationHistory.push({ role: 'assistant', content: greeting });
         this.fullTranscriptLines.push(`${this.agentName}: ${greeting}`);
+
+        callEventsBroadcaster.broadcast({
+          type: 'call_started',
+          streamSid: this.streamSid,
+          callerNumber: this.callerNumber,
+          timestamp: new Date().toISOString(),
+          data: {
+            agentName: this.agentName,
+            greeting,
+            callSid: this.callSid,
+          },
+        });
 
         await this.speakText(greeting);
         break;
@@ -233,6 +246,16 @@ export class VoiceSession {
 
     // Immediately stop agent speaking window
     this.agentSpeakingUntil = 0;
+
+    callEventsBroadcaster.broadcast({
+      type: 'barge_in',
+      streamSid: this.streamSid,
+      callerNumber: this.callerNumber,
+      timestamp: new Date().toISOString(),
+      data: {
+        agentName: this.agentName,
+      },
+    });
 
     // Discard any audio accumulated during agent speaking to avoid echoing self
     this.inboundMulawChunks = [];
@@ -380,6 +403,17 @@ export class VoiceSession {
 
     console.log(`[Telephony Audio Out] Speaking: "${normalized}"`);
 
+    callEventsBroadcaster.broadcast({
+      type: 'agent_speaking',
+      streamSid: this.streamSid,
+      callerNumber: this.callerNumber,
+      timestamp: new Date().toISOString(),
+      data: {
+        text: normalized,
+        agentName: this.agentName,
+      },
+    });
+
     try {
       const mulawBuffer = await synthesizeTelephonyMulaw(normalized, 'kavya');
 
@@ -428,6 +462,17 @@ export class VoiceSession {
       return '';
     }
     this.isProcessingUtterance = true;
+
+    callEventsBroadcaster.broadcast({
+      type: 'caller_speech',
+      streamSid: this.streamSid,
+      callerNumber: this.callerNumber,
+      timestamp: new Date().toISOString(),
+      data: {
+        transcript: callerText,
+        callerNumber: this.callerNumber,
+      },
+    });
 
     const callDuration = Math.round((Date.now() - this.startTime) / 1000);
     const lower = callerText.toLowerCase().trim();
@@ -510,6 +555,28 @@ export class VoiceSession {
         this.conversationHistory.push({ role: 'assistant', content: fullResponse.trim() });
         this.fullTranscriptLines.push(`${this.agentName}: ${fullResponse.trim()}`);
       }
+
+      // Broadcast lead updates extracted so far
+      const qualifierKey = `${this.callId ?? 'sim'}:${this.callerNumber}`;
+      const qualifier = activeQualifiers.get(qualifierKey);
+      if (qualifier) {
+        const state = qualifier.getState();
+        callEventsBroadcaster.broadcast({
+          type: 'lead_update',
+          streamSid: this.streamSid,
+          callerNumber: this.callerNumber,
+          timestamp: new Date().toISOString(),
+          data: {
+            config: state.config,
+            budget: state.budget,
+            intent: state.intent,
+            location: state.preferredLocation,
+            callerName: state.callerName,
+            isQualified: state.isQualified,
+            leadQuality: state.leadQuality,
+          },
+        });
+      }
     } catch (err: any) {
       if (!abortSignal.aborted) {
         console.error('[Session] Error during dialogue turn:', err);
@@ -555,11 +622,12 @@ export class VoiceSession {
     }
 
     // Generate call summary and update SQLite in background
+    let finalSummary = 'Call ended.';
     if (this.callId) {
       try {
-        const summary = await llmPipeline.generateSummary(fullTranscript);
-        updateCall(this.callId, durationSeconds, fullTranscript, summary);
-        console.log(`[Database] Call record #${this.callId} updated with summary: "${summary}"`);
+        finalSummary = await llmPipeline.generateSummary(fullTranscript);
+        updateCall(this.callId, durationSeconds, fullTranscript, finalSummary);
+        console.log(`[Database] Call record #${this.callId} updated with summary: "${finalSummary}"`);
 
         // Train LLM after every call by extracting learnings and objection patterns
         await llmPipeline.extractAndStoreLearnings(this.callId, fullTranscript);
@@ -567,6 +635,17 @@ export class VoiceSession {
         console.error('[Session] Error finalizing call audit record:', err);
       }
     }
+
+    callEventsBroadcaster.broadcast({
+      type: 'call_ended',
+      streamSid: this.streamSid,
+      callerNumber: this.callerNumber,
+      timestamp: new Date().toISOString(),
+      data: {
+        durationSeconds,
+        summary: finalSummary,
+      },
+    });
   }
 
   public getCallId(): number | null {
