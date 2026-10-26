@@ -2,20 +2,65 @@
  * Semantic End-of-Turn (EoT) & Voice Activity Detector
  * Inspired by LiveKit's TurnDetector and audio-linguistic completion models.
  *
- * Solves the classic voice agent dilemma:
- * - When a user pauses to think ("I am looking for... uh..."), DON'T cut them off.
- * - When a user finishes a crisp sentence ("What is the price?"), respond with low latency (<250ms).
+ * Prevents premature cutoffs:
+ * - When a user pauses to think ("I am looking for... uh..."), wait for them to finish.
+ * - When a user says a filler sound ("Hmm", "Um", "Uh"), DO NOT interrupt them.
+ * - When a user says an isolated word ("Need", "College"), wait for them to finish their sentence.
+ * - When a user finishes a crisp sentence ("What is the price?"), respond with natural latency.
  */
 
 export interface TurnDecision {
   isLikelyComplete: boolean;
+  shouldIgnore: boolean; // True if filler or dangling fragment that should not be responded to
   recommendedSilenceMs: number;
   hesitationDetected: boolean;
   reason: string;
 }
 
+// Standalone filler/hesitation tokens that should NEVER trigger an agent response
+export const PURE_FILLERS = new Set([
+  'hmm',
+  'hm',
+  'mhm',
+  'uh',
+  'um',
+  'umm',
+  'uhh',
+  'ah',
+  'er',
+  'erm',
+  'like',
+  'so',
+  'oh',
+  'wait',
+  'actually',
+  'basically',
+]);
+
+// Single-word answers that are legitimately complete on their own
+export const STANDALONE_VALID_ANSWERS = new Set([
+  'yes',
+  'no',
+  'yep',
+  'nope',
+  'sure',
+  '2bhk',
+  '3bhk',
+  'two',
+  'three',
+  'resale',
+  'saturday',
+  'sunday',
+  'weekend',
+  'bye',
+  'goodbye',
+  'confirmed',
+  'correct',
+  'exactly',
+]);
+
 // Linguistic indicators that a speaker is still thinking / hesitating mid-sentence
-const HESITATION_SUFFIXES = [
+export const HESITATION_SUFFIXES = [
   'uh',
   'uhh',
   'um',
@@ -50,97 +95,125 @@ const HESITATION_SUFFIXES = [
   'the',
   'a',
   'an',
+  'need',
+  'want',
+  'looking',
 ];
 
 // Natural conversational completions indicating the speaker yielded their turn
 const COMPLETION_PUNCTUATION = /[.?!]$/;
 
 export class SemanticTurnDetector {
-  private baseSilenceMs: number = 420;
-  private hesitationSilenceMs: number = 950;
-  private fastTurnSilenceMs: number = 260;
+  private baseSilenceMs: number = 850;
+  private hesitationSilenceMs: number = 1400;
+  private fastTurnSilenceMs: number = 650;
+
+  /**
+   * Checks if an utterance is purely a backchannel / hesitation sound.
+   */
+  public isFillerOnly(text: string): boolean {
+    const cleaned = text.trim().toLowerCase().replace(/[^a-z]/g, '');
+    return PURE_FILLERS.has(cleaned);
+  }
 
   /**
    * Evaluates audio duration and partial speech text to determine if the speaker has
-   * concluded their turn or is simply hesitating.
+   * concluded their turn, is hesitating, or was cut off mid-thought.
    */
   public evaluateTurn(partialTranscript: string, audioDurationSec: number): TurnDecision {
-    const text = (partialTranscript || '').trim().toLowerCase();
+    const raw = (partialTranscript || '').trim().toLowerCase();
+    const cleanAlpha = raw.replace(/[^a-z0-9\s]/g, ' ').trim();
+    const words = cleanAlpha.split(/\s+/).filter(Boolean);
 
-    // 1. If audio is extremely brief (<0.4s) or transcript is 1 letter, treat as incomplete/noise
-    if (audioDurationSec < 0.4 || text.length <= 1) {
+    // 1. Audio too brief or empty
+    if (audioDurationSec < 0.35 || words.length === 0) {
       return {
         isLikelyComplete: false,
+        shouldIgnore: true,
         recommendedSilenceMs: this.hesitationSilenceMs,
         hesitationDetected: true,
         reason: 'Audio too brief or sub-word transcript',
       };
     }
 
-    // 2. Tokenize into words
-    const words = text.split(/\s+/).filter(Boolean);
-    if (words.length === 0) {
+    // 2. Pure filler sound ("Hmm", "Um", "Uh", "Like") -> IGNORE completely!
+    if (words.length === 1 && PURE_FILLERS.has(words[0])) {
       return {
         isLikelyComplete: false,
-        recommendedSilenceMs: this.baseSilenceMs,
-        hesitationDetected: false,
-        reason: 'Empty text buffer',
-      };
-    }
-
-    const lastWord = words[words.length - 1].replace(/[^a-z]/g, '');
-
-    // 3. Check for hesitation or trailing conjunctions/prepositions
-    const hasHesitation = HESITATION_SUFFIXES.includes(lastWord);
-    if (hasHesitation) {
-      return {
-        isLikelyComplete: false,
+        shouldIgnore: true,
         recommendedSilenceMs: this.hesitationSilenceMs,
         hesitationDetected: true,
-        reason: `Hesitation / trailing marker detected ("${lastWord}") — extending silence window to ${this.hesitationSilenceMs}ms`,
+        reason: `Pure hesitation filler ("${words[0]}") — waiting for caller's real thought`,
       };
     }
 
-    // 4. Check for explicit question words indicating a finished query
+    // 3. Single isolated dangling word ("Need", "College", "Flat", "Looking") -> INCOMPLETE
+    if (words.length === 1) {
+      const singleWord = words[0];
+      if (STANDALONE_VALID_ANSWERS.has(singleWord) || singleWord.includes('bhk')) {
+        return {
+          isLikelyComplete: true,
+          shouldIgnore: false,
+          recommendedSilenceMs: this.fastTurnSilenceMs,
+          hesitationDetected: false,
+          reason: `Decisive 1-word answer ("${singleWord}")`,
+        };
+      }
+      return {
+        isLikelyComplete: false,
+        shouldIgnore: false, // Don't discard, but stage and wait for caller to finish
+        recommendedSilenceMs: this.hesitationSilenceMs,
+        hesitationDetected: true,
+        reason: `Dangling 1-word fragment ("${singleWord}") — waiting for complete sentence`,
+      };
+    }
+
+    const lastWord = words[words.length - 1];
+
+    // 4. Trailing hesitation or conjunction ("I want to... and...")
+    if (HESITATION_SUFFIXES.includes(lastWord)) {
+      return {
+        isLikelyComplete: false,
+        shouldIgnore: false,
+        recommendedSilenceMs: this.hesitationSilenceMs,
+        hesitationDetected: true,
+        reason: `Trailing hesitation marker ("${lastWord}") — extending silence window to ${this.hesitationSilenceMs}ms`,
+      };
+    }
+
+    // 5. Complete syntactic question ("What is the price?", "Is OC received?")
     const isQuestion =
-      text.endsWith('?') ||
-      /^(what|how|where|when|which|who|can|could|will|would|is|are|do|does)\b/i.test(text);
+      raw.endsWith('?') ||
+      /^(what|how|where|when|which|who|can|could|will|would|is|are|do|does)\b/i.test(raw);
 
     if (isQuestion && words.length >= 3) {
       return {
         isLikelyComplete: true,
+        shouldIgnore: false,
         recommendedSilenceMs: this.fastTurnSilenceMs,
         hesitationDetected: false,
-        reason: 'Syntactically complete question detected — triggering fast turnaround',
+        reason: 'Complete question query detected',
       };
     }
 
-    // 5. Short decisive utterances ("Yes", "No", "Sure", "Tomorrow 5 PM", "2 BHK", "Resale")
-    if (words.length <= 4 && (text.includes('bhk') || text.includes('yes') || text.includes('no') || text.includes('sure') || text.includes('weekend') || text.includes('saturday'))) {
+    // 6. Complete multi-word clause (>= 3 words)
+    if (words.length >= 3) {
       return {
         isLikelyComplete: true,
-        recommendedSilenceMs: this.fastTurnSilenceMs + 40,
+        shouldIgnore: false,
+        recommendedSilenceMs: this.baseSilenceMs,
         hesitationDetected: false,
-        reason: 'Concise decisive answer detected',
+        reason: 'Substantive multi-word utterance',
       };
     }
 
-    // 6. Sentence with terminal punctuation
-    if (COMPLETION_PUNCTUATION.test(partialTranscript.trim())) {
-      return {
-        isLikelyComplete: true,
-        recommendedSilenceMs: this.fastTurnSilenceMs,
-        hesitationDetected: false,
-        reason: 'Terminal punctuation detected',
-      };
-    }
-
-    // Default: balanced conversational silence window
+    // Default: 2 words (e.g. "2 BHK", "lake view")
     return {
       isLikelyComplete: true,
+      shouldIgnore: false,
       recommendedSilenceMs: this.baseSilenceMs,
       hesitationDetected: false,
-      reason: 'Standard conversational clause',
+      reason: 'Standard conversational phrase',
     };
   }
 }
