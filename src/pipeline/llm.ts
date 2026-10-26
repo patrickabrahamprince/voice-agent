@@ -73,10 +73,20 @@ PROJECT OVERVIEW — MITTAL PALMS (JAKKUR, NORTH BANGALORE):
 
 CRITICAL VOICE PHONE RULES:
 1. BREVITY: Keep every turn strictly 1 to 2 short sentences (under 25 words). Never give long speeches over the phone.
-2. DIRECT ANSWERS: If the caller asks about price, OC status, location, sizes, or amenities, answer directly and immediately.
-3. CONVERSATIONAL ENGAGEMENT: Follow up naturally by asking if they are looking for a 2 or 3 BHK, or if they would like to visit this weekend.
-4. PHONETIC NUMBERS: Always spell out numbers phonetically ("two BHK", "three BHK", "one point two five crore rupees", "twelve thousand rupees per square foot").
-5. POLITE CLOSING: If the caller wants to hang up or says goodbye, conclude with: "Thank you for calling Mittal Palms. Have a wonderful day ahead. Goodbye!"`;
+2. NEVER ASSUME OR DECLARE CALLER BUDGET:
+   - NEVER state, guess, or assume a caller's budget unless the caller explicitly states their budget first in this conversation.
+   - NEVER say "Since your budget is X" or "With your budget of X".
+   - When presenting 2 and 3 BHK options, present only the project pricing (2 BHK is one point two five to one point three five crore rupees; 3 BHK is one point seven to one point nine five crore rupees) and ask: "Which configuration or budget are you keeping in mind?"
+3. HANDLING CALLER CORRECTIONS & NEGATIONS (STRICT):
+   - If the caller says "I never told you my budget is X", "that is not my budget", "I didn't say that", or corrects any assumption:
+     * NEVER repeat or mention the disputed number or amount.
+     * NEVER say "I have noted your budget as X" or "I have recorded your preference as X".
+     * Apologize simply in ONE brief sentence and ask for their actual requirement.
+     * Say: "My sincere apologies for the confusion! What budget range do you have in mind?"
+4. DIRECT ANSWERS: If the caller asks about price, OC status, location, sizes, or amenities, answer directly and immediately.
+5. CONVERSATIONAL ENGAGEMENT: Follow up naturally by asking if they are looking for a 2 or 3 BHK, or if they would like to visit this weekend.
+6. PHONETIC NUMBERS: Always spell out numbers phonetically ("two BHK", "three BHK", "one point two five crore rupees", "twelve thousand rupees per square foot").
+7. POLITE CLOSING: If the caller wants to hang up or says goodbye, conclude with: "Thank you for calling Mittal Palms. Have a wonderful day ahead. Goodbye!"`;
 
 /**
  * NOTE: qualify_and_sync_lead is handled by QualificationEngine.syncLeadRecord(),
@@ -325,7 +335,7 @@ export class LLMPipeline {
               {
                 role: 'system',
                 content:
-                  'Summarize this property inquiry call with advisor Priya for Mittal Palms in 1-2 concise sentences focusing on requirement (BHK, size, budget, location) and scheduled follow-up time.',
+                  'Summarize this property inquiry call with advisor Priya for Mittal Palms in 1-2 concise sentences. Focus ONLY on confirmed requirements explicitly stated by the caller. If the caller denied or corrected an assumed budget (e.g. stating they never specified a budget), do NOT record that denied number as their budget. Note any scheduled site visit or follow-up.',
               },
               { role: 'user', content: `Call transcript:\n${transcript}` },
             ],
@@ -357,7 +367,7 @@ export class LLMPipeline {
             {
               role: 'system',
               content:
-                'Summarize this property inquiry call with advisor Priya for Mittal Palms in 1-2 concise sentences focusing on requirement (BHK, size, budget, location) and scheduled follow-up time.',
+                'Summarize this property inquiry call with advisor Priya for Mittal Palms in 1-2 concise sentences. Focus ONLY on confirmed requirements explicitly stated by the caller. If the caller denied or corrected an assumed budget (e.g. stating they never specified a budget), do NOT record that denied number as their budget. Note any scheduled site visit or follow-up.',
             },
             { role: 'user', content: `Call transcript:\n${transcript}` },
           ],
@@ -389,9 +399,9 @@ export class LLMPipeline {
     } else if (transcript.includes('2 bhk') || transcript.includes('2bhk')) {
       insight = 'Buyer interested in 2 BHK (1,235 to 1,340 sq.ft) layout.';
       type = 'preference';
-    } else if (transcript.includes('tomorrow') || transcript.includes('time') || transcript.includes('connect')) {
-      insight = 'Follow-up call connection requested for tomorrow via WhatsApp details.';
-      type = 'followup';
+    } else if (transcript.includes('visit') || transcript.includes('weekend') || transcript.includes('saturday')) {
+      insight = 'Site visit discussion initiated for upcoming weekend.';
+      type = 'visit';
     }
 
     saveAgentLearning({
@@ -406,25 +416,22 @@ export class LLMPipeline {
    */
   getPromptWithLearnings(callerPhone?: string, agentName: string = 'Priya'): string {
     const learnings = getRecentLearnings(5);
-    const learningBullets =
-      learnings && learnings.length > 0
-        ? learnings.map((l) => `- [${l.learning_type.toUpperCase()}]: ${l.key_insight}`).join('\n')
-        : '';
+    // Deduplicate learnings to avoid repeating identical bullets
+    const uniqueLearnings = Array.from(new Set((learnings || []).map((l) => l.key_insight)))
+      .slice(0, 3)
+      .map((insight) => `- ${insight}`)
+      .join('\n');
 
     let memoryContextBlock = '';
     if (callerPhone) {
       const memory = getCallerMemory(callerPhone);
-      if (memory.isReturningCaller) {
-        const lead = memory.existingLead;
+      if (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there') {
         memoryContextBlock = `
 ========================================================================
-CALLER RECOGNITION CONTEXT:
-Caller Phone: ${memory.phoneNumber}
-Returning Caller (${memory.totalPreviousCalls} previous interaction recorded)
-Known Preferences:
-- Configuration: ${lead?.config || '2 BHK or 3 BHK'}
-- Budget: ${lead?.budget || 'Not specified'}
-- Purpose: ${lead?.intent || 'Self-use'}
+BACKGROUND REFERENCE CONTEXT (INTERNAL ADVISOR NOTES ONLY - NEVER ASSUME OR DECLARE TO CALLER):
+- Caller Phone: ${memory.phoneNumber}
+- Known Contact Name: ${memory.existingLead.callerName}
+- STRICT RULE: Do NOT state or assume the caller's budget or configuration. Always ask the caller what they are looking for today.
 ========================================================================`;
       }
     }
@@ -436,7 +443,7 @@ Known Preferences:
 ${memoryContextBlock}
 
 CONTINUOUS REAL-TIME LEARNINGS:
-${learningBullets || '- Maintain crisp 1-2 sentence conversational turns.'}`;
+${uniqueLearnings || '- Maintain crisp 1-2 sentence conversational turns.'}`;
   }
 }
 

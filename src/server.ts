@@ -607,8 +607,8 @@ app.post('/api/simulator/call', async (request: FastifyRequest<{ Body: { callerN
     : 'you';
   
   const greetingText = agentName === 'Priya'
-    ? (callerName !== 'you'
-        ? `Hello! Welcome back to Mittal Palms. This is Priya. Wonderful to connect with you again! Are you looking for a 2 BHK or a 3 BHK?`
+    ? (callerName !== 'you' && callerName !== 'there' && callerName !== 'Valued Buyer'
+        ? `Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?`
         : `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`)
     : `Hi, good morning — am I speaking with ${callerName}?`;
 

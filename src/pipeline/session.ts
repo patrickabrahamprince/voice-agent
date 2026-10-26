@@ -101,8 +101,8 @@ export class VoiceSession {
 
         // Priya greeting for Mittal Palms
         const memory = getCallerMemory(this.callerNumber);
-        const greeting = (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer')
-          ? `Hello! Welcome back to Mittal Palms. This is Priya. Wonderful to connect with you again! Are you looking for a 2 BHK or a 3 BHK?`
+        const greeting = (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there')
+          ? `Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?`
           : `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
 
         this.conversationHistory.push({ role: 'assistant', content: greeting });

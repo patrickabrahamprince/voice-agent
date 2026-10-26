@@ -52,11 +52,11 @@ export class QualificationEngine {
       callerName: existingName,
       currentStep: 'GREETING_NAME',
       isExploringBangalore: null,
-      config: existing?.config === '3 BHK' ? '3 BHK' : (existing?.config === '2 BHK' ? '2 BHK' : null),
+      config: null,
       sizeInMind: null,
-      preferredLocation: existing?.location || null,
-      intent: existing?.intent === 'Investment' ? 'Investment' : (existing?.intent === 'Self-use' ? 'Self-use' : null),
-      budget: existing?.budget || null,
+      preferredLocation: null,
+      intent: null,
+      budget: null,
       followUpTime: null,
       isQualified: false,
       leadQuality: null,
@@ -237,8 +237,16 @@ export class QualificationEngine {
   }
 
   private extractEntities(text: string): void {
+    const isNegation = /\b(never|not|no|don't|dont|didn't|didnt|wrong|neither|nor)\b/i.test(text);
+
+    // If caller explicitly denies or corrects an assumed budget ("I never told you my budget is X", "that is not my budget")
+    if (isNegation && (text.includes('budget') || text.includes('crore') || text.includes('cr') || text.includes('lakh'))) {
+      this.state.budget = null;
+      return;
+    }
+
     // 2 vs 3 BHK
-    if (!this.state.config) {
+    if (!this.state.config && !isNegation) {
       if (/\b(2\s*bhk|2bhk|two\s*bhk|2\s*bed|two\s*bed)\b/i.test(text)) {
         this.state.config = '2 BHK';
       } else if (/\b(3\s*bhk|3bhk|three\s*bhk|3\s*bed|three\s*bed)\b/i.test(text)) {
@@ -247,7 +255,7 @@ export class QualificationEngine {
     }
 
     // Size
-    if (!this.state.sizeInMind) {
+    if (!this.state.sizeInMind && !isNegation) {
       const sizeMatch = text.match(/([0-9,]+)\s*(?:sq\s*ft|sqft|square\s*feet|sft)/i);
       if (sizeMatch) {
         this.state.sizeInMind = `${sizeMatch[1]} sq.ft`;
@@ -260,7 +268,7 @@ export class QualificationEngine {
     }
 
     // Intent (Self-use vs Investment)
-    if (!this.state.intent) {
+    if (!this.state.intent && !isNegation) {
       if (text.includes('self') || text.includes('live') || text.includes('family') || text.includes('own')) {
         this.state.intent = 'Self-use';
       } else if (text.includes('invest') || text.includes('rent') || text.includes('roi')) {
@@ -269,7 +277,7 @@ export class QualificationEngine {
     }
 
     // Budget
-    if (!this.state.budget) {
+    if (!this.state.budget && !isNegation) {
       const budgetMatch = text.match(/(?:around|budget|under|upto|approx)?\s*([0-9.]+\s*(?:crore|cr|lakh|lakhs))/i);
       if (budgetMatch) {
         this.state.budget = budgetMatch[1];
