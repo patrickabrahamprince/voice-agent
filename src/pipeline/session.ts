@@ -17,9 +17,11 @@ export class VoiceSession {
   private startTime: number = Date.now();
 
   private agentSpeakingUntil: number = 0;
+  private postSpeechCooldownUntil: number = 0;
+  private isSynthesizingSpeech: boolean = false;
 
   private get isAgentSpeaking(): boolean {
-    return Date.now() < this.agentSpeakingUntil;
+    return Date.now() < this.agentSpeakingUntil || this.isSynthesizingSpeech;
   }
 
   private currentContextId: string = '';
@@ -259,6 +261,7 @@ export class VoiceSession {
 
     // Immediately stop agent speaking window
     this.agentSpeakingUntil = 0;
+    this.postSpeechCooldownUntil = 0;
 
     callEventsBroadcaster.broadcast({
       type: 'barge_in',
@@ -325,42 +328,38 @@ export class VoiceSession {
 
   /**
    * Handles inbound telephony audio frames with energy VAD and ultra-low latency STT.
-   * Full acoustic echo gating: Drops all audio when Priya is speaking to prevent self-looping.
-   * Allows genuine caller barge-in (> 1200 RMS for 5 frames = 100ms).
+   * Full acoustic echo gating: Drops 100% of audio when Priya is speaking or during
+   * the 800ms post-speech cooldown to eliminate mobile speaker acoustic echo loops.
    */
   private handleInboundTelephonyAudio(chunk: Buffer): void {
-    const rms = this.getMulawRms(chunk);
+    const now = Date.now();
 
-    // If agent is currently speaking through phone speaker:
-    if (this.isAgentSpeaking) {
-      // ONLY allow genuine caller barge-in (firm human voice directly into mic > 2200 RMS)
-      // Discards phone speaker acoustic echo (typically 800-1500 RMS) to prevent self-interruption
-      if (rms > 2200) {
-        this.speechFramesCount++;
-        // Require 8 consecutive high-energy frames (160ms) to confirm genuine human interruption
-        if (this.speechFramesCount >= 8) {
-          console.log(`[Barge-In] Genuine caller interruption detected (${rms.toFixed(0)} RMS). Halting agent speech.`);
-          this.handleBargeIn();
-        }
-      } else {
-        this.speechFramesCount = 0;
+    // 1. ACOUSTIC ECHO & AGENT SPEAKING IMMUNITY GUARD:
+    // Drop all inbound audio if Priya is speaking, synthesizing, or in post-speech echo window.
+    if (this.isAgentSpeaking || now < this.postSpeechCooldownUntil) {
+      this.inboundMulawChunks = [];
+      this.pendingSpeechChunks = [];
+      this.speechFramesCount = 0;
+      if (this.silenceTimer) {
+        clearTimeout(this.silenceTimer);
+        this.silenceTimer = null;
       }
-      // CRITICAL: NEVER accumulate inbound audio while agent is speaking!
-      // This prevents the self-echo loop where Priya responds to her own voice.
       return;
     }
 
-    // --- Caller Speaking Phase (Agent is Silent) ---
-    // Strict noise rejection: phone line hiss/room ambient is 300-650 RMS.
-    // Real human speech is > 850 RMS.
-    const isSpeech = rms > 850;
+    // 2. Caller Speaking Phase:
+    // Strict noise rejection floor:
+    // Phone line hiss, room ambience, breathing, air conditioning: 300 - 1000 RMS.
+    // True human vocalization directly into phone mic: > 1300 RMS.
+    const rms = this.getMulawRms(chunk);
+    const isSpeech = rms > 1300;
 
     if (isSpeech) {
       this.speechFramesCount++;
       this.pendingSpeechChunks.push(chunk);
 
-      // Accumulate audio once real speech persists for >140ms (7 frames)
-      if (this.speechFramesCount >= 7) {
+      // Accumulate audio once real speech persists for >160ms (8 frames)
+      if (this.speechFramesCount >= 8) {
         if (this.pendingSpeechChunks.length > 0) {
           this.inboundMulawChunks.push(...this.pendingSpeechChunks);
           this.pendingSpeechChunks = [];
@@ -373,20 +372,20 @@ export class VoiceSession {
         this.silenceTimer = null;
       }
 
-      // Generous conversational silence debounce: 800ms baseline (gives caller room to breathe and think)
+      // Conversational silence debounce: 1000ms baseline (gives caller space to complete sentences)
       const currentSpeechDuration = this.inboundMulawChunks.length / 8000;
-      const debounceMs = currentSpeechDuration > 1.2 ? 750 : 850;
+      const debounceMs = currentSpeechDuration > 1.5 ? 900 : 1050;
 
       this.silenceTimer = setTimeout(async () => {
-        if (!this.isProcessingSTT && this.inboundMulawChunks.length > 0) {
+        if (!this.isProcessingSTT && this.inboundMulawChunks.length > 0 && !this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
           const fullAudio = Buffer.concat(this.inboundMulawChunks);
           this.inboundMulawChunks = [];
           this.pendingSpeechChunks = [];
           this.speechFramesCount = 0;
 
-          // 8000 bytes = 1.0s in 8kHz mulaw. Discard clicks/isolated noises < 0.45s
+          // Discard noises under 0.55s (coughs, clicks, isolated breath sounds)
           const durationSec = fullAudio.length / 8000;
-          if (durationSec < 0.45) {
+          if (durationSec < 0.55) {
             return;
           }
 
@@ -415,21 +414,19 @@ export class VoiceSession {
             console.log(`[TurnDetector] Evaluated: "${combined}" -> complete=${turnDecision.isLikelyComplete} (${turnDecision.reason})`);
 
             if (turnDecision.shouldIgnore) {
-              console.log(`[TurnDetector] Ignoring non-turn sound: "${combined}"`);
+              console.log(`[TurnDetector] Ignoring non-turn sound/hallucination: "${combined}"`);
               return;
             }
 
             if (!turnDecision.isLikelyComplete) {
-              // Dangling fragment or continuation expected -> stage and wait for caller to finish speaking!
               this.stagedTranscript = combined;
               console.log(`[TurnDetector] Incomplete thought staged: "${this.stagedTranscript}". Waiting for caller continuation...`);
 
-              // Arm a safety fallback timer (2.2s): if caller goes completely quiet for >2s after a dangling word, respond
               if (this.fallbackUtteranceTimer) {
                 clearTimeout(this.fallbackUtteranceTimer);
               }
               this.fallbackUtteranceTimer = setTimeout(async () => {
-                if (this.stagedTranscript.trim() && !this.isProcessingUtterance) {
+                if (this.stagedTranscript.trim() && !this.isProcessingUtterance && !this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
                   const utterance = this.stagedTranscript.trim();
                   this.stagedTranscript = '';
                   console.log(`[TurnDetector Safety Timer] Processing stalled utterance: "${utterance}"`);
@@ -460,7 +457,7 @@ export class VoiceSession {
         // Trailing silence after confirmed speech
         this.inboundMulawChunks.push(chunk);
       } else {
-        // Isolated noise spike under 80ms — discard immediately
+        // Isolated noise spike under 160ms — discard immediately
         this.speechFramesCount = 0;
         this.pendingSpeechChunks = [];
       }
@@ -475,6 +472,21 @@ export class VoiceSession {
     if (!normalized.trim()) return;
 
     this.currentContextId = crypto.randomUUID();
+    this.isSynthesizingSpeech = true;
+
+    // Immediately flush any accumulated inbound audio and timers so noise during TTS is never queued
+    this.inboundMulawChunks = [];
+    this.pendingSpeechChunks = [];
+    this.speechFramesCount = 0;
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+    if (this.fallbackUtteranceTimer) {
+      clearTimeout(this.fallbackUtteranceTimer);
+      this.fallbackUtteranceTimer = null;
+    }
+    this.stagedTranscript = '';
 
     console.log(`[Telephony Audio Out] Speaking: "${normalized}"`);
 
@@ -500,7 +512,12 @@ export class VoiceSession {
 
         // 8000 samples per sec = 1 byte per millisecond in 8kHz mulaw
         const durationMs = mulawBuffer.length / 8;
-        this.agentSpeakingUntil = Date.now() + durationMs + 250;
+        const now = Date.now();
+        // Cumulative speaking time: extend if previous chunk is still playing
+        const currentEnd = Math.max(now, this.agentSpeakingUntil);
+        this.agentSpeakingUntil = currentEnd + durationMs + 300;
+        // 800ms acoustic echo cooldown window after Priya finishes speaking
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 800;
 
         // Discard any inbound audio accumulated prior to this speech
         this.inboundMulawChunks = [];
@@ -525,6 +542,8 @@ export class VoiceSession {
       }
     } catch (err: any) {
       console.warn('[Session] Telephony speech dispatch notice:', err.message);
+    } finally {
+      this.isSynthesizingSpeech = false;
     }
   }
 

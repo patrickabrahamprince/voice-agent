@@ -102,14 +102,14 @@ function runMockCall(params: {
       try {
         const msg = JSON.parse(data.toString());
 
-        if (msg.event === 'media' && msg.media?.payload) {
+        if ((msg.event === 'media' || msg.event === 'playAudio') && msg.media?.payload) {
           audioFramesReceived++;
           if (latencyMs === 0 && startTime > 0) {
             latencyMs = Date.now() - startTime;
           }
         }
 
-        if (msg.event === 'clear') {
+        if (msg.event === 'clear' || msg.event === 'clearAudio') {
           clearReceived = true;
         }
       } catch {}

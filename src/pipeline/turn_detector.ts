@@ -57,6 +57,12 @@ export const STANDALONE_VALID_ANSWERS = new Set([
   'confirmed',
   'correct',
   'exactly',
+  'price',
+  'pricing',
+  'location',
+  'jakkur',
+  'ready',
+  'oc',
 ]);
 
 // Linguistic indicators that a speaker is still thinking / hesitating mid-sentence
@@ -104,9 +110,9 @@ export const HESITATION_SUFFIXES = [
 const COMPLETION_PUNCTUATION = /[.?!]$/;
 
 export class SemanticTurnDetector {
-  private baseSilenceMs: number = 850;
+  private baseSilenceMs: number = 1000;
   private hesitationSilenceMs: number = 1400;
-  private fastTurnSilenceMs: number = 650;
+  private fastTurnSilenceMs: number = 750;
 
   /**
    * Checks if an utterance is purely a backchannel / hesitation sound.
@@ -125,8 +131,8 @@ export class SemanticTurnDetector {
     const cleanAlpha = raw.replace(/[^a-z0-9\s]/g, ' ').trim();
     const words = cleanAlpha.split(/\s+/).filter(Boolean);
 
-    // 1. Audio too brief or empty
-    if (audioDurationSec < 0.35 || words.length === 0) {
+    // 1. Audio too brief or empty (<0.45s or no words)
+    if (audioDurationSec < 0.45 || words.length === 0) {
       return {
         isLikelyComplete: false,
         shouldIgnore: true,
@@ -147,10 +153,17 @@ export class SemanticTurnDetector {
       };
     }
 
-    // 3. Single isolated dangling word ("Need", "College", "Flat", "Looking") -> INCOMPLETE
+    // 3. Single isolated word:
+    // Only genuine 1-word answers (yes, no, 2bhk, 3bhk, weekend, etc.) trigger turn completion.
+    // Random single words ("need", "college", "photo", "inside", "okay", "yeah") from background noise
+    // are ignored completely to prevent ghost replies.
     if (words.length === 1) {
       const singleWord = words[0];
-      if (STANDALONE_VALID_ANSWERS.has(singleWord) || singleWord.includes('bhk')) {
+      if (
+        STANDALONE_VALID_ANSWERS.has(singleWord) ||
+        singleWord.includes('bhk') ||
+        /^\d+$/.test(singleWord)
+      ) {
         return {
           isLikelyComplete: true,
           shouldIgnore: false,
@@ -161,10 +174,10 @@ export class SemanticTurnDetector {
       }
       return {
         isLikelyComplete: false,
-        shouldIgnore: false, // Don't discard, but stage and wait for caller to finish
+        shouldIgnore: true, // Discard isolated noise/hallucination!
         recommendedSilenceMs: this.hesitationSilenceMs,
         hesitationDetected: true,
-        reason: `Dangling 1-word fragment ("${singleWord}") — waiting for complete sentence`,
+        reason: `Ignored isolated 1-word noise/hallucination ("${singleWord}")`,
       };
     }
 
