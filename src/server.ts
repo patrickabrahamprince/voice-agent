@@ -520,14 +520,14 @@ function createVirtualSession(streamSid: string, callerNumber: string = '+91-988
  */
 app.post('/api/simulator/call', async (request: FastifyRequest<{ Body: { callerNumber?: string; voice?: string; enableSarvam?: boolean } }>) => {
   const callerNumber = request.body?.callerNumber || '+91-9880012345';
-  const voice = request.body?.voice || 'shubh';
+  const voice = request.body?.voice || 'kavya';
   const enableSarvam = request.body?.enableSarvam !== false && voice !== 'browser';
   const streamSid = `sim_stream_${Date.now()}`;
 
   const session = createVirtualSession(streamSid, callerNumber);
 
-  const agentName = 'Dylan Dsouza';
-  session.setAgentName('Dylan Dsouza');
+  const agentName = (voice === 'shubh' || voice === 'dylan') ? 'Dylan Dsouza' : 'Priya';
+  session.setAgentName(agentName);
 
   // Reset any cached qualifier so each simulated call starts completely clean
   clearQualifier();
@@ -538,8 +538,11 @@ app.post('/api/simulator/call', async (request: FastifyRequest<{ Body: { callerN
     ? memory.existingLead.callerName
     : 'you';
   
-  // Dylan Dsouza Script Step 1 Greeting
-  const greetingText = `Hi, good morning — am I speaking with ${callerName}?`;
+  const greetingText = agentName === 'Priya'
+    ? (callerName !== 'you'
+        ? `Hello! Welcome back to Mittal Palms. This is Priya. Wonderful to connect with you again! Are you looking for a 2 BHK or a 3 BHK?`
+        : `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`)
+    : `Hi, good morning — am I speaking with ${callerName}?`;
 
   let greetingAudioBase64: string | undefined;
   let audioContentType: string | undefined;
@@ -614,8 +617,8 @@ app.post(
       session.setConversationHistory(history);
     }
 
-    const agentName = 'Dylan Dsouza';
-    session.setAgentName('Dylan Dsouza');
+    const agentName = (voice === 'shubh' || voice === 'dylan') ? 'Dylan Dsouza' : (session.getAgentName() || 'Priya');
+    session.setAgentName(agentName);
 
     if (!text.trim()) {
       return reply.code(400).send({ error: 'Missing or empty utterance text.' });
@@ -699,7 +702,10 @@ app.get('/admin', async (request, reply) => {
       `<span id="sheet-link-text">${hasSheetConfigured ? 'Open Live Google Sheet' : 'Google Sheet (Configure ID)'}</span>`
     );
 
-  reply.header('Content-Type', 'text/html');
+  reply.header('Content-Type', 'text/html; charset=utf-8');
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  reply.header('Pragma', 'no-cache');
+  reply.header('Expires', '0');
   return reply.send(html);
 });
 

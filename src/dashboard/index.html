@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trishul Mittal Palms — Dylan Dsouza Voice AI Dashboard</title>
+  <title>Trishul Mittal Palms — AI Voice Advisor Dashboard (080 6434 8409)</title>
   
   <!-- High-Legibility Typography: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -62,6 +62,7 @@
       font-size: 13.5px;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
     /* Top Sticky Navigation Bar */
@@ -72,23 +73,19 @@
       top: 0;
       z-index: 50;
       box-shadow: var(--shadow-sm);
+      width: 100%;
     }
 
     .header-inner {
-      max-width: 1160px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 0 20px;
-      height: 60px;
+      min-height: 60px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 24px;
+      gap: 12px;
+      box-sizing: border-box;
     }
 
     .brand-pill {
@@ -97,11 +94,13 @@
       gap: 10px;
       text-decoration: none;
       color: inherit;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .brand-icon {
-      width: 34px;
-      height: 34px;
+      width: 36px;
+      height: 36px;
       border-radius: var(--radius-md);
       background: var(--accent-blue-subtle);
       border: 1px solid #BFDBFE;
@@ -117,32 +116,40 @@
       font-weight: 800;
       color: var(--text-primary);
       letter-spacing: -0.01em;
-      line-height: 1.15;
+      line-height: 1.2;
+      white-space: nowrap;
     }
 
     .brand-sub {
       font-size: 11px;
       color: var(--text-muted);
-      font-weight: 500;
+      font-weight: 600;
+      white-space: nowrap;
     }
 
     /* Navigation Tabs */
     .nav-tabs {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 3px;
       background: #F1F5F9;
       padding: 3px;
       border-radius: var(--radius-md);
+      flex-shrink: 1;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar {
+      display: none;
     }
 
     .nav-tab {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      padding: 6px 14px;
+      gap: 6px;
+      padding: 6px 12px;
       border-radius: 7px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 600;
       color: var(--text-secondary);
       background: transparent;
@@ -150,6 +157,7 @@
       cursor: pointer;
       transition: all 0.15s ease;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .nav-tab:hover {
@@ -164,9 +172,9 @@
     }
 
     .nav-badge {
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 700;
-      padding: 1px 6px;
+      padding: 1px 5px;
       border-radius: 999px;
       background: #E2E8F0;
       color: var(--text-secondary);
@@ -180,20 +188,22 @@
     .header-right {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     .status-capsule {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
+      gap: 5px;
+      font-size: 11.5px;
       font-weight: 600;
       color: var(--accent-emerald);
       background: var(--accent-emerald-subtle);
       border: 1px solid #A7F3D0;
-      padding: 4px 10px;
+      padding: 4px 9px;
       border-radius: 999px;
+      white-space: nowrap;
     }
 
     .pulse-dot {
@@ -210,16 +220,17 @@
     }
 
     .header-link {
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 600;
       color: var(--text-secondary);
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-radius: var(--radius-sm);
       transition: background 0.15s;
+      white-space: nowrap;
     }
     .header-link:hover {
       background: #F1F5F9;
@@ -229,16 +240,17 @@
     .btn-refresh {
       background: #FFFFFF;
       border: 1px solid var(--border-dark);
-      padding: 6px 12px;
+      padding: 5px 10px;
       border-radius: var(--radius-sm);
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 600;
       color: var(--text-primary);
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       transition: all 0.15s ease;
+      white-space: nowrap;
     }
     .btn-refresh:hover {
       background: #F8FAFC;
@@ -247,9 +259,11 @@
 
     /* Main Container */
     .dashboard-container {
-      max-width: 1160px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 24px 20px 48px;
+      padding: 20px 20px 48px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     /* Tab Panes */
@@ -263,6 +277,36 @@
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(3px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive Media Queries */
+    @media (max-width: 1120px) {
+      .brand-sub { display: none; }
+      .header-inner { padding: 0 14px; gap: 8px; }
+      .nav-tab { padding: 5px 9px; font-size: 11.5px; }
+      .sheet-label, .refresh-label { display: none; }
+    }
+
+    @media (max-width: 860px) {
+      .header-inner {
+        flex-wrap: wrap;
+        min-height: auto;
+        padding: 8px 12px 10px;
+        gap: 8px;
+      }
+      .brand-pill { order: 1; }
+      .header-right { order: 2; margin-left: auto; }
+      .nav-tabs {
+        order: 3;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 4px;
+        background: #F1F5F9;
+      }
+      .dashboard-container {
+        padding: 14px 12px 32px;
+      }
     }
 
     /* Clean Card */
@@ -285,11 +329,6 @@
     @media (max-width: 900px) {
       .sim-grid {
         grid-template-columns: 1fr;
-      }
-      .header-inner {
-        flex-wrap: wrap;
-        height: auto;
-        padding: 12px 16px;
       }
     }
 
@@ -983,12 +1022,13 @@
     }
 
     .live-transcript-feed {
-      height: 520px;
+      height: clamp(340px, calc(100vh - 420px), 540px);
+      min-height: 320px;
       overflow-y: auto;
-      padding: 20px;
+      padding: 18px 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
       background: #FAFAFA;
       scroll-behavior: smooth;
     }
@@ -1176,67 +1216,68 @@
       100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
   </style>
-</head>
 <body>
 
   <!-- Top Navigation Header -->
   <header class="app-header">
     <div class="header-inner">
-      <div class="header-left">
-        <!-- Brand Cluster -->
-        <a href="#" class="brand-pill" onclick="switchTab('live'); return false;">
-          <div class="brand-icon">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
-            </svg>
-          </div>
-          <div>
-            <div class="brand-name">Trishul Mittal Palms</div>
-            <div class="brand-sub">Priya • Bangalore Property Advisor</div>
-          </div>
-        </a>
-
-        <!-- Horizontal Nav Tabs -->
-        <nav class="nav-tabs">
-          <button class="nav-tab tab-item active" onclick="switchTab('live')" id="nav-btn-live">
-            <span class="pulse-red-dot" id="live-tab-dot" style="display:none;"></span>
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-            <span>Live Call Feed</span>
-            <span class="nav-badge" id="live-tab-badge" style="background:#EF4444;color:#fff;display:none;">LIVE</span>
-          </button>
-          <button class="nav-tab tab-item" onclick="switchTab('sim')">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
-            <span>Voice Simulator</span>
-          </button>
-          <button class="nav-tab tab-item" onclick="switchTab('leads')">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <span>Lead Inquiries</span>
-            <span class="nav-badge" id="leads-tab-badge">0</span>
-          </button>
-          <button class="nav-tab tab-item" onclick="switchTab('calls')">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-            <span>Call Logs</span>
-            <span class="nav-badge" id="calls-tab-badge">0</span>
-          </button>
-          <button class="nav-tab tab-item" onclick="switchTab('settings')">
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            <span>Telephony</span>
-          </button>
-        </nav>
-      </div>
-
-      <div class="header-right">
-        <div id="live-call-top-indicator" style="display:none;align-items:center;gap:6px;background:#FEF2F2;border:1px solid #FECACA;padding:5px 12px;border-radius:20px;cursor:pointer;color:#DC2626;font-size:12px;font-weight:700;" onclick="switchTab('live')" title="Click to view live phone call feed">
-          <span class="pulse-red-dot"></span>
-          <span id="live-top-text">In-Call: 080 6434 8409</span>
+      <!-- Brand Cluster -->
+      <a href="#" class="brand-pill" onclick="switchTab('live'); return false;">
+        <div class="brand-icon">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
+          </svg>
         </div>
-        <a id="sheet-link" href="#" target="_blank" class="header-link">Google Sheets ↗</a>
-        <div class="status-capsule">
-          <span class="pulse-dot"></span> Priya Ready (Jakkur)
+        <div>
+          <div class="brand-name">Trishul Mittal Palms</div>
+          <div class="brand-sub">Priya • Bangalore Property Advisor</div>
+        </div>
+      </a>
+
+      <!-- Horizontal Nav Tabs -->
+      <nav class="nav-tabs" id="main-nav-tabs">
+        <button class="nav-tab tab-item active" onclick="switchTab('live')" id="nav-btn-live">
+          <span class="pulse-red-dot" id="live-tab-dot" style="display:none;"></span>
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <span>Live Feed</span>
+          <span class="nav-badge" id="live-tab-badge" style="background:#EF4444;color:#fff;display:none;">LIVE</span>
+        </button>
+        <button class="nav-tab tab-item" onclick="switchTab('sim')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+          <span>Simulator</span>
+        </button>
+        <button class="nav-tab tab-item" onclick="switchTab('leads')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Leads</span>
+          <span class="nav-badge" id="leads-tab-badge">0</span>
+        </button>
+        <button class="nav-tab tab-item" onclick="switchTab('calls')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+          <span>Call Logs</span>
+          <span class="nav-badge" id="calls-tab-badge">0</span>
+        </button>
+        <button class="nav-tab tab-item" onclick="switchTab('settings')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>Telephony</span>
+        </button>
+      </nav>
+
+      <!-- Header Actions Right -->
+      <div class="header-right">
+        <div id="live-call-top-indicator" style="display:none;align-items:center;gap:6px;background:#FEF2F2;border:1px solid #FECACA;padding:4px 9px;border-radius:20px;cursor:pointer;color:#DC2626;font-size:11.5px;font-weight:700;white-space:nowrap;" onclick="switchTab('live')" title="Click to view live phone call feed">
+          <span class="pulse-red-dot"></span>
+          <span id="live-top-text">In-Call</span>
+        </div>
+        <a id="sheet-link" href="#" target="_blank" class="header-link" title="Open Google Sheets">
+          <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          <span class="sheet-label">Sheets ↗</span>
+        </a>
+        <div class="status-capsule" title="Inbound landline active on 080 6434 8409">
+          <span class="pulse-dot"></span> <span class="capsule-label">Priya Ready</span>
         </div>
         <button onclick="loadData()" class="btn-refresh" title="Refresh Data">
           <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Refresh
+          <span class="refresh-label">Refresh</span>
         </button>
       </div>
     </div>
@@ -1251,29 +1292,36 @@
     <!-- TAB 0: REAL-TIME TELEPHONY LIVE FEED (Priya & Customer Live Dialogue) -->
     <div id="view-live" class="tab-pane active">
       <!-- Top Live Call Status Banner -->
-      <div class="live-top-banner" id="live-banner">
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="live-banner" id="live-banner" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;background:#FFFFFF;border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow-sm);">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <span class="live-status-pill standby" id="live-status-badge">
             <span class="pulse-dot" id="live-status-dot"></span>
             <span id="live-status-label">Standby • Line: 080 6434 8409</span>
           </span>
           <div style="display:flex;flex-direction:column;gap:2px;">
-            <div style="font-size:14px;font-weight:700;color:var(--text-primary);" id="live-call-title">
+            <div style="font-size:13.5px;font-weight:700;color:var(--text-primary);" id="live-call-title">
               Mittal Palms Voice AI Telephony Line
             </div>
-            <div style="font-size:12px;color:var(--text-muted);" id="live-call-subtitle">
+            <div style="font-size:11.5px;color:var(--text-muted);" id="live-call-subtitle">
               Priya • Bangalore Property Advisor (Fixed Line: +91 80 6434 8409)
             </div>
           </div>
         </div>
 
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="text-align:right;">
-            <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Call Duration</div>
-            <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--text-primary);" id="live-timer">00:00</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <button id="btn-live-start-test" onclick="startSimulatedCall();" class="btn-action start" style="padding: 6px 12px; font-size: 12px;">
+            <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/></svg>
+            <span id="btn-live-start-text">Start Test Call</span>
+          </button>
+          <button id="btn-live-end-call" onclick="endLiveOrSimCall();" class="btn-action end" disabled style="padding: 6px 12px; font-size: 12px;">
+            <span>End Call</span>
+          </button>
+          <div style="text-align:right; margin: 0 4px;">
+            <div style="font-size:9.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Duration</div>
+            <div style="font-size:15px;font-weight:800;font-family:var(--font-mono);color:var(--text-primary);" id="live-timer">00:00</div>
           </div>
-          <button onclick="clearLiveTranscript()" class="btn-refresh" title="Clear transcript view" style="padding:6px 10px;">
-            Clear View
+          <button onclick="clearLiveTranscript()" class="btn-refresh" title="Clear transcript view" style="padding:6px 10px; font-size: 12px;">
+            Clear
           </button>
         </div>
       </div>
@@ -1297,7 +1345,7 @@
       <!-- 2-Column Live Feed Grid -->
       <div class="live-feed-grid">
         <!-- Left: Real-Time Auto-Scrolling Conversation Stream -->
-        <div class="clean-card">
+        <div class="clean-card" style="display: flex; flex-direction: column;">
           <div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#FFFFFF;">
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:13.5px;font-weight:700;color:var(--text-primary);">Real-Time Audio & Transcription Feed</span>
@@ -1318,6 +1366,21 @@
                 As soon as you connect, Priya's spoken words and your voice responses will appear here in real-time.
               </p>
             </div>
+          </div>
+
+          <!-- Customer Dialogue & Audio Controls -->
+          <div style="padding: 12px 16px; border-top: 1px solid var(--border); background: #FFFFFF; display: flex; align-items: center; gap: 8px;">
+            <input id="live-caller-input" type="text" placeholder="Type customer reply (e.g. 'I am looking for a 3 BHK under 1.5 Cr') or speak..." style="flex: 1; background: #F8FAFC; border: 1px solid var(--border-dark); border-radius: 6px; padding: 8px 12px; font-size: 13px; outline: none;" onkeydown="if(event.key==='Enter') sendLiveUtterance();" />
+            <button id="btn-live-mic" onclick="toggleLiveMic()" class="btn-action stop" style="padding: 7px 12px;" title="Microphone Input">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+              <span>Mic</span>
+            </button>
+            <button onclick="sendLiveUtterance()" class="btn-action start" style="padding: 7px 14px;">
+              <span>Send</span>
+            </button>
+            <button onclick="triggerLiveCallBargeIn()" class="btn-action stop" style="padding: 7px 10px;" title="Interrupt Priya (Barge-in)">
+              <span>Interrupt</span>
+            </button>
           </div>
         </div>
 
@@ -1507,8 +1570,8 @@
             </div>
             
             <select id="voice-select" class="voice-select-clean">
-              <option value="shubh" selected>👨 Dylan Dsouza — Sarvam AI Bulbul (Shubh • Advisor)</option>
-              <option value="kavya">👩 Kavya — Sarvam AI Bulbul (Conversational)</option>
+              <option value="kavya" selected>👩 Priya — Sarvam AI Bulbul (Kavya • Bangalore Advisor)</option>
+              <option value="shubh">👨 Dylan Dsouza — Sarvam AI Bulbul (Shubh • Advisor)</option>
               <option value="roopa">👩 Roopa — Sarvam AI Bulbul (Crisp)</option>
             </select>
 
@@ -1885,6 +1948,16 @@
         badge.innerHTML = '<span class="pulse-red-dot"></span> LIVE CALL IN PROGRESS';
       }
 
+      // Synchronize action buttons
+      const startBtn = document.getElementById('btn-live-start-test');
+      if (startBtn) {
+        startBtn.disabled = true;
+        const span = startBtn.querySelector('span');
+        if (span) span.innerText = 'Call Active';
+      }
+      const endBtn = document.getElementById('btn-live-end-call');
+      if (endBtn) endBtn.disabled = false;
+
       const topIndicator = document.getElementById('live-call-top-indicator');
       if (topIndicator) {
         topIndicator.style.display = 'inline-flex';
@@ -1918,26 +1991,23 @@
       // Append Call Start Chip
       appendLiveEventChip('call-start', '📞 Call Connected • Line 080 6434 8409 • ' + (event.callerNumber || ''));
 
-      // If initial greeting was provided, append it
-      if (event.data?.greeting) {
-        appendLiveBubble('agent', event.data.agentName || 'Priya', event.data.greeting);
-      }
+      // Do NOT call appendLiveBubble here! handleLiveAgentSpeaking will append greeting when Priya speaks!
+      const initialAgent = event.data?.agentName || 'Priya';
+      updateLiveAcousticStatus('speaking', initialAgent + ' Connecting...');
 
-      updateLiveAcousticStatus('speaking', (event.data?.agentName || 'Priya') + ' Speaking greeting...');
-
-      // Auto-switch to Live Feed view if user is on default
-      if (!window.location.hash || window.location.hash === '#sim' || window.location.hash === '') {
-        switchTab('live');
-      }
+      // Auto-switch to Live Feed view
+      switchTab('live');
     }
 
     function handleLiveAgentSpeaking(event) {
       const text = event.data?.text;
       if (!text) return;
-      const agentName = event.data?.agentName || 'Priya';
+      const rawName = event.data?.agentName || 'Priya';
+      const cleanName = rawName.includes('Dylan') ? 'Dylan Dsouza' : 'Priya';
 
-      appendLiveBubble('agent', agentName, text);
-      updateLiveAcousticStatus('speaking', agentName + ' Speaking: "' + text.slice(0, 50) + (text.length > 50 ? '...' : '') + '"');
+      appendLiveBubble('agent', cleanName, text);
+      const shortName = cleanName.includes('Dylan') ? 'Dylan' : 'Priya';
+      updateLiveAcousticStatus('speaking', shortName + ' Speaking: "' + text.slice(0, 50) + (text.length > 50 ? '...' : '') + '"');
     }
 
     function handleLiveCallerSpeech(event) {
@@ -1987,14 +2057,33 @@
         liveCallTimerInterval = null;
       }
 
+      currentLiveStreamSid = null;
+      activeStreamSid = null;
+
       const banner = document.getElementById('live-banner');
       if (banner) banner.classList.remove('active-call');
 
       const badge = document.getElementById('live-status-badge');
       if (badge) {
         badge.className = 'live-status-pill standby';
-        badge.innerHTML = '<span class="pulse-dot"></span> Call Completed • Line Standby';
+        badge.innerHTML = '<span class="pulse-dot"></span> Standby • Line: 080 6434 8409';
       }
+
+      const startBtn = document.getElementById('btn-live-start-test');
+      if (startBtn) {
+        startBtn.disabled = false;
+        const span = startBtn.querySelector('span');
+        if (span) span.innerText = 'Start Test Call';
+      }
+
+      const endBtn = document.getElementById('btn-live-end-call');
+      if (endBtn) endBtn.disabled = true;
+
+      const title = document.getElementById('live-call-title');
+      if (title) title.innerText = 'Mittal Palms Voice AI Telephony Line';
+
+      const subtitle = document.getElementById('live-call-subtitle');
+      if (subtitle) subtitle.innerText = 'Priya • Bangalore Property Advisor (Fixed Line: +91 80 6434 8409)';
 
       const topIndicator = document.getElementById('live-call-top-indicator');
       if (topIndicator) topIndicator.style.display = 'none';
@@ -2005,10 +2094,10 @@
       const tabBadge = document.getElementById('live-tab-badge');
       if (tabBadge) tabBadge.style.display = 'none';
 
-      const duration = event.data?.durationSeconds ? event.data.durationSeconds + 's' : 'concluded';
+      const duration = event?.data?.durationSeconds ? event.data.durationSeconds + 's' : 'concluded';
       appendLiveEventChip('call-end', '🏁 Call Concluded • Duration: ' + duration);
 
-      if (event.data?.summary) {
+      if (event?.data?.summary) {
         appendLiveSummaryCard(event.data.summary);
       }
 
@@ -2020,32 +2109,149 @@
 
     function appendLiveBubble(role, author, text) {
       const feed = document.getElementById('live-dialogue-feed');
-      if (!feed) return;
+      if (!feed || !text || !text.trim()) return;
 
       const empty = document.getElementById('live-empty-state');
       if (empty) empty.style.display = 'none';
+
+      const cleanText = text.trim();
+      const normalizeCompare = (s) => (s || '').toLowerCase().replace(/[\s\-_.,?!']/g, '');
+
+      // Deduplicate identical consecutive messages
+      const lastBubble = feed.querySelector('.live-bubble:last-child');
+      if (lastBubble && lastBubble.classList.contains(role)) {
+        const lastEl = lastBubble.querySelector('.live-bubble-text');
+        const lastText = lastEl ? lastEl.innerText.trim() : '';
+        if (lastText) {
+          const normLast = normalizeCompare(lastText);
+          const normCurr = normalizeCompare(cleanText);
+          if (normLast === normCurr || normCurr.startsWith(normLast) || normLast.startsWith(normCurr)) {
+            if (cleanText.length > lastText.length) {
+              lastEl.innerText = cleanText;
+            }
+            return;
+          }
+        }
+      }
 
       const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
       const bubble = document.createElement('div');
       bubble.className = 'live-bubble ' + role;
 
-      const avatarLetter = role === 'agent' ? 'P' : 'C';
+      const isAgent = role === 'agent';
+      const isDylan = isAgent && (author.toLowerCase().includes('dylan') || (!author.toLowerCase().includes('priya') && selectedNeuralVoiceId === 'shubh'));
+      
+      const avatarLetter = isAgent ? (isDylan ? 'D' : 'P') : 'C';
+      const displayAuthor = isAgent 
+        ? (isDylan ? 'Dylan Dsouza • Advisor' : 'Priya • Property Advisor')
+        : 'Customer';
+      const engineLabel = isAgent ? 'Sarvam Bulbul' : 'Saaras v3';
 
       bubble.innerHTML = `
         <div class="live-bubble-avatar">${avatarLetter}</div>
         <div class="live-bubble-content">
           <div class="live-bubble-header">
-            <span class="live-bubble-author">${escapeHtml(author)}</span>
+            <span class="live-bubble-author">${escapeHtml(displayAuthor)}</span>
             <span>${time}</span>
-            <span style="font-size:10px;color:var(--text-subtle);">${role === 'agent' ? 'Sarvam Bulbul' : 'Saaras v3'}</span>
+            <span style="font-size:10px;color:var(--text-subtle);">${engineLabel}</span>
           </div>
-          <div class="live-bubble-text">${escapeHtml(text)}</div>
+          <div class="live-bubble-text">${escapeHtml(cleanText)}</div>
         </div>
       `;
 
       feed.appendChild(bubble);
       feed.scrollTop = feed.scrollHeight;
+    }
+
+    async function sendLiveUtterance() {
+      const input = document.getElementById('live-caller-input');
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+      input.value = '';
+
+      const sid = activeStreamSid || currentLiveStreamSid;
+      if (!sid) {
+        await startSimulatedCall();
+        setTimeout(() => sendUtterance(text), 600);
+      } else {
+        await sendUtterance(text);
+      }
+    }
+
+    async function toggleLiveMic() {
+      if (!recognition) {
+        alert('Web Speech API is not supported in this browser. Please use Google Chrome.');
+        return;
+      }
+      const sid = activeStreamSid || currentLiveStreamSid;
+      if (!sid) {
+        await startSimulatedCall();
+        setTimeout(startMicrophone, 800);
+        return;
+      }
+      toggleMicrophone();
+      const btn = document.getElementById('btn-live-mic');
+      if (btn) {
+        if (isRecording) {
+          btn.style.background = '#DC2626';
+          btn.style.color = '#FFFFFF';
+        } else {
+          btn.style.background = '';
+          btn.style.color = '';
+        }
+      }
+    }
+
+    function triggerLiveCallBargeIn() {
+      const sid = activeStreamSid || currentLiveStreamSid;
+      if (sid) {
+        fetch('/api/simulator/barge-in', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ streamSid: sid })
+        }).catch(() => {});
+      }
+      stopCurrentSpeech();
+    }
+
+    async function endLiveOrSimCall() {
+      const sid = activeStreamSid || currentLiveStreamSid;
+      stopCurrentSpeech();
+      stopMicrophone();
+
+      if (sid) {
+        try {
+          await fetch('/api/simulator/hangup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ streamSid: sid })
+          });
+        } catch (e) {}
+      }
+
+      handleLiveCallEnded({ streamSid: sid });
+
+      const statusBadge = document.getElementById('call-status-badge');
+      if (statusBadge) {
+        statusBadge.innerText = 'Completed';
+        statusBadge.style.color = 'var(--text-muted)';
+        statusBadge.style.borderColor = 'var(--border)';
+        statusBadge.style.background = '#F1F5F9';
+      }
+
+      const simStart = document.getElementById('btn-start-call');
+      if (simStart) simStart.disabled = false;
+      const simEnd = document.getElementById('btn-end-call');
+      if (simEnd) simEnd.disabled = true;
+      const callerInput = document.getElementById('caller-input');
+      if (callerInput) callerInput.disabled = true;
+      const sendBtn = document.getElementById('btn-send-utterance');
+      if (sendBtn) sendBtn.disabled = true;
+      if (document.getElementById('btn-mic')) document.getElementById('btn-mic').disabled = true;
+
+      updateVoiceStatusBar('idle', 'Call Concluded', 'Conversation analyzed & classified into lead buckets');
+      setTimeout(loadData, 800);
     }
 
     function appendLiveEventChip(type, text) {
@@ -2180,7 +2386,7 @@
       connectLiveFeedSSE();
 
       const hash = window.location.hash.replace('#', '');
-      if (hash && document.getElementById('view-' + hash)) {
+      if (hash && hash !== 'sim' && document.getElementById('view-' + hash)) {
         switchTab(hash);
       } else {
         switchTab('live');
@@ -2901,44 +3107,74 @@
         dummy.play().catch(() => {});
       } catch (e) {}
 
-      const phone = document.getElementById('sim-phone').value;
+      const phone = (document.getElementById('sim-phone')?.value) || '+91-9880199221';
+      const voiceEl = document.getElementById('voice-select');
+      const voice = voiceEl ? voiceEl.value : (selectedNeuralVoiceId || 'kavya');
+
+      const startBtnLive = document.getElementById('btn-live-start-test');
+      if (startBtnLive) {
+        startBtnLive.disabled = true;
+        const span = startBtnLive.querySelector('span');
+        if (span) span.innerText = 'Connecting...';
+      }
+
       const res = await fetch('/api/simulator/call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           callerNumber: phone,
-          voice: selectedNeuralVoiceId || 'kavya',
+          voice: voice,
           enableSarvam: isSarvamActive()
         })
       });
       const data = await res.json();
       if (data.success) {
         activeStreamSid = data.streamSid;
-        const statusBadge = document.getElementById('call-status-badge');
-        statusBadge.innerText = 'Connected';
-        statusBadge.style.color = '#059669';
-        statusBadge.style.borderColor = '#A7F3D0';
-        statusBadge.style.background = '#ECFDF5';
+        currentLiveStreamSid = data.streamSid;
 
-        document.getElementById('btn-start-call').disabled = true;
-        document.getElementById('btn-end-call').disabled = false;
-        document.getElementById('caller-input').disabled = false;
-        document.getElementById('btn-send-utterance').disabled = false;
+        if (startBtnLive) {
+          startBtnLive.disabled = true;
+          const span = startBtnLive.querySelector('span');
+          if (span) span.innerText = 'Call Active';
+        }
+        const endBtnLive = document.getElementById('btn-live-end-call');
+        if (endBtnLive) endBtnLive.disabled = false;
+
+        const statusBadge = document.getElementById('call-status-badge');
+        if (statusBadge) {
+          statusBadge.innerText = 'Connected';
+          statusBadge.style.color = '#059669';
+          statusBadge.style.borderColor = '#A7F3D0';
+          statusBadge.style.background = '#ECFDF5';
+        }
+
+        const simStart = document.getElementById('btn-start-call');
+        if (simStart) simStart.disabled = true;
+        const simEnd = document.getElementById('btn-end-call');
+        if (simEnd) simEnd.disabled = false;
+        const callerInput = document.getElementById('caller-input');
+        if (callerInput) callerInput.disabled = false;
+        const sendBtn = document.getElementById('btn-send-utterance');
+        if (sendBtn) sendBtn.disabled = false;
         if (document.getElementById('btn-mic')) document.getElementById('btn-mic').disabled = false;
 
-        const greeting = data.greetingText || `Hi, good morning — am I speaking with you?`;
-        
+        const greeting = data.greetingText || `Hello! This is Priya from Mittal Palms. How may I assist you today?`;
         clientDialogueHistory = [{ role: 'assistant', content: greeting }];
 
+        const agentDisplayName = data.agentName === 'Dylan Dsouza' 
+          ? 'Dylan Dsouza • Property Advisor' 
+          : 'Priya • Bangalore Property Advisor';
         const box = document.getElementById('dialogue-box');
-        box.innerHTML = `
-          <div class="bubble-wrapper agent">
-            <span class="bubble-sender-tag">Dylan Dsouza • Property Advisor</span>
-            <div class="bubble-card">
-              ${greeting}
+        if (box) {
+          box.innerHTML = `
+            <div class="bubble-wrapper agent">
+              <span class="bubble-sender-tag">${escapeHtml(agentDisplayName)}</span>
+              <div class="bubble-card">
+                ${escapeHtml(greeting)}
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
 
         const audioEnabled = isAudioActive();
         if (data.greetingAudioBase64 && audioEnabled && isSarvamActive()) {
@@ -2947,6 +3183,12 @@
           speakPriyaResponse(greeting);
         }
         loadData();
+      } else {
+        if (startBtnLive) {
+          startBtnLive.disabled = false;
+          const span = startBtnLive.querySelector('span');
+          if (span) span.innerText = 'Start Test Call';
+        }
       }
     }
 
@@ -3120,38 +3362,7 @@
     }
 
     async function endSimulatedCall() {
-      if (!activeStreamSid) return;
-      stopCurrentSpeech();
-      stopMicrophone();
-
-      await fetch('/api/simulator/hangup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ streamSid: activeStreamSid })
-      });
-      activeStreamSid = null;
-      const statusBadge = document.getElementById('call-status-badge');
-      statusBadge.innerText = 'Completed';
-      statusBadge.style.color = 'var(--text-muted)';
-      statusBadge.style.borderColor = 'var(--border)';
-      statusBadge.style.background = '#F1F5F9';
-
-      document.getElementById('btn-start-call').disabled = false;
-      document.getElementById('btn-end-call').disabled = true;
-      document.getElementById('caller-input').disabled = true;
-      document.getElementById('btn-send-utterance').disabled = true;
-      if (document.getElementById('btn-mic')) document.getElementById('btn-mic').disabled = true;
-
-      updateVoiceStatusBar('idle', 'Call Concluded', 'Conversation analyzed & classified into lead buckets');
-
-      const box = document.getElementById('dialogue-box');
-      box.innerHTML += `
-        <div style="font-size: 12px; color: #065F46; text-align: center; padding: 9px; background: #ECFDF5; border-radius: 6px; border: 1px solid #A7F3D0;">
-          ✓ Call concluded. Lead record synced with CRM.
-        </div>
-      `;
-      box.scrollTop = box.scrollHeight;
-      setTimeout(loadData, 800);
+      await endLiveOrSimCall();
     }
 
     // Initial Load & Poll
