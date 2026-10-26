@@ -101,15 +101,16 @@ export class LLMPipeline {
     const sarvamKey = process.env.SARVAM_API_KEY;
     const openRouterKey = process.env.OPENROUTER_API_KEY;
 
+    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+      console.log('[LLM] ✅ Primary: Sarvam AI 105B (sarvam-105b-conversations • 268ms ultra-fast)');
+    }
     if (groqKey && groqKey !== 'your_groq_api_key_here') {
       this.groq = new Groq({ apiKey: groqKey });
-      console.log('[LLM] ✅ Primary: Groq qwen/qwen3.8-27b (ultra-low latency, fast reasoning, 131k context)');
-    } else if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
-      console.log('[LLM] SARVAM_API_KEY active. Using Sarvam AI 105B (sarvam-105b-conversations) as fallback LLM.');
+      console.log('[LLM] ⚡ Fallback 1: Groq qwen/qwen3.8-27b (295ms low-latency reasoning)');
     } else if (openRouterKey && openRouterKey !== 'your_openrouter_api_key_here') {
-      console.log('[LLM] OPENROUTER_API_KEY active. Using meta-llama/llama-3.3-70b-instruct as fallback LLM.');
+      console.log('[LLM] ⚡ Fallback 2: OpenRouter meta-llama/llama-3.3-70b-instruct');
     } else {
-      console.warn('[LLM] No API key configured. Using local Trishul Mittal Palms qualification engine.');
+      console.warn('[LLM] Using local Trishul Mittal Palms qualification engine.');
     }
   }
 
@@ -142,7 +143,50 @@ export class LLMPipeline {
     }
     qualifier.hydrateFromHistory(messages);
 
-    // 1. PRIMARY: Groq Qwen 2.5 27B (ultra-low latency ~280ms, 131k context)
+    // 1. PRIMARY: Sarvam AI 105B Conversations (ultra-fast ~268ms turnaround, tuned for Indian voice)
+    const sarvamKey = process.env.SARVAM_API_KEY;
+    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
+      try {
+        const t0 = Date.now();
+        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName);
+        const contextualMessages = [
+          { role: 'system', content: contextualSystemPrompt },
+          ...messages.filter((m) => m.role !== 'system'),
+        ];
+
+        const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'api-subscription-key': sarvamKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sarvam-105b-conversations',
+            messages: contextualMessages.map((m) => ({ role: m.role, content: m.content })),
+            temperature: 0.25,
+            max_tokens: 80,
+          }),
+          signal: abortSignal,
+        });
+
+        if (res.ok) {
+          const data: any = await res.json();
+          const reply = data.choices?.[0]?.message?.content?.trim();
+          if (reply) {
+            console.log(`[Sarvam 105B Primary] ${agentName} reply in ${Date.now() - t0}ms: "${reply}"`);
+            yield reply;
+            return;
+          }
+        } else if (res.status === 402 || res.status === 429) {
+          console.warn(`[Sarvam LLM] Quota/rate-limit (HTTP ${res.status}). Falling back to Groq.`);
+        }
+      } catch (err: any) {
+        if (abortSignal?.aborted) return;
+        console.warn('[Sarvam 105B LLM] Notice, falling back to Groq:', err.message);
+      }
+    }
+
+    // 2. FALLBACK 1: Groq Qwen 2.5 27B (ultra-low latency ~295ms, 131k context)
     const groqKey = process.env.GROQ_API_KEY;
     if (groqKey && groqKey !== 'your_groq_api_key_here' && !abortSignal?.aborted) {
       try {
@@ -194,54 +238,12 @@ export class LLMPipeline {
         }
 
         if (fullReply.trim()) {
-          console.log(`[Groq ${this.model}] ${agentName} reply: "${fullReply.trim()}"`);
+          console.log(`[Groq ${this.model} Fallback 1] ${agentName} reply: "${fullReply.trim()}"`);
           return;
         }
       } catch (err: any) {
         if (abortSignal?.aborted) return;
         console.warn(`[Groq ${this.model}] Notice, falling back:`, err.message);
-      }
-    }
-
-    // 2. FALLBACK A: Sarvam AI 105B Conversations
-    const sarvamKey = process.env.SARVAM_API_KEY;
-    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
-      try {
-        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName);
-        const contextualMessages = [
-          { role: 'system', content: contextualSystemPrompt },
-          ...messages.filter((m) => m.role !== 'system'),
-        ];
-
-        const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'api-subscription-key': sarvamKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'sarvam-105b-conversations',
-            messages: contextualMessages.map((m) => ({ role: m.role, content: m.content })),
-            temperature: 0.25,
-            max_tokens: 100,
-          }),
-          signal: abortSignal,
-        });
-
-        if (res.ok) {
-          const data: any = await res.json();
-          const reply = data.choices?.[0]?.message?.content?.trim();
-          if (reply) {
-            console.log(`[Sarvam 105B Fallback] Dylan Dsouza reply: "${reply.slice(0, 80)}${reply.length > 80 ? '…' : ''}"`);
-            yield reply;
-            return;
-          }
-        } else if (res.status === 402 || res.status === 429) {
-          console.warn(`[Sarvam LLM] Quota/rate-limit (HTTP ${res.status}). Falling back to OpenRouter.`);
-        }
-      } catch (err: any) {
-        if (abortSignal?.aborted) return;
-        console.warn('[Sarvam 105B LLM] Notice:', err.message);
       }
     }
 
@@ -307,34 +309,7 @@ export class LLMPipeline {
       return 'No conversation recorded.';
     }
 
-    // 1. Groq LLaMA 3.3 70B (primary)
-    const groqKey = process.env.GROQ_API_KEY;
-    if (groqKey && groqKey !== 'your_groq_api_key_here') {
-      try {
-        if (!this.groq) {
-          this.groq = new Groq({ apiKey: groqKey });
-        }
-        const completion = await this.groq.chat.completions.create({
-          model: this.model,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'Summarize this property inquiry call with advisor Dylan Dsouza for Trishul Mittal Palms in 1-2 concise sentences focusing on requirement (BHK, size, budget, location) and scheduled follow-up time.',
-            },
-            { role: 'user', content: `Call transcript:\n${transcript}` },
-          ],
-          temperature: 0.2,
-          max_tokens: 80,
-        });
-        const summary = completion.choices[0]?.message?.content?.trim();
-        if (summary) return summary;
-      } catch (err: any) {
-        console.warn('[Groq Summary] Notice:', err.message);
-      }
-    }
-
-    // 2. Sarvam AI 105B (fallback)
+    // 1. Sarvam AI 105B (primary)
     const sarvamKey = process.env.SARVAM_API_KEY;
     if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
       try {
@@ -350,7 +325,7 @@ export class LLMPipeline {
               {
                 role: 'system',
                 content:
-                  'Summarize this property inquiry call with advisor Dylan Dsouza for Trishul Mittal Palms in 1-2 concise sentences focusing on requirement (BHK, size, budget, location) and scheduled follow-up time.',
+                  'Summarize this property inquiry call with advisor Priya for Mittal Palms in 1-2 concise sentences focusing on requirement (BHK, size, budget, location) and scheduled follow-up time.',
               },
               { role: 'user', content: `Call transcript:\n${transcript}` },
             ],
@@ -369,7 +344,34 @@ export class LLMPipeline {
       }
     }
 
-    return 'Inquiry regarding Trishul Mittal Palms in Jakkur, Bangalore with advisor Dylan Dsouza.';
+    // 2. Groq Qwen (fallback)
+    const groqKey = process.env.GROQ_API_KEY;
+    if (groqKey && groqKey !== 'your_groq_api_key_here') {
+      try {
+        if (!this.groq) {
+          this.groq = new Groq({ apiKey: groqKey });
+        }
+        const completion = await this.groq.chat.completions.create({
+          model: this.model,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Summarize this property inquiry call with advisor Priya for Mittal Palms in 1-2 concise sentences focusing on requirement (BHK, size, budget, location) and scheduled follow-up time.',
+            },
+            { role: 'user', content: `Call transcript:\n${transcript}` },
+          ],
+          temperature: 0.2,
+          max_tokens: 80,
+        });
+        const summary = completion.choices[0]?.message?.content?.trim();
+        if (summary) return summary;
+      } catch (err: any) {
+        console.warn('[Groq Summary] Notice:', err.message);
+      }
+    }
+
+    return 'Inquiry regarding Mittal Palms in Jakkur, Bangalore with advisor Priya.';
   }
 
   /**

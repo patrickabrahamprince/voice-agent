@@ -498,10 +498,41 @@ const WHISPER_ARTIFACTS = new Set([
 
 /**
  * Ultra-low latency Telephony STT:
- * 1. Groq whisper-large-v3-turbo (~250-350ms)
- * 2. Fallback: Sarvam Saaras v3 (~1200ms)
+ * 1. Primary: Sarvam Saaras v3 STT (~450ms, India's premier Speech-to-Text model)
+ * 2. Fallback: Groq whisper-large-v3-turbo (~400ms)
  */
 export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<string> {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+    try {
+      const t0 = Date.now();
+      const form = new FormData();
+      form.append('file', new Blob([new Uint8Array(wavBuffer)], { type: 'audio/wav' }), 'telephony.wav');
+      form.append('model', 'saaras:v3');
+
+      const res = await fetch('https://api.sarvam.ai/speech-to-text', {
+        method: 'POST',
+        headers: {
+          'api-subscription-key': sarvamKey,
+        },
+        body: form,
+        signal: AbortSignal.timeout(3000),
+      });
+
+      if (res.ok) {
+        const data: any = await res.json();
+        const transcript = (data.transcript || '').trim();
+        if (transcript.length > 0) {
+          console.log(`[Sarvam STT Saaras v3] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
+          return transcript;
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Sarvam STT] Notice, falling back to Groq Whisper:', err.message);
+    }
+  }
+
+  // Fallback: Groq Whisper Large V3 Turbo
   const groqKey = process.env.GROQ_API_KEY;
   if (groqKey && groqKey !== 'your_groq_api_key_here') {
     try {
@@ -517,14 +548,14 @@ export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<strin
       });
       const transcript = (res.text || '').trim();
       if (transcript.length > 0 && !WHISPER_ARTIFACTS.has(transcript.toLowerCase())) {
-        console.log(`[Groq Whisper STT] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
+        console.log(`[Groq Whisper STT Fallback] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
         return transcript;
       }
     } catch (err: any) {
-      console.warn('[Groq Whisper STT] Notice, falling back to Sarvam:', err.message);
+      console.warn('[Groq Whisper STT] Notice:', err.message);
     }
   }
 
-  return transcribeAudioSarvam(wavBuffer);
+  return '';
 }
 
