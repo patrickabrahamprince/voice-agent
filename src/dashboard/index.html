@@ -724,6 +724,71 @@
       cursor: not-allowed;
     }
 
+    /* Call Recording Playback Widget */
+    .audio-playback-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      transition: all 0.15s ease;
+    }
+    .audio-playback-pill:hover {
+      background: #E2E8F0;
+      border-color: #94A3B8;
+    }
+    .btn-play-recording {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--accent-blue);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 9999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-play-recording:hover {
+      background: #1D4ED8;
+      transform: scale(1.02);
+    }
+    .btn-play-recording.playing {
+      background: var(--accent-rose);
+      animation: pulse 1.2s infinite;
+    }
+    .btn-dl-recording {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .btn-dl-recording:hover {
+      color: var(--accent-blue);
+      background: #FFFFFF;
+    }
+    .live-recording-card {
+      margin-top: 14px;
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      animation: fadeIn 0.3s ease;
+    }
+
     /* Right Sidebar Widgets */
     .side-widget {
       background: #FFFFFF;
@@ -1673,7 +1738,8 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Caller Phone</th>
+                <th>Caller / Contact</th>
+                <th>Call Audio Review</th>
                 <th>Status</th>
                 <th>Config</th>
                 <th>Workplace / Commute</th>
@@ -1683,7 +1749,7 @@
               </tr>
             </thead>
             <tbody id="leads-tbody">
-              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">No leads recorded yet.</td></tr>
+              <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">No leads recorded yet.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1703,13 +1769,14 @@
             <thead>
               <tr>
                 <th>Call Time</th>
-                <th>Caller Number</th>
+                <th>Caller / Contact</th>
+                <th>Call Audio Recording</th>
                 <th>Duration</th>
                 <th>AI Conversation Summary</th>
               </tr>
             </thead>
             <tbody id="calls-tbody">
-              <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 32px;">No calls recorded yet.</td></tr>
+              <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No calls recorded yet.</td></tr>
             </tbody>
           </table>
         </div>
@@ -2094,6 +2161,10 @@
       const duration = event?.data?.durationSeconds ? event.data.durationSeconds + 's' : 'concluded';
       appendLiveEventChip('call-end', '🏁 Call Concluded • Duration: ' + duration);
 
+      if (event?.data?.recordingUrl) {
+        appendLiveRecordingCard(event.data.recordingUrl, duration);
+      }
+
       if (event?.data?.summary) {
         appendLiveSummaryCard(event.data.summary);
       }
@@ -2101,7 +2172,86 @@
       updateLiveAcousticStatus('idle', 'Call ended. Telephony line 080 6434 8409 ready for next caller.');
 
       // Refresh data tables in background
-      setTimeout(loadData, 1500);
+      setTimeout(loadData, 1000);
+    }
+
+    function appendLiveRecordingCard(recordingUrl, duration) {
+      const feed = document.getElementById('live-dialogue-feed');
+      if (!feed || !recordingUrl) return;
+
+      const card = document.createElement('div');
+      card.className = 'live-recording-card';
+      card.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #EFF6FF; color: var(--accent-blue); display: flex; align-items: center; justify-content: center;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+          </div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Call Audio Recording Ready</div>
+            <div style="font-size: 11.5px; color: var(--text-muted);">Duration: ${duration || 'concluded'} • Telephony 8kHz Mix</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="btn-play-recording" onclick="playCallAudio('${recordingUrl}', this)">
+            <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <span>Play Full Audio</span>
+          </button>
+          <a href="${recordingUrl}" download="call_recording.wav" class="btn-refresh" style="font-size: 11px; padding: 4px 8px; text-decoration: none;">
+            Download WAV
+          </a>
+        </div>
+      `;
+      feed.appendChild(card);
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    let currentRecordingAudio = null;
+    let currentRecordingBtn = null;
+
+    function playCallAudio(url, btn) {
+      if (currentRecordingAudio && currentRecordingBtn === btn) {
+        if (!currentRecordingAudio.paused) {
+          currentRecordingAudio.pause();
+          btn.classList.remove('playing');
+          const span = btn.querySelector('span');
+          if (span) span.innerText = 'Resume';
+          return;
+        } else {
+          currentRecordingAudio.play().catch(console.warn);
+          btn.classList.add('playing');
+          const span = btn.querySelector('span');
+          if (span) span.innerText = 'Pause';
+          return;
+        }
+      }
+
+      if (currentRecordingAudio) {
+        currentRecordingAudio.pause();
+        if (currentRecordingBtn) {
+          currentRecordingBtn.classList.remove('playing');
+          const span = currentRecordingBtn.querySelector('span');
+          if (span) span.innerText = 'Listen';
+        }
+      }
+
+      currentRecordingAudio = new Audio(url);
+      currentRecordingBtn = btn;
+      btn.classList.add('playing');
+      const span = btn.querySelector('span');
+      if (span) span.innerText = 'Playing...';
+
+      currentRecordingAudio.play().catch(err => {
+        console.warn('Playback error:', err);
+        btn.classList.remove('playing');
+        if (span) span.innerText = 'Listen';
+      });
+
+      currentRecordingAudio.onended = () => {
+        btn.classList.remove('playing');
+        if (span) span.innerText = 'Listen';
+        currentRecordingAudio = null;
+        currentRecordingBtn = null;
+      };
     }
 
     function appendLiveBubble(role, author, text) {
@@ -3025,7 +3175,23 @@
           callsTbody.innerHTML = calls.map(c => `
             <tr>
               <td style="color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap;">${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
-              <td style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">${c.caller_number || '-'}</td>
+              <td>
+                <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">${c.caller_name || 'Caller'}</div>
+                <div style="font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); margin-top: 1px;">${c.caller_number || '-'}</div>
+              </td>
+              <td>
+                ${c.recording_url ? `
+                  <div class="audio-playback-pill">
+                    <button class="btn-play-recording" onclick="playCallAudio('${c.recording_url}', this)" title="Play Call Audio">
+                      <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                      <span>Listen</span>
+                    </button>
+                    <a href="${c.recording_url}" download="call_${c.id}.wav" class="btn-dl-recording" title="Download Audio WAV">
+                      <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    </a>
+                  </div>
+                ` : `<span class="badge-subtle" style="font-size: 11px;">In Progress</span>`}
+              </td>
               <td style="font-family: var(--font-mono); color: var(--accent-blue);">${c.duration_seconds || 0}s</td>
               <td style="color: var(--text-secondary); font-size: 13px;">${c.summary || '<span style="color: var(--text-muted); font-style: italic;">In progress</span>'}</td>
             </tr>
@@ -3049,16 +3215,17 @@
 
         if (searchQuery) {
           const matchPhone = (l.caller_phone || '').toLowerCase().includes(searchQuery);
+          const matchName = (l.caller_name || '').toLowerCase().includes(searchQuery);
           const matchConfig = (l.config || '').toLowerCase().includes(searchQuery);
           const matchStatus = (l.status || '').toLowerCase().includes(searchQuery);
           const matchSummary = (l.summary || '').toLowerCase().includes(searchQuery);
-          return matchPhone || matchConfig || matchStatus || matchSummary;
+          return matchPhone || matchName || matchConfig || matchStatus || matchSummary;
         }
         return true;
       });
 
       if (filtered.length === 0) {
-        leadsTbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">No matching leads found.</td></tr>`;
+        leadsTbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">No matching leads found.</td></tr>`;
         return;
       }
 
@@ -3070,7 +3237,23 @@
 
         return `
           <tr>
-            <td style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">${l.caller_phone || '-'}</td>
+            <td>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">${l.caller_name || 'Inquiring Buyer'}</div>
+              <div style="font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); margin-top: 1px;">${l.caller_phone || '-'}</div>
+            </td>
+            <td>
+              ${l.recording_url ? `
+                <div class="audio-playback-pill">
+                  <button class="btn-play-recording" onclick="playCallAudio('${l.recording_url}', this)" title="Listen to Call Recording">
+                    <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <span>Listen</span>
+                  </button>
+                  <a href="${l.recording_url}" download="call_audio_${l.id || 'rec'}.wav" class="btn-dl-recording" title="Download Audio WAV">
+                    <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  </a>
+                </div>
+              ` : `<span class="badge-subtle" style="font-size: 11px;">In Progress</span>`}
+            </td>
             <td>${bucketBadge}</td>
             <td><span class="badge-subtle">${l.config || '-'}</span></td>
             <td>${l.location || '-'}</td>

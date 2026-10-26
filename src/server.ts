@@ -10,7 +10,8 @@ import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings,
 import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech, prewarmTtsCache } from './pipeline/tts.js';
 import { clearQualifier } from './pipeline/llm.js';
-import { verifyPlivoSignature, buildStreamResponse, logInboundCall } from './telephony/plivo.js';
+import { verifyPlivoSignature, buildStreamResponse, logInboundCall, getPlivoConfig } from './telephony/plivo.js';
+import plivo from 'plivo';
 import { callEventsBroadcaster, LiveCallEvent } from './pipeline/events.js';
 
 // Environment Validation: If TELEPHONY_PROVIDER=plivo and PLIVO_AUTH_ID is missing, crash on startup with clear error
@@ -155,6 +156,32 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
     }
   }
 
+  // Instantly broadcast to live dashboard that an incoming call is connecting
+  callEventsBroadcaster.broadcast({
+    type: 'call_started',
+    streamSid: callUuid,
+    callerNumber: callerFrom,
+    timestamp: new Date().toISOString(),
+    data: {
+      agentName: 'Priya',
+      callerNumber: callerFrom,
+      callSid: callUuid,
+      greeting: 'Connecting to Priya (Trishul Mittal Palms Advisor)...',
+      status: 'active',
+    },
+  });
+
+  // Trigger Plivo carrier-grade call recording as secondary backup
+  const plivoConfig = getPlivoConfig();
+  if (plivoConfig.authId && plivoConfig.authToken && callUuid && !callUuid.startsWith('sim_')) {
+    try {
+      const client = new plivo.Client(plivoConfig.authId, plivoConfig.authToken);
+      client.calls.record(callUuid, { fileFormat: 'mp3' }).catch((err: any) => {
+        app.log.warn({ err: err.message }, '[Plivo] Carrier record initiation notice');
+      });
+    } catch {}
+  }
+
   // Always return HTTP 200 + valid Voice XML with caller parameter
   const streamUrlWithCaller = callerFrom && callerFrom !== 'Unknown'
     ? `${streamUrl}?caller=${encodeURIComponent(callerFrom)}`
@@ -162,6 +189,47 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
   const xml = buildStreamResponse(streamUrlWithCaller);
   reply.header('Content-Type', 'text/xml');
   return reply.code(200).send(xml);
+});
+
+/**
+ * API: Stream Call Audio Recording: GET /api/calls/:id/audio
+ * Delivers full call WAV recording with HTTP range support for immediate browser review and playback.
+ */
+app.get('/api/calls/:id/audio', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  const callId = request.params.id;
+  const recordingsDir = path.resolve(process.cwd(), 'data', 'recordings');
+  const filePath = path.join(recordingsDir, `call_${callId}.wav`);
+
+  if (!fs.existsSync(filePath)) {
+    return reply.code(404).send({ error: `Audio recording not found for call #${callId}` });
+  }
+
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = request.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunkSize = end - start + 1;
+    const fileStream = fs.createReadStream(filePath, { start, end });
+
+    reply.raw.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunkSize,
+      'Content-Type': 'audio/wav',
+      'Cache-Control': 'public, max-age=86400',
+    });
+    return reply.send(fileStream);
+  }
+
+  reply.header('Content-Type', 'audio/wav');
+  reply.header('Content-Length', fileSize);
+  reply.header('Accept-Ranges', 'bytes');
+  reply.header('Cache-Control', 'public, max-age=86400');
+  return reply.send(fs.createReadStream(filePath));
 });
 
 /**

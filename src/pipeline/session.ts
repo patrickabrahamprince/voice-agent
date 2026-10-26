@@ -3,8 +3,9 @@ import crypto from 'crypto';
 import { normalizeRealEstateText } from './normalizer.js';
 import { llmPipeline, ChatMessage, PRIYA_SYSTEM_PROMPT, activeQualifiers } from './llm.js';
 import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcribeAudioTelephony } from './tts.js';
-import { createCall, updateCall, getCallerMemory } from '../tools/db.js';
+import { createCall, updateCall, getCallerMemory, updateLeadRecording } from '../tools/db.js';
 import { callEventsBroadcaster } from './events.js';
+import { CallAudioRecorder } from './recorder.js';
 
 export class VoiceSession {
   private telephonyWs: WebSocket;
@@ -23,6 +24,7 @@ export class VoiceSession {
   private currentContextId: string = '';
   private activeAbortController: AbortController | null = null;
   private agentName: string = 'Priya';
+  private recorder: CallAudioRecorder | null = null;
 
   private deepgramWs: WebSocket | null = null;
   private inboundMulawChunks: Buffer[] = [];
@@ -85,6 +87,9 @@ export class VoiceSession {
         // Register in local SQLite database
         this.callId = createCall(this.streamSid, this.callerNumber);
 
+        // Start full-duplex call audio recording
+        this.recorder = new CallAudioRecorder(this.callId, this.startTime);
+
         // Initialize STT socket
         await this.initDeepgram();
 
@@ -122,6 +127,11 @@ export class VoiceSession {
       case 'media': {
         if (!msg.media?.payload) return;
         const audioBuffer = Buffer.from(msg.media.payload, 'base64');
+
+        // Capture incoming caller audio in call recorder
+        if (this.recorder) {
+          this.recorder.recordInboundChunk(audioBuffer);
+        }
 
         // 1. If Deepgram is connected, stream 8kHz G.711 mulaw directly
         if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
@@ -418,6 +428,11 @@ export class VoiceSession {
       const mulawBuffer = await synthesizeTelephonyMulaw(normalized, 'kavya');
 
       if (mulawBuffer && mulawBuffer.length > 0 && this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
+        // Capture Priya's synthesized speech in the call recording
+        if (this.recorder) {
+          this.recorder.recordOutboundChunk(mulawBuffer);
+        }
+
         // 8000 samples per sec = 1 byte per millisecond in 8kHz mulaw
         const durationMs = mulawBuffer.length / 8;
         this.agentSpeakingUntil = Date.now() + durationMs + 250;
@@ -621,13 +636,26 @@ export class VoiceSession {
       } catch {}
     }
 
+    // Finalize audio recording
+    let recordingUrl = '';
+    if (this.recorder && this.callId) {
+      try {
+        const recording = await this.recorder.finalize();
+        recordingUrl = recording.url;
+        updateLeadRecording(this.callId, recordingUrl);
+        console.log(`[Session] Call #${this.callId} audio recording finalized -> ${recordingUrl}`);
+      } catch (err: any) {
+        console.warn('[Session] Finalizing recording notice:', err.message);
+      }
+    }
+
     // Generate call summary and update SQLite in background
     let finalSummary = 'Call ended.';
     if (this.callId) {
       try {
         finalSummary = await llmPipeline.generateSummary(fullTranscript);
-        updateCall(this.callId, durationSeconds, fullTranscript, finalSummary);
-        console.log(`[Database] Call record #${this.callId} updated with summary: "${finalSummary}"`);
+        updateCall(this.callId, durationSeconds, fullTranscript, finalSummary, recordingUrl);
+        console.log(`[Database] Call record #${this.callId} updated with summary and recording: "${finalSummary}"`);
 
         // Train LLM after every call by extracting learnings and objection patterns
         await llmPipeline.extractAndStoreLearnings(this.callId, fullTranscript);
@@ -644,6 +672,9 @@ export class VoiceSession {
       data: {
         durationSeconds,
         summary: finalSummary,
+        recordingUrl,
+        callId: this.callId,
+        agentName: this.agentName,
       },
     });
   }

@@ -6,9 +6,11 @@ export interface CallRecord {
   id: number;
   stream_sid: string;
   caller_number: string;
+  caller_name?: string;
   duration_seconds: number;
   full_transcript: string;
   summary: string;
+  recording_url?: string;
   created_at: string;
 }
 
@@ -27,6 +29,7 @@ export interface LeadRecord {
   status: string;
   summary?: string;
   lead_email?: string;
+  recording_url?: string;
   created_at?: string;
 }
 
@@ -98,6 +101,7 @@ export function initDatabase(): void {
       duration_seconds INTEGER DEFAULT 0,
       full_transcript TEXT DEFAULT '',
       summary TEXT DEFAULT '',
+      recording_url TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -116,6 +120,7 @@ export function initDatabase(): void {
       status TEXT DEFAULT '',
       summary TEXT DEFAULT '',
       lead_email TEXT DEFAULT '',
+      recording_url TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (call_id) REFERENCES calls(id) ON DELETE SET NULL
     );
@@ -143,6 +148,12 @@ export function initDatabase(): void {
     try {
       sqliteDb.exec("ALTER TABLE leads ADD COLUMN lead_email TEXT DEFAULT ''");
     } catch { }
+    try {
+      sqliteDb.exec("ALTER TABLE calls ADD COLUMN recording_url TEXT DEFAULT ''");
+    } catch { }
+    try {
+      sqliteDb.exec("ALTER TABLE leads ADD COLUMN recording_url TEXT DEFAULT ''");
+    } catch { }
   } catch (err) {
     console.warn('initDatabase exec error:', err);
   }
@@ -166,22 +177,48 @@ export function updateCall(
   callId: number,
   durationSeconds: number,
   fullTranscript: string,
-  summary: string
+  summary: string,
+  recordingUrl?: string
 ): void {
   const db = requireDb();
-  const stmt = db.prepare(`
-    UPDATE calls
-    SET duration_seconds = ?, full_transcript = ?, summary = ?
-    WHERE id = ?
-  `);
-  stmt.run(durationSeconds, fullTranscript, summary, callId);
+  if (recordingUrl) {
+    const stmt = db.prepare(`
+      UPDATE calls
+      SET duration_seconds = ?, full_transcript = ?, summary = ?, recording_url = ?
+      WHERE id = ?
+    `);
+    stmt.run(durationSeconds, fullTranscript, summary, recordingUrl, callId);
+  } else {
+    const stmt = db.prepare(`
+      UPDATE calls
+      SET duration_seconds = ?, full_transcript = ?, summary = ?
+      WHERE id = ?
+    `);
+    stmt.run(durationSeconds, fullTranscript, summary, callId);
+  }
+}
+
+export function updateLeadRecording(callId: number, recordingUrl: string): void {
+  if (!sqliteDb || !callId || !recordingUrl) return;
+  try {
+    const stmt = sqliteDb.prepare(`
+      UPDATE leads
+      SET recording_url = ?
+      WHERE call_id = ?
+    `);
+    stmt.run(recordingUrl, callId);
+  } catch (err) {
+    console.warn('[DB] Could not update lead recording_url:', err);
+  }
 }
 
 export function getCalls(limit: number = 50): CallRecord[] {
   if (!sqliteDb) return memCalls.slice(0, limit);
   const stmt = sqliteDb.prepare(`
-    SELECT * FROM calls
-    ORDER BY id DESC
+    SELECT c.*, COALESCE(l.caller_name, 'Inquiring Caller') as caller_name
+    FROM calls c
+    LEFT JOIN leads l ON l.call_id = c.id
+    ORDER BY c.id DESC
     LIMIT ?
   `);
   return stmt.all(limit) as CallRecord[];
