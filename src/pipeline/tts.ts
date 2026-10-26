@@ -19,20 +19,12 @@ export interface TTSVoiceInfo {
 // Exclusive Voice Provider: Sarvam AI Bulbul (India's Premier Voice AI)
 export const AVAILABLE_VOICES: TTSVoiceInfo[] = [
   {
-    id: 'shubh',
-    name: '👨 Dylan Dsouza — Property Advisor (Sarvam AI Bulbul • Shubh)',
-    gender: 'Male',
-    accent: 'Bangalore Indian English',
-    provider: 'sarvam',
-    isDefault: true,
-  },
-  {
     id: 'kavya',
-    name: '👩 Kavya — Sarvam AI Bulbul (Warm & Conversational)',
+    name: '👩 Priya — Property Advisor (Sarvam AI Bulbul • Kavya)',
     gender: 'Female',
     accent: 'Bangalore Indian English',
     provider: 'sarvam',
-    isDefault: false,
+    isDefault: true,
   },
   {
     id: 'roopa',
@@ -43,10 +35,10 @@ export const AVAILABLE_VOICES: TTSVoiceInfo[] = [
     isDefault: false,
   },
   {
-    id: 'priya',
-    name: '👩 Priya — Sarvam AI Bulbul (Classic)',
-    gender: 'Female',
-    accent: 'Indian English',
+    id: 'shubh',
+    name: '👨 Dylan Dsouza — Property Advisor (Sarvam AI Bulbul • Shubh)',
+    gender: 'Male',
+    accent: 'Bangalore Indian English',
     provider: 'sarvam',
     isDefault: false,
   },
@@ -134,14 +126,14 @@ function synthesizeMacSpeech(text: string, voiceName: 'Tara' | 'Rishi'): Promise
  */
 export async function synthesizeNeuralSpeech(
   rawText: string,
-  voiceId: string = 'shubh'
+  voiceId: string = 'kavya'
 ): Promise<{ buffer: Buffer; contentType: string }> {
   const normalizedText = normalizeRealEstateText(rawText);
   if (!normalizedText.trim()) {
     return { buffer: Buffer.alloc(0), contentType: 'audio/wav' };
   }
 
-  const v4Speaker = (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'kavya') ? 'kavya_hi_conversational' : 'shubh_en_narration');
+  const v4Speaker = (voiceId === 'shubh') ? 'shubh_en_narration' : ((voiceId === 'roopa') ? 'roopa_en_conversational' : 'kavya_hi_conversational');
   const isMale = voiceId === 'shubh' || voiceId === 'aditya' || voiceId === 'dev';
   const model = 'bulbul:v4-flash';
   const cacheKey = `sarvam:${model}:${voiceId}:${normalizedText}`;

@@ -1502,8 +1502,8 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
                 </svg>
               </div>
-              <h3>Dylan Dsouza Voice Advisor</h3>
-              <p>Click <strong style="color: var(--accent-emerald);">"Start Call"</strong> to test conversational calling. Dylan checks if the buyer is exploring Bangalore properties, gathers requirements, presents Trishul Mittal Palms resale highlights, and schedules WhatsApp follow-up.</p>
+              <h3>Priya — Property Advisor</h3>
+              <p>Click <strong style="color: var(--accent-emerald);">"Start Call"</strong> to test conversational calling. Priya greets the caller warmly, understands if they need a 2 BHK or 3 BHK at Trishul Mittal Palms in Jakkur, shares pricing and OC status, and schedules site visits.</p>
             </div>
           </div>
 
@@ -1525,23 +1525,20 @@
             </div>
           </div>
 
-          <!-- Quick Test Question Chips (Dylan Script Steps) -->
+          <!-- Quick Test Question Chips (Priya Inbound Conversation) -->
           <div class="quick-chips">
-            <span class="quick-chips-title">1-Click Script Steps:</span>
-            <button onclick="sendQuickUtterance('Yes, speaking.')" class="chip-btn">
-              ✓ Yes, Speaking
+            <span class="quick-chips-title">1-Click Test Prompts:</span>
+            <button onclick="sendQuickUtterance('Hi Priya, I am looking for a 3 BHK for my family.')" class="chip-btn success">
+              🏠 3 BHK Inquiry
             </button>
-            <button onclick="sendQuickUtterance('Yes, I am exploring properties in Bangalore.')" class="chip-btn">
-              🏢 Exploring Bangalore
+            <button onclick="sendQuickUtterance('What is the pricing and has the Occupancy Certificate been received?')" class="chip-btn">
+              💰 Price & OC Status
             </button>
-            <button onclick="sendQuickUtterance('Looking for a 3 BHK, around 1800 square feet.')" class="chip-btn success">
-              🏠 3 BHK (1,800 sqft)
+            <button onclick="sendQuickUtterance('It is for self-use in Jakkur, budget around 2.2 Crore.')" class="chip-btn success">
+              📍 Budget ₹2.2 Cr
             </button>
-            <button onclick="sendQuickUtterance('It is for self-use in Jakkur, budget around 2.2 Crore.')" class="chip-btn">
-              📍 Self-Use / ₹2.2 Cr
-            </button>
-            <button onclick="sendQuickUtterance('Please share details on WhatsApp. Tomorrow at 11 AM works.')" class="chip-btn success">
-              🗓 Tomorrow 11 AM WhatsApp
+            <button onclick="sendQuickUtterance('Can I schedule a walkthrough visit this Saturday at 11 AM?')" class="chip-btn">
+              🗓 Visit Saturday 11 AM
             </button>
             <button onclick="triggerBargeIn()" class="chip-btn interrupt">
               ⚡ Interrupt
@@ -1621,7 +1618,7 @@
             </div>
             <div class="fact-row">
               <span class="fact-label">Advisor</span>
-              <span class="fact-value">Dylan Dsouza</span>
+              <span class="fact-value">Priya (Advisor)</span>
             </div>
             <div class="fact-row">
               <span class="fact-label">Contact Ref</span>
@@ -1654,8 +1651,8 @@
         </div>
         <div class="kpi-box">
           <div class="kpi-label">Voice Advisor Persona</div>
-          <div class="kpi-val" style="font-size: 20px; color: var(--accent-purple);">Dylan Dsouza</div>
-          <div class="kpi-desc">Sarvam AI Bulbul (Shubh)</div>
+          <div class="kpi-val" style="font-size: 20px; color: var(--accent-purple);">Priya</div>
+          <div class="kpi-desc">Sarvam AI Bulbul (Kavya • Female)</div>
         </div>
       </div>
 
@@ -2931,8 +2928,10 @@
     }
 
     function previewPriyaVoice() {
-      const selectedVoice = document.getElementById('voice-select')?.value || 'shubh';
-      const sample = `Hi, good morning — am I speaking with Rahul? Hi, I’m Dylan Dsouza, a property advisor. I just wanted to check if you are exploring properties in Bangalore?`;
+      const selectedVoice = document.getElementById('voice-select')?.value || 'kavya';
+      const sample = selectedVoice === 'shubh'
+        ? `Hi, good morning — am I speaking with you? I’m Dylan Dsouza, property advisor for Trishul Mittal Palms.`
+        : `Hello! This is Priya from Trishul Mittal Palms in Jakkur. We have ready-to-move 2 and 3 BHK residences with Occupancy Certificate received. How may I assist you today?`;
       const previewBtnText = document.getElementById('preview-btn-text');
 
       if (!isSarvamActive()) {
@@ -3264,9 +3263,12 @@
 
         if (reply) {
           clientDialogueHistory.push({ role: 'assistant', content: reply });
+          const agentTag = (data.agentName === 'Dylan Dsouza' || selectedNeuralVoiceId === 'shubh')
+            ? 'Dylan Dsouza • Property Advisor'
+            : 'Priya • Property Advisor';
           box.innerHTML += `
             <div class="bubble-wrapper agent">
-              <span class="bubble-sender-tag">Dylan Dsouza • Property Advisor</span>
+              <span class="bubble-sender-tag">${escapeHtml(agentTag)}</span>
               <div class="bubble-card">
                 ${reply}
               </div>
