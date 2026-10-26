@@ -333,11 +333,12 @@ export class VoiceSession {
 
     // If agent is currently speaking through phone speaker:
     if (this.isAgentSpeaking) {
-      // ONLY allow genuine caller barge-in (loud human voice over phone line > 1200 RMS)
-      if (rms > 1200) {
+      // ONLY allow genuine caller barge-in (firm human voice directly into mic > 2200 RMS)
+      // Discards phone speaker acoustic echo (typically 800-1500 RMS) to prevent self-interruption
+      if (rms > 2200) {
         this.speechFramesCount++;
-        // Require 5 consecutive high-energy frames (100ms) to confirm genuine interruption
-        if (this.speechFramesCount >= 5) {
+        // Require 8 consecutive high-energy frames (160ms) to confirm genuine human interruption
+        if (this.speechFramesCount >= 8) {
           console.log(`[Barge-In] Genuine caller interruption detected (${rms.toFixed(0)} RMS). Halting agent speech.`);
           this.handleBargeIn();
         }
@@ -350,14 +351,16 @@ export class VoiceSession {
     }
 
     // --- Caller Speaking Phase (Agent is Silent) ---
-    const isSpeech = rms > 450;
+    // Strict noise rejection: phone line hiss/room ambient is 300-650 RMS.
+    // Real human speech is > 850 RMS.
+    const isSpeech = rms > 850;
 
     if (isSpeech) {
       this.speechFramesCount++;
       this.pendingSpeechChunks.push(chunk);
 
-      // Accumulate audio once energy persists for >80ms (4 frames)
-      if (this.speechFramesCount >= 4) {
+      // Accumulate audio once real speech persists for >140ms (7 frames)
+      if (this.speechFramesCount >= 7) {
         if (this.pendingSpeechChunks.length > 0) {
           this.inboundMulawChunks.push(...this.pendingSpeechChunks);
           this.pendingSpeechChunks = [];
@@ -381,9 +384,9 @@ export class VoiceSession {
           this.pendingSpeechChunks = [];
           this.speechFramesCount = 0;
 
-          // 8000 bytes = 1.0s in 8kHz mulaw. Discard clicks < 0.35s
+          // 8000 bytes = 1.0s in 8kHz mulaw. Discard clicks/isolated noises < 0.45s
           const durationSec = fullAudio.length / 8000;
-          if (durationSec < 0.35) {
+          if (durationSec < 0.45) {
             return;
           }
 

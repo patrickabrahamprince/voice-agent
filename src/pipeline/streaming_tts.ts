@@ -33,6 +33,8 @@ export class SarvamStreamingTTS {
     if (options?.sampleRate) this.sampleRate = options.sampleRate;
   }
 
+  private pingInterval: NodeJS.Timeout | null = null;
+
   /**
    * Connects to Sarvam WebSocket TTS endpoint and primes the connection.
    */
@@ -43,6 +45,11 @@ export class SarvamStreamingTTS {
 
     if (!this.apiKey || this.apiKey === 'your_sarvam_api_key_here') {
       return false;
+    }
+
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
     }
 
     const url = 'wss://api.sarvam.ai/text-to-speech/ws?model=bulbul:v4-flash';
@@ -66,6 +73,16 @@ export class SarvamStreamingTTS {
           clearTimeout(connectTimeout);
           this.isConnected = true;
           this.sendConfig();
+
+          // Heartbeat keepalive every 8s to prevent idle disconnect
+          this.pingInterval = setInterval(() => {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+              try {
+                this.ws.send(JSON.stringify({ type: 'ping' }));
+              } catch {}
+            }
+          }, 8000);
+
           resolve(true);
         });
 
@@ -82,11 +99,19 @@ export class SarvamStreamingTTS {
           console.warn('[StreamingTTS] WebSocket error:', err.message);
           this.isConnected = false;
           this.isConfigured = false;
+          if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+          }
         });
 
         this.ws.on('close', () => {
           this.isConnected = false;
           this.isConfigured = false;
+          if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+          }
         });
       } catch (err: any) {
         console.warn('[StreamingTTS] Init failed:', err.message);
@@ -184,7 +209,7 @@ export class SarvamStreamingTTS {
             reject(new Error('StreamingTTS timeout'));
           }
         }
-      }, 5000);
+      }, 2500);
 
       // Wrap resolve to clear timeout
       const origResolve = resolverItem.resolve;
@@ -211,6 +236,10 @@ export class SarvamStreamingTTS {
   }
 
   public close(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
     if (this.ws) {
       try {
         this.ws.close();
