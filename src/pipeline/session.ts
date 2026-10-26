@@ -13,7 +13,12 @@ export class VoiceSession {
   private callId: number | null = null;
   private startTime: number = Date.now();
 
-  private isAgentSpeaking: boolean = false;
+  private agentSpeakingUntil: number = 0;
+
+  private get isAgentSpeaking(): boolean {
+    return Date.now() < this.agentSpeakingUntil;
+  }
+
   private currentContextId: string = '';
   private activeAbortController: AbortController | null = null;
   private agentName: string = 'Priya';
@@ -226,7 +231,19 @@ export class VoiceSession {
 
     console.log(`[Barge-In] Clearing PBX buffer on StreamSid: ${this.streamSid}`);
 
-    // 1. Instantly clear PBX audio buffer over telephony WebSocket (Plivo clearAudio + Twilio clear)
+    // Immediately stop agent speaking window
+    this.agentSpeakingUntil = 0;
+
+    // Discard any audio accumulated during agent speaking to avoid echoing self
+    this.inboundMulawChunks = [];
+    this.pendingSpeechChunks = [];
+    this.speechFramesCount = 0;
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+
+    // Instantly clear PBX audio buffer over telephony WebSocket (Plivo clearAudio + Twilio clear)
     if (this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
       this.telephonyWs.send(JSON.stringify({ event: 'clearAudio' }));
       if (this.streamSid) {
@@ -239,13 +256,12 @@ export class VoiceSession {
       }
     }
 
-    // 2. Abort ongoing LLM generation
+    // Abort ongoing LLM generation
     if (this.activeAbortController) {
       this.activeAbortController.abort();
       this.activeAbortController = null;
     }
 
-    this.isAgentSpeaking = false;
     this.currentContextId = '';
   }
 
@@ -268,23 +284,38 @@ export class VoiceSession {
 
   /**
    * Handles inbound telephony audio frames with energy VAD and ultra-low latency STT.
-   * Only accumulates audio when energy > threshold for >80ms (4 frames).
-   * Filters out short noise clicks < 0.35s before calling Whisper/Sarvam STT.
+   * Full acoustic echo gating: Drops all audio when Priya is speaking to prevent self-looping.
+   * Allows genuine caller barge-in (> 1200 RMS for 3 frames).
    */
   private handleInboundTelephonyAudio(chunk: Buffer): void {
     const rms = this.getMulawRms(chunk);
+
+    // If agent is currently speaking through phone speaker:
+    if (this.isAgentSpeaking) {
+      // ONLY allow genuine caller barge-in (loud human voice over phone line > 1200 RMS)
+      if (rms > 1200) {
+        this.speechFramesCount++;
+        // Require 3 consecutive high-energy frames (60ms) to confirm genuine interruption
+        if (this.speechFramesCount >= 3) {
+          console.log(`[Barge-In] Genuine caller interruption detected (${rms.toFixed(0)} RMS). Halting agent speech.`);
+          this.handleBargeIn();
+        }
+      } else {
+        this.speechFramesCount = 0;
+      }
+      // CRITICAL: NEVER accumulate inbound audio while agent is speaking!
+      // This prevents the self-echo loop where Priya responds to her own voice.
+      return;
+    }
+
+    // --- Caller Speaking Phase (Agent is Silent) ---
     const isSpeech = rms > 450;
 
     if (isSpeech) {
-      if (this.isAgentSpeaking && rms > 850) {
-        console.log(`[Barge-In] Caller speech energy detected (${rms.toFixed(0)} RMS). Triggering interruption.`);
-        this.handleBargeIn();
-      }
-
       this.speechFramesCount++;
       this.pendingSpeechChunks.push(chunk);
 
-      // Accumulate audio into main buffer once energy persists for >80ms (4 frames)
+      // Accumulate audio once energy persists for >80ms (4 frames)
       if (this.speechFramesCount >= 4) {
         if (this.pendingSpeechChunks.length > 0) {
           this.inboundMulawChunks.push(...this.pendingSpeechChunks);
@@ -305,7 +336,7 @@ export class VoiceSession {
           this.pendingSpeechChunks = [];
           this.speechFramesCount = 0;
 
-          // 8000 bytes = 1.0s in 8kHz mulaw. Filter out audio < 0.35s (clicks, line pops)
+          // 8000 bytes = 1.0s in 8kHz mulaw. Discard clicks < 0.35s
           const durationSec = fullAudio.length / 8000;
           if (durationSec < 0.35) {
             return;
@@ -325,7 +356,7 @@ export class VoiceSession {
             this.isProcessingSTT = false;
           }
         }
-      }, 420);
+      }, 480);
     } else {
       if (this.inboundMulawChunks.length > 0) {
         // Trailing silence after confirmed speech
@@ -345,7 +376,6 @@ export class VoiceSession {
     const normalized = normalizeRealEstateText(rawText);
     if (!normalized.trim()) return;
 
-    this.isAgentSpeaking = true;
     this.currentContextId = crypto.randomUUID();
 
     console.log(`[Telephony Audio Out] Speaking: "${normalized}"`);
@@ -354,6 +384,19 @@ export class VoiceSession {
       const mulawBuffer = await synthesizeTelephonyMulaw(normalized, 'kavya');
 
       if (mulawBuffer && mulawBuffer.length > 0 && this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
+        // 8000 samples per sec = 1 byte per millisecond in 8kHz mulaw
+        const durationMs = mulawBuffer.length / 8;
+        this.agentSpeakingUntil = Date.now() + durationMs + 250;
+
+        // Discard any inbound audio accumulated prior to this speech
+        this.inboundMulawChunks = [];
+        this.pendingSpeechChunks = [];
+        this.speechFramesCount = 0;
+        if (this.silenceTimer) {
+          clearTimeout(this.silenceTimer);
+          this.silenceTimer = null;
+        }
+
         // Plivo expects the playAudio command with the complete base64 mulaw payload
         this.telephonyWs.send(
           JSON.stringify({
@@ -368,8 +411,6 @@ export class VoiceSession {
       }
     } catch (err: any) {
       console.warn('[Session] Telephony speech dispatch notice:', err.message);
-    } finally {
-      this.isAgentSpeaking = false;
     }
   }
 

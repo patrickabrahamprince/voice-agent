@@ -509,6 +509,7 @@ export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<strin
       const form = new FormData();
       form.append('file', new Blob([new Uint8Array(wavBuffer)], { type: 'audio/wav' }), 'telephony.wav');
       form.append('model', 'saaras:v3');
+      form.append('language_code', 'en-IN');
 
       const res = await fetch('https://api.sarvam.ai/speech-to-text', {
         method: 'POST',
