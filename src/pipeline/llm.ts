@@ -2,6 +2,7 @@ import Groq from 'groq-sdk';
 import { sheetsService, QualifyLeadParams } from '../tools/sheets.js';
 import { QualificationEngine } from './qualifier.js';
 import { saveAgentLearning, getRecentLearnings, getCallerMemory, CallerMemoryContext } from '../tools/db.js';
+import { getObjectionPlaybookPrompt, detectObjectionHint, seedObjectionLearnings } from './objections.js';
 
 export const activeQualifiers = new Map<string, QualificationEngine>();
 
@@ -86,7 +87,9 @@ CRITICAL VOICE PHONE RULES:
 4. DIRECT ANSWERS: If the caller asks about price, OC status, location, sizes, or amenities, answer directly and immediately.
 5. CONVERSATIONAL ENGAGEMENT: Follow up naturally by asking if they are looking for a 2 or 3 BHK, or if they would like to visit this weekend.
 6. PHONETIC NUMBERS: Always spell out numbers phonetically ("two BHK", "three BHK", "one point two five crore rupees", "twelve thousand rupees per square foot").
-7. POLITE CLOSING: If the caller wants to hang up or says goodbye, conclude with: "Thank you for calling Mittal Palms. Have a wonderful day ahead. Goodbye!"`;
+7. POLITE CLOSING: If the caller wants to hang up or says goodbye, conclude with: "Thank you for calling Mittal Palms. Have a wonderful day ahead. Goodbye!"
+
+${getObjectionPlaybookPrompt()}`;
 
 /**
  * NOTE: qualify_and_sync_lead is handled by QualificationEngine.syncLeadRecord(),
@@ -122,6 +125,9 @@ export class LLMPipeline {
     } else {
       console.warn('[LLM] Using local Trishul Mittal Palms qualification engine.');
     }
+
+    // Auto-seed objection handling learnings into knowledge base
+    seedObjectionLearnings();
   }
 
   /**
@@ -158,7 +164,7 @@ export class LLMPipeline {
     if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
       try {
         const t0 = Date.now();
-        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName);
+        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName, lastUserMsg);
         const contextualMessages = [
           { role: 'system', content: contextualSystemPrompt },
           ...messages.filter((m) => m.role !== 'system'),
@@ -204,7 +210,7 @@ export class LLMPipeline {
           this.groq = new Groq({ apiKey: groqKey });
         }
 
-        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName);
+        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName, lastUserMsg);
         const groqMessages = [
           { role: 'system' as const, content: contextualSystemPrompt },
           ...messages
@@ -261,7 +267,7 @@ export class LLMPipeline {
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     if (openRouterKey && openRouterKey !== 'your_openrouter_api_key_here' && !abortSignal?.aborted) {
       try {
-        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName);
+        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName, lastUserMsg);
         const contextualMessages = [
           { role: 'system', content: contextualSystemPrompt },
           ...messages.filter((m) => m.role !== 'system'),
@@ -414,11 +420,11 @@ export class LLMPipeline {
   /**
    * Generates dynamic prompt with real-time few-shot learnings and caller memory context.
    */
-  getPromptWithLearnings(callerPhone?: string, agentName: string = 'Priya'): string {
-    const learnings = getRecentLearnings(5);
+  getPromptWithLearnings(callerPhone?: string, agentName: string = 'Priya', lastUserMsg?: string): string {
+    const learnings = getRecentLearnings(8);
     // Deduplicate learnings to avoid repeating identical bullets
     const uniqueLearnings = Array.from(new Set((learnings || []).map((l) => l.key_insight)))
-      .slice(0, 3)
+      .slice(0, 4)
       .map((insight) => `- ${insight}`)
       .join('\n');
 
@@ -436,11 +442,25 @@ BACKGROUND REFERENCE CONTEXT (INTERNAL ADVISOR NOTES ONLY - NEVER ASSUME OR DECL
       }
     }
 
+    let coachingDirectiveBlock = '';
+    if (lastUserMsg) {
+      const hint = detectObjectionHint(lastUserMsg);
+      if (hint) {
+        coachingDirectiveBlock = `
+========================================================================
+REAL-TIME COACHING DIRECTIVE FOR THIS TURN:
+${hint}
+========================================================================`;
+      }
+    }
+
     const basePrompt = agentName === 'Dylan Dsouza' ? DYLAN_SYSTEM_PROMPT : PRIYA_SYSTEM_PROMPT;
 
     return `${basePrompt}
 
 ${memoryContextBlock}
+
+${coachingDirectiveBlock}
 
 CONTINUOUS REAL-TIME LEARNINGS:
 ${uniqueLearnings || '- Maintain crisp 1-2 sentence conversational turns.'}`;

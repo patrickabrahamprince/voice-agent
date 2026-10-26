@@ -9,10 +9,11 @@ import { VoiceSession } from './pipeline/session.js';
 import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory } from './tools/db.js';
 import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech, prewarmTtsCache } from './pipeline/tts.js';
-import { clearQualifier } from './pipeline/llm.js';
+import { clearQualifier, llmPipeline } from './pipeline/llm.js';
 import { verifyPlivoSignature, buildStreamResponse, logInboundCall, getPlivoConfig } from './telephony/plivo.js';
 import plivo from 'plivo';
 import { callEventsBroadcaster, LiveCallEvent } from './pipeline/events.js';
+import { OBJECTION_SCENARIOS } from './pipeline/objections.js';
 
 // Environment Validation: If TELEPHONY_PROVIDER=plivo and PLIVO_AUTH_ID is missing, crash on startup with clear error
 if (process.env.TELEPHONY_PROVIDER === 'plivo' && !process.env.PLIVO_AUTH_ID) {
@@ -325,6 +326,64 @@ app.get('/api/live-feed/active', async () => {
  */
 app.get('/api/learnings', async () => {
   return getRecentLearnings(25);
+});
+
+/**
+ * API: Get structured real estate objection scenarios and training playbooks
+ */
+app.get('/api/training/objections', async () => {
+  return {
+    count: OBJECTION_SCENARIOS.length,
+    scenarios: OBJECTION_SCENARIOS,
+  };
+});
+
+/**
+ * API: Run live objection benchmark test against Priya
+ */
+app.post('/api/training/test-objection', async (request, reply) => {
+  const body = (request.body as any) || {};
+  const objectionText = (body.objection || '').trim();
+  if (!objectionText) {
+    return reply.status(400).send({ error: 'objection text is required' });
+  }
+
+  const t0 = Date.now();
+  const testHistory: any[] = [
+    {
+      role: 'assistant',
+      content:
+        'Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?',
+    },
+    {
+      role: 'user',
+      content: objectionText,
+    },
+  ];
+
+  let response = '';
+  for await (const chunk of llmPipeline.streamResponse(testHistory, null, '+91-9880199999', 'Priya')) {
+    response += chunk;
+  }
+
+  const latencyMs = Date.now() - t0;
+  const words = response.trim().split(/\s+/).filter(Boolean).length;
+  const brevityPassed = words <= 35;
+  const lower = response.toLowerCase();
+  const noHallucinationPassed =
+    !lower.includes('two point two crore') &&
+    !lower.includes('2.25') &&
+    !lower.includes('noted your budget as');
+
+  return {
+    objection: objectionText,
+    response: response.trim(),
+    latencyMs,
+    wordCount: words,
+    brevityPassed,
+    noHallucinationPassed,
+    passed: brevityPassed && noHallucinationPassed,
+  };
 });
 
 /**
