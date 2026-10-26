@@ -1,38 +1,44 @@
 # Getmore.OS Voice AI Production Deployment
 
-## Live Production URLs (Render Singapore Edge)
+## Live Telephony & Web Access
 
-| Service | Public URL | Description |
+| Service | Public URL / Number | Description |
 | :--- | :--- | :--- |
-| **Admin Console & Web Tester** | [`https://mittal-palms-voice-agent.onrender.com/admin`](https://mittal-palms-voice-agent.onrender.com/admin) | Real-time audio tester, lead dashboard, & analytics |
-| **Health Check Endpoint** | [`https://mittal-palms-voice-agent.onrender.com/health`](https://mittal-palms-voice-agent.onrender.com/health) | Sub-millisecond health status for monitoring |
-| **Telephony Inbound Webhook** | `https://mittal-palms-voice-agent.onrender.com/incoming-call` | Plivo XML application Answer URL |
-| **WebSocket Media Stream** | `wss://mittal-palms-voice-agent.onrender.com/media-stream` | Bidirectional 8kHz μ-law audio stream |
+| **Active Inbound Telephony DID** | **`+91 80 6434 8409`** (`080 6434 8409`) | Live inbound Bangalore landline connected to Priya |
+| **Admin Console & Web Tester** | [`https://plymouth-arnold-advances-watts.trycloudflare.com/admin`](https://plymouth-arnold-advances-watts.trycloudflare.com/admin) | Real-time audio tester, live SSE transcription feed, lead dashboard, & analytics |
+| **Health Check Endpoint** | [`https://plymouth-arnold-advances-watts.trycloudflare.com/health`](https://plymouth-arnold-advances-watts.trycloudflare.com/health) | Sub-millisecond health status for monitoring |
+| **Telephony Inbound Webhook** | `https://plymouth-arnold-advances-watts.trycloudflare.com/incoming-call` | Plivo XML application Answer URL |
+| **WebSocket Media Stream** | `wss://plymouth-arnold-advances-watts.trycloudflare.com/media-stream` | Bidirectional 8kHz G.711 μ-law audio stream |
 
 ---
 
 ## Plivo Telephony Status (Configured & Live)
 
-### 1. XML Application Details (Active)
+### 1. Inbound Number & XML Application
 | Parameter | Value |
 | :--- | :--- |
-| **Application Name** | `Mittal_Palms_Voice_AI` |
-| **Application ID** | `32134225963323005` |
-| **Default Number App** | `true` (Calls automatically route to this app) |
-| **Primary Answer URL** | `https://mittal-palms-voice-agent.onrender.com/incoming-call` (POST) |
-| **Hangup URL** | `https://mittal-palms-voice-agent.onrender.com/api/simulator/hangup` (POST) |
-| **SIP URI** | `sip:32134225963323005@app.plivo.com` |
-| **Bidirectional Stream** | `wss://mittal-palms-voice-agent.onrender.com/media-stream` |
+| **Assigned Phone Number** | `+91 80 6434 8409` (`080 6434 8409`) |
+| **Application ID** | `17370092272385353` |
+| **Primary Answer URL** | `https://plymouth-arnold-advances-watts.trycloudflare.com/incoming-call` (POST) |
+| **Bidirectional Stream** | `wss://plymouth-arnold-advances-watts.trycloudflare.com/media-stream` |
+| **Carrier Stream Rate** | 8000 Hz, 1-channel, G.711 μ-law |
 
-### 2. Verified Credentials
-- **Auth ID**: `MAMGM5NDZLOTETZDG4NY` (Verified on Render Singapore & Local)
-- **Billing**: Active standard trial account (`Getmore OS`) with ₹12.50 cash credits
+---
 
-### 3. Number Provisioning & Live Call Flow
-- **India Number KYC**: To assign an Indian DID (+91 80 or local mobile), Indian telecom regulations require business KYC submission on the [Plivo Phone Numbers Portal](https://cx.plivo.com/phone-numbers/list) (Business Incorporation Proof, Address, PAN).
-- **SIP Calling**: Directly dialable over SIP via `sip:32134225963323005@app.plivo.com`
-- **Call Handling**:
-  1. Plivo answers in <300ms with Voice XML `<Stream>`
-  2. Connects bidirectional 8kHz μ-law WebSocket stream
-  3. Sarvam Bulbul v4-Flash (Kavya voice) delivers instant greeting with LRU cache acceleration
-  4. Live audio & conversation stream to [Admin Console](https://mittal-palms-voice-agent.onrender.com/admin)
+## Latency & Self-Interruption Fixes (Current Version)
+
+1. **Sarvam Circuit Breaker (`circuit_breaker.ts`):**
+   - Automatically trips when Sarvam AI returns HTTP 402 (`insufficient_quota_error` / `Credits exhausted`).
+   - Immediately routes STT to **Groq Whisper Large V3 Turbo (~280ms)** and LLM to **Groq Qwen 2.5 32B (~180ms TTFT)**.
+   - Eliminates the previous 10.2-second cascade delay down to **sub-second turnaround (<600ms)**.
+
+2. **Native 8kHz Audio Pipeline (`tts.ts`):**
+   - Direct single-pass macOS Indian English voice (`Tara`) with `--data-format=LEI16@8000` at rate `210`.
+   - Eliminates intermediate `afconvert` and 24kHz pitch/speed distortion (preventing 3x slow-motion audio).
+   - Pre-warmed `telephonyLruCache` primes top greetings and project details for **0ms instant greeting delivery**.
+
+3. **Acoustic Echo & Anti-Interruption Immunity Guard (`session.ts`):**
+   - 100% inbound audio dropped while agent is speaking or during 400ms post-speech cooldown.
+   - VAD energy threshold set to `1300 RMS` with 8 frames (160ms) persistence to eliminate line hiss and room echo.
+   - Conversational silence debounce tuned to **550–650ms** for snappy, natural turn transitions.
+   - Clean disconnection handler prevents spurious barge-in events on call hangup.

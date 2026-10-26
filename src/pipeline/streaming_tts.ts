@@ -1,6 +1,7 @@
 import { WebSocket } from 'ws';
 import { pcmToMulaw } from './tts.js';
 import { normalizeRealEstateText } from './normalizer.js';
+import { sarvamCircuitBreaker } from './circuit_breaker.js';
 
 export interface StreamingTTSOptions {
   speaker?: string;
@@ -39,6 +40,10 @@ export class SarvamStreamingTTS {
    * Connects to Sarvam WebSocket TTS endpoint and primes the connection.
    */
   public async connect(): Promise<boolean> {
+    if (sarvamCircuitBreaker.isExhausted) {
+      return false;
+    }
+
     if (this.isConnected && this.ws && this.ws.readyState === WebSocket.OPEN) {
       return true;
     }
@@ -160,7 +165,11 @@ export class SarvamStreamingTTS {
         }, 160);
       }
     } else if (msg.type === 'error') {
-      console.warn('[StreamingTTS] Server error:', msg.data?.message || msg.message);
+      const errMsg = msg.data?.message || msg.message || '';
+      console.warn('[StreamingTTS] Server error:', errMsg);
+      if (errMsg.toLowerCase().includes('credit') || errMsg.toLowerCase().includes('quota')) {
+        sarvamCircuitBreaker.markExhausted();
+      }
       const current = this.pendingResolvers.shift();
       if (current) {
         const fullMulaw = Buffer.concat(current.chunks);
@@ -174,6 +183,10 @@ export class SarvamStreamingTTS {
    * Resolves in ~250-400ms for conversational sentences.
    */
   public async synthesizeMulaw(rawText: string, speaker?: string): Promise<Buffer> {
+    if (sarvamCircuitBreaker.isExhausted) {
+      return Buffer.alloc(0);
+    }
+
     const text = normalizeRealEstateText(rawText).trim();
     if (!text) return Buffer.alloc(0);
 
@@ -181,7 +194,7 @@ export class SarvamStreamingTTS {
     if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
       const connected = await this.connect();
       if (!connected) {
-        throw new Error('StreamingTTS connection unavailable');
+        return Buffer.alloc(0);
       }
     }
 

@@ -138,9 +138,11 @@ export class VoiceSession {
           this.recorder.recordInboundChunk(audioBuffer);
         }
 
-        // 1. If Deepgram is connected, stream 8kHz G.711 mulaw directly
+        // 1. If Deepgram is connected, stream 8kHz G.711 mulaw directly (gated by agent speaking state)
         if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
-          this.deepgramWs.send(audioBuffer);
+          if (!this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
+            this.deepgramWs.send(audioBuffer);
+          }
           return;
         }
 
@@ -254,7 +256,7 @@ export class VoiceSession {
   /**
    * Executes ultra-low latency barge-in interruption (<50ms).
    */
-  public handleBargeIn(): void {
+  public handleBargeIn(broadcastEvent: boolean = true): void {
     if (!this.isAgentSpeaking && !this.activeAbortController) return;
 
     console.log(`[Barge-In] Clearing PBX buffer on StreamSid: ${this.streamSid}`);
@@ -263,15 +265,17 @@ export class VoiceSession {
     this.agentSpeakingUntil = 0;
     this.postSpeechCooldownUntil = 0;
 
-    callEventsBroadcaster.broadcast({
-      type: 'barge_in',
-      streamSid: this.streamSid,
-      callerNumber: this.callerNumber,
-      timestamp: new Date().toISOString(),
-      data: {
-        agentName: this.agentName,
-      },
-    });
+    if (broadcastEvent) {
+      callEventsBroadcaster.broadcast({
+        type: 'barge_in',
+        streamSid: this.streamSid,
+        callerNumber: this.callerNumber,
+        timestamp: new Date().toISOString(),
+        data: {
+          agentName: this.agentName,
+        },
+      });
+    }
 
     // Discard any audio accumulated during agent speaking to avoid echoing self
     this.inboundMulawChunks = [];
@@ -372,9 +376,9 @@ export class VoiceSession {
         this.silenceTimer = null;
       }
 
-      // Conversational silence debounce: 1000ms baseline (gives caller space to complete sentences)
+      // Conversational silence debounce: 550-650ms (snappy turn transition, no awkward silence)
       const currentSpeechDuration = this.inboundMulawChunks.length / 8000;
-      const debounceMs = currentSpeechDuration > 1.5 ? 900 : 1050;
+      const debounceMs = currentSpeechDuration > 1.2 ? 550 : 650;
 
       this.silenceTimer = setTimeout(async () => {
         if (!this.isProcessingSTT && this.inboundMulawChunks.length > 0 && !this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
@@ -516,8 +520,8 @@ export class VoiceSession {
         // Cumulative speaking time: extend if previous chunk is still playing
         const currentEnd = Math.max(now, this.agentSpeakingUntil);
         this.agentSpeakingUntil = currentEnd + durationMs + 300;
-        // 800ms acoustic echo cooldown window after Priya finishes speaking
-        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 800;
+        // 400ms acoustic echo cooldown window after Priya finishes speaking
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 400;
 
         // Discard any inbound audio accumulated prior to this speech
         this.inboundMulawChunks = [];
@@ -701,8 +705,8 @@ export class VoiceSession {
 
     console.log(`[Session] Call finished. Duration: ${durationSeconds}s. Generating summary...`);
 
-    // Clean up active streams
-    this.handleBargeIn();
+    // Clean up active streams without broadcasting a fake caller barge-in
+    this.handleBargeIn(false);
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;

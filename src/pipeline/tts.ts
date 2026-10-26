@@ -7,6 +7,7 @@ import os from 'os';
 import crypto from 'crypto';
 import Groq, { toFile } from 'groq-sdk';
 import { globalStreamingTTS } from './streaming_tts.js';
+import { sarvamCircuitBreaker } from './circuit_breaker.js';
 
 export interface TTSVoiceInfo {
   id: string;
@@ -89,35 +90,41 @@ const audioCache = new WavLruCache(200);
 
 // ---------------------------------------------------------------------------
 // Native macOS High-Quality Indian English Voice Synthesis (Tara / Rishi)
+// Single-pass direct LEI16 output. Eliminates afconvert subshell overhead.
 // ---------------------------------------------------------------------------
-function synthesizeMacSpeech(text: string, voiceName: 'Tara' | 'Rishi'): Promise<Buffer> {
+export function synthesizeMacSpeech(
+  text: string,
+  voiceName: 'Tara' | 'Rishi',
+  sampleRate: 8000 | 24000 = 8000
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     if (process.platform !== 'darwin') {
       return reject(new Error('Mac say synthesis only available on darwin platform'));
     }
     const id = crypto.randomBytes(8).toString('hex');
-    const aiffPath = path.join(os.tmpdir(), `tts_${id}.aiff`);
     const wavPath = path.join(os.tmpdir(), `tts_${id}.wav`);
     const cleanText = text.replace(/["`$]/g, '').trim();
 
-    const say = spawn('say', ['-v', voiceName, cleanText, '-o', aiffPath]);
+    const formatArg = sampleRate === 8000 ? '--data-format=LEI16@8000' : '--data-format=LEI16@24000';
+    const say = spawn('say', ['-v', voiceName, formatArg, '-o', wavPath, '-r', '210', cleanText]);
+
     say.on('close', (sayCode) => {
-      if (sayCode !== 0) return reject(new Error(`say failed with code ${sayCode}`));
-      const af = spawn('afconvert', ['-f', 'WAVE', '-d', 'LEI16@24000', aiffPath, wavPath]);
-      af.on('close', (afCode) => {
-        try { if (fs.existsSync(aiffPath)) fs.unlinkSync(aiffPath); } catch {}
-        if (afCode !== 0) return reject(new Error(`afconvert failed with code ${afCode}`));
-        try {
-          const buf = fs.readFileSync(wavPath);
-          try { if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath); } catch {}
-          resolve(buf);
-        } catch (e) {
-          reject(e);
-        }
-      });
-      af.on('error', reject);
+      if (sayCode !== 0) {
+        try { if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath); } catch {}
+        return reject(new Error(`say failed with code ${sayCode}`));
+      }
+      try {
+        const buf = fs.readFileSync(wavPath);
+        try { if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath); } catch {}
+        resolve(buf);
+      } catch (e) {
+        reject(e);
+      }
     });
-    say.on('error', reject);
+    say.on('error', (err) => {
+      try { if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath); } catch {}
+      reject(err);
+    });
   });
 }
 
@@ -145,9 +152,9 @@ export async function synthesizeNeuralSpeech(
   const cachedAny = audioCache.get(`any:${normalizedText}`);
   if (cachedAny) return cachedAny;
 
-  // 1. Primary: Try Sarvam AI Bulbul (v4-flash)
+  // 1. Primary: Try Sarvam AI Bulbul (v4-flash) only if circuit breaker is not tripped
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+  if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
     try {
       console.log(`[TTS] model=v4-flash chars=${normalizedText.length} speaker=${voiceId}`);
 
@@ -178,6 +185,9 @@ export async function synthesizeNeuralSpeech(
           return item;
         }
       } else {
+        if (res.status === 402) {
+          sarvamCircuitBreaker.markExhausted();
+        }
         const errText = await res.text().catch(() => '');
         console.warn(`[Sarvam AI Bulbul] API Notice (${res.status}): ${errText.slice(0, 120)}`);
       }
@@ -186,12 +196,12 @@ export async function synthesizeNeuralSpeech(
     }
   }
 
-  // 2. Fallback: High-Quality macOS Indian English Neural Synthesis (Tara / Rishi)
+  // 2. Fallback: High-Quality macOS Indian English Neural Synthesis (Tara / Rishi at 24kHz)
   if (process.platform === 'darwin') {
     try {
       const macVoice = isMale ? 'Rishi' : 'Tara';
       console.log(`[Neural TTS Fallback] Synthesizing via macOS Indian English Voice (${macVoice}): "${normalizedText.slice(0, 45)}..."`);
-      const buffer = await synthesizeMacSpeech(normalizedText, macVoice);
+      const buffer = await synthesizeMacSpeech(normalizedText, macVoice, 24000);
       if (buffer && buffer.length > 0) {
         const item = { buffer, contentType: 'audio/wav' };
         audioCache.set(cacheKey, item);
@@ -342,7 +352,8 @@ export const TOP_25_PHRASES = [
   "Jakkur Bangalore",
   "Site walkthrough this Saturday at eleven AM with Raghavendra",
   "Would you like to confirm your site visit",
-  "Hello! This is Priya from Mittal Palms in Jakkur. We have ready-to-move two and three BHK homes with Occupancy Certificate received. Are you looking for a two BHK or a three BHK for your family?",
+  "Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?",
+  "Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?",
   "Hello! Welcome back to Mittal Palms. Wonderful to connect with you again!",
   "Two BHK pricing starts from one point two five crore rupees all inclusive.",
   "Three BHK pricing starts from one point seven crore rupees all inclusive.",
@@ -365,10 +376,12 @@ export const TOP_25_PHRASES = [
 
 export async function prewarmTtsCache(): Promise<void> {
   console.log(`[TTS] Pre-warming streaming WebSocket and cache with ${TOP_25_PHRASES.length} top Mittal Palms phrases in background...`);
-  try {
-    await globalStreamingTTS.connect();
-  } catch (err: any) {
-    console.warn('[TTS Prewarm] Streaming WebSocket connect notice:', err.message);
+  if (!sarvamCircuitBreaker.isExhausted) {
+    try {
+      await globalStreamingTTS.connect();
+    } catch (err: any) {
+      console.warn('[TTS Prewarm] Streaming WebSocket connect notice:', err.message);
+    }
   }
 
   for (const phrase of TOP_25_PHRASES) {
@@ -383,8 +396,8 @@ export async function prewarmTtsCache(): Promise<void> {
 
 /**
  * Synthesizes speech directly into 8kHz G.711 mulaw format required by Plivo / Telephony PBX.
- * Uses persistent Sarvam WebSocket TTS (Bulbul v4-flash) for ~250ms first-chunk audio delivery.
- * Falls back to Sarvam REST API and native macOS synthesis.
+ * Uses persistent Sarvam WebSocket TTS (Bulbul v4-flash) for ~250ms first-chunk audio delivery when credits active.
+ * Trips circuit breaker on quota exhaustion and routes to zero-latency cached or native 8kHz synthesis.
  */
 export async function synthesizeTelephonyMulaw(
   rawText: string,
@@ -400,8 +413,9 @@ export async function synthesizeTelephonyMulaw(
   const speaker = (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'shubh') ? 'shubh_en_narration' : 'kavya_hi_conversational');
 
   // 1. PRIMARY: Persistent Sarvam AI Bulbul v4-flash WebSocket Streaming TTS (~250-450ms)
+  // Only executed if Sarvam circuit breaker is not tripped
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+  if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
     try {
       const t0 = Date.now();
       const mulawBuf = await globalStreamingTTS.synthesizeMulaw(normalizedText, speaker);
@@ -431,7 +445,7 @@ export async function synthesizeTelephonyMulaw(
           speech_sample_rate: 8000,
           pace: 1.0,
         }),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(4000),
       });
 
       if (res.ok) {
@@ -445,13 +459,36 @@ export async function synthesizeTelephonyMulaw(
           telephonyLruCache.set(cacheKey, mulawBuf);
           return mulawBuf;
         }
+      } else if (res.status === 402) {
+        sarvamCircuitBreaker.markExhausted();
       }
     } catch (err: any) {
       console.warn('[Telephony Mulaw] Sarvam 8k REST notice:', err.message);
     }
   }
 
-  // Fallback to standard neural speech converted to mulaw
+  // 3. Fallback: Direct native macOS Indian English Voice at exact 8000 Hz LEI16
+  // Produces undistorted 1x natural conversational speech in 8kHz G.711 mulaw
+  if (process.platform === 'darwin') {
+    try {
+      const isMale = voiceId === 'shubh' || voiceId === 'aditya' || voiceId === 'dev';
+      const macVoice = isMale ? 'Rishi' : 'Tara';
+      const wavBuf = await synthesizeMacSpeech(normalizedText, macVoice, 8000);
+      if (wavBuf && wavBuf.length > 12) {
+        const dataOffset = findWavDataOffset(wavBuf);
+        if (wavBuf.length > dataOffset) {
+          const pcmBytes = wavBuf.subarray(dataOffset);
+          const mulawBuf = pcmToMulaw(pcmBytes);
+          telephonyLruCache.set(cacheKey, mulawBuf);
+          return mulawBuf;
+        }
+      }
+    } catch (macErr: any) {
+      console.warn('[Telephony Mulaw Fallback] macOS voice error:', macErr.message);
+    }
+  }
+
+  // 4. Fallback to standard neural speech converted to mulaw
   const { buffer } = await synthesizeNeuralSpeech(normalizedText, voiceId);
   if (buffer && buffer.length > 12) {
     const dataOffset = findWavDataOffset(buffer);
@@ -471,7 +508,7 @@ export async function synthesizeTelephonyMulaw(
  */
 export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> {
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (!sarvamKey || sarvamKey === 'your_sarvam_api_key_here') return '';
+  if (sarvamCircuitBreaker.isExhausted || !sarvamKey || sarvamKey === 'your_sarvam_api_key_here') return '';
   try {
     const form = new FormData();
     form.append('file', new Blob([new Uint8Array(wavBuffer)], { type: 'audio/wav' }), 'telephony.wav');
@@ -483,12 +520,14 @@ export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> 
         'api-subscription-key': sarvamKey,
       },
       body: form,
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(4000),
     });
 
     if (res.ok) {
       const data: any = await res.json();
       return (data.transcript || '').trim();
+    } else if (res.status === 402) {
+      sarvamCircuitBreaker.markExhausted();
     }
   } catch (err: any) {
     console.warn('[Sarvam STT] Transcription error:', err.message);
@@ -512,12 +551,12 @@ const WHISPER_ARTIFACTS = new Set([
 
 /**
  * Ultra-low latency Telephony STT:
- * 1. Primary: Sarvam Saaras v3 STT (~450ms, India's premier Speech-to-Text model)
- * 2. Fallback: Groq whisper-large-v3-turbo (~400ms)
+ * 1. Primary: Sarvam Saaras v3 STT (~450ms, India's premier Speech-to-Text model) if credits active
+ * 2. Fallback: Groq whisper-large-v3-turbo (~280ms) instant routing via Circuit Breaker
  */
 export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<string> {
   const sarvamKey = process.env.SARVAM_API_KEY;
-  if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+  if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
     try {
       const t0 = Date.now();
       const form = new FormData();
@@ -531,7 +570,7 @@ export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<strin
           'api-subscription-key': sarvamKey,
         },
         body: form,
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(2500),
       });
 
       if (res.ok) {
@@ -541,13 +580,15 @@ export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<strin
           console.log(`[Sarvam STT Saaras v3] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
           return transcript;
         }
+      } else if (res.status === 402) {
+        sarvamCircuitBreaker.markExhausted();
       }
     } catch (err: any) {
       console.warn('[Sarvam STT] Notice, falling back to Groq Whisper:', err.message);
     }
   }
 
-  // Fallback: Groq Whisper Large V3 Turbo
+  // Fallback: Groq Whisper Large V3 Turbo (~280ms)
   const groqKey = process.env.GROQ_API_KEY;
   if (groqKey && groqKey !== 'your_groq_api_key_here') {
     try {
@@ -563,7 +604,7 @@ export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<strin
       });
       const transcript = (res.text || '').trim();
       if (transcript.length > 0 && !WHISPER_ARTIFACTS.has(transcript.toLowerCase())) {
-        console.log(`[Groq Whisper STT Fallback] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
+        console.log(`[Groq Whisper STT] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
         return transcript;
       }
     } catch (err: any) {

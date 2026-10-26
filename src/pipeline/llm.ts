@@ -3,6 +3,7 @@ import { sheetsService, QualifyLeadParams } from '../tools/sheets.js';
 import { QualificationEngine } from './qualifier.js';
 import { saveAgentLearning, getRecentLearnings, getCallerMemory, CallerMemoryContext } from '../tools/db.js';
 import { getObjectionPlaybookPrompt, detectObjectionHint, seedObjectionLearnings } from './objections.js';
+import { sarvamCircuitBreaker } from './circuit_breaker.js';
 
 export const activeQualifiers = new Map<string, QualificationEngine>();
 
@@ -159,9 +160,9 @@ export class LLMPipeline {
     }
     qualifier.hydrateFromHistory(messages);
 
-    // 1. PRIMARY: Sarvam AI 105B Conversations (ultra-fast SSE streaming token pipeline)
+    // 1. PRIMARY: Sarvam AI 105B Conversations (ultra-fast SSE streaming token pipeline if credits active)
     const sarvamKey = process.env.SARVAM_API_KEY;
-    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
+    if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
       try {
         const t0 = Date.now();
         const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName, lastUserMsg);
@@ -237,6 +238,7 @@ export class LLMPipeline {
             return;
           }
         } else if (res.status === 402 || res.status === 429) {
+          if (res.status === 402) sarvamCircuitBreaker.markExhausted();
           console.warn(`[Sarvam LLM] Quota/rate-limit (HTTP ${res.status}). Falling back to Groq.`);
         }
       } catch (err: any) {
@@ -368,9 +370,9 @@ export class LLMPipeline {
       return 'No conversation recorded.';
     }
 
-    // 1. Sarvam AI 105B (primary)
+    // 1. Sarvam AI 105B (primary if credits active)
     const sarvamKey = process.env.SARVAM_API_KEY;
-    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+    if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
       try {
         const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
           method: 'POST',
@@ -397,6 +399,8 @@ export class LLMPipeline {
           const data: any = await res.json();
           const summary = data.choices?.[0]?.message?.content?.trim();
           if (summary) return summary;
+        } else if (res.status === 402) {
+          sarvamCircuitBreaker.markExhausted();
         }
       } catch (err: any) {
         console.warn('[Sarvam Summary] Notice:', err.message);
