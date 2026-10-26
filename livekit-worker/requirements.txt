@@ -1,0 +1,6 @@
+livekit-agents>=0.12.0
+livekit-plugins-sarvam>=0.1.0
+livekit-plugins-silero>=0.7.0
+livekit-plugins-openai>=0.10.0
+livekit-plugins-groq>=0.6.0
+python-dotenv>=1.0.0

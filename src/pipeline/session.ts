@@ -6,6 +6,7 @@ import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcrib
 import { createCall, updateCall, getCallerMemory, updateLeadRecording } from '../tools/db.js';
 import { callEventsBroadcaster } from './events.js';
 import { CallAudioRecorder } from './recorder.js';
+import { semanticTurnDetector } from './turn_detector.js';
 
 export class VoiceSession {
   private telephonyWs: WebSocket;
@@ -380,7 +381,8 @@ export class VoiceSession {
             const wav = mulawToWav(fullAudio);
             const transcript = await transcribeAudioTelephony(wav);
             if (transcript && transcript.length > 1) {
-              console.log(`[Telephony STT] Caller: "${transcript}"`);
+              const turnDecision = semanticTurnDetector.evaluateTurn(transcript, durationSec);
+              console.log(`[Telephony STT] Caller: "${transcript}" (${turnDecision.reason})`);
               await this.processCallerUtterance(transcript);
             }
           } catch (err: any) {
