@@ -363,6 +363,10 @@ export class VoiceSession {
         this.silenceTimer = null;
       }
 
+      // Adaptive silence debounce: 330ms for sustained speech, 380ms for shorter phrases
+      const currentSpeechDuration = this.inboundMulawChunks.length / 8000;
+      const debounceMs = currentSpeechDuration > 0.8 ? 330 : 380;
+
       this.silenceTimer = setTimeout(async () => {
         if (!this.isProcessingSTT && this.inboundMulawChunks.length > 0) {
           const fullAudio = Buffer.concat(this.inboundMulawChunks);
@@ -391,7 +395,7 @@ export class VoiceSession {
             this.isProcessingSTT = false;
           }
         }
-      }, 480);
+      }, debounceMs);
     } else {
       if (this.inboundMulawChunks.length > 0) {
         // Trailing silence after confirmed speech

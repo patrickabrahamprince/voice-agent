@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import os from 'os';
 import crypto from 'crypto';
 import Groq, { toFile } from 'groq-sdk';
+import { globalStreamingTTS } from './streaming_tts.js';
 
 export interface TTSVoiceInfo {
   id: string;
@@ -363,7 +364,13 @@ export const TOP_25_PHRASES = [
 ];
 
 export async function prewarmTtsCache(): Promise<void> {
-  console.log(`[TTS] Pre-warming cache with ${TOP_25_PHRASES.length} top Mittal Palms phrases in background...`);
+  console.log(`[TTS] Pre-warming streaming WebSocket and cache with ${TOP_25_PHRASES.length} top Mittal Palms phrases in background...`);
+  try {
+    await globalStreamingTTS.connect();
+  } catch (err: any) {
+    console.warn('[TTS Prewarm] Streaming WebSocket connect notice:', err.message);
+  }
+
   for (const phrase of TOP_25_PHRASES) {
     try {
       await synthesizeTelephonyMulaw(phrase, 'kavya');
@@ -376,7 +383,8 @@ export async function prewarmTtsCache(): Promise<void> {
 
 /**
  * Synthesizes speech directly into 8kHz G.711 mulaw format required by Plivo / Telephony PBX.
- * Uses Bulbul v4-flash with Kavya voice. WAV headers are properly parsed before PCM extraction.
+ * Uses persistent Sarvam WebSocket TTS (Bulbul v4-flash) for ~250ms first-chunk audio delivery.
+ * Falls back to Sarvam REST API and native macOS synthesis.
  */
 export async function synthesizeTelephonyMulaw(
   rawText: string,
@@ -389,11 +397,26 @@ export async function synthesizeTelephonyMulaw(
   const cached = telephonyLruCache.get(cacheKey);
   if (cached) return cached;
 
-  console.log(`[TTS] model=v4-flash chars=${normalizedText.length}`);
+  const speaker = (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'shubh') ? 'shubh_en_narration' : 'kavya_hi_conversational');
 
+  // 1. PRIMARY: Persistent Sarvam AI Bulbul v4-flash WebSocket Streaming TTS (~250-450ms)
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
     try {
+      const t0 = Date.now();
+      const mulawBuf = await globalStreamingTTS.synthesizeMulaw(normalizedText, speaker);
+      if (mulawBuf && mulawBuf.length > 0) {
+        console.log(`[TTS WebSocket Bulbul v4-flash] Synthesized ${mulawBuf.length} bytes in ${Date.now() - t0}ms for "${normalizedText.slice(0, 35)}..."`);
+        telephonyLruCache.set(cacheKey, mulawBuf);
+        return mulawBuf;
+      }
+    } catch (err: any) {
+      console.warn('[TTS WebSocket] Notice, falling back to REST:', err.message);
+    }
+
+    // 2. SECONDARY: Sarvam REST API Fallback
+    try {
+      console.log(`[TTS REST Fallback] model=v4-flash chars=${normalizedText.length}`);
       const res = await fetch('https://api.sarvam.ai/text-to-speech', {
         method: 'POST',
         headers: {
@@ -403,7 +426,7 @@ export async function synthesizeTelephonyMulaw(
         body: JSON.stringify({
           text: normalizedText,
           language_code: 'en-IN',
-          speaker: (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'shubh') ? 'shubh_en_narration' : 'kavya_hi_conversational'),
+          speaker,
           model: 'bulbul:v4-flash',
           speech_sample_rate: 8000,
           pace: 1.0,
@@ -416,7 +439,6 @@ export async function synthesizeTelephonyMulaw(
         const base64Audio = data.audio || data.audios?.[0];
         if (base64Audio) {
           const wavBuf = Buffer.from(base64Audio, 'base64');
-          // Properly parse WAV header — do not assume fixed 44-byte offset
           const dataOffset = findWavDataOffset(wavBuf);
           const pcmBytes = wavBuf.length > dataOffset ? wavBuf.subarray(dataOffset) : wavBuf;
           const mulawBuf = pcmToMulaw(pcmBytes);
@@ -425,7 +447,7 @@ export async function synthesizeTelephonyMulaw(
         }
       }
     } catch (err: any) {
-      console.warn('[Telephony Mulaw] Sarvam 8k synthesis notice:', err.message);
+      console.warn('[Telephony Mulaw] Sarvam 8k REST notice:', err.message);
     }
   }
 

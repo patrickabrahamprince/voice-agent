@@ -159,7 +159,7 @@ export class LLMPipeline {
     }
     qualifier.hydrateFromHistory(messages);
 
-    // 1. PRIMARY: Sarvam AI 105B Conversations (ultra-fast ~268ms turnaround, tuned for Indian voice)
+    // 1. PRIMARY: Sarvam AI 105B Conversations (ultra-fast SSE streaming token pipeline)
     const sarvamKey = process.env.SARVAM_API_KEY;
     if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
       try {
@@ -181,16 +181,59 @@ export class LLMPipeline {
             messages: contextualMessages.map((m) => ({ role: m.role, content: m.content })),
             temperature: 0.25,
             max_tokens: 80,
+            stream: true,
           }),
           signal: abortSignal,
         });
 
-        if (res.ok) {
-          const data: any = await res.json();
-          const reply = data.choices?.[0]?.message?.content?.trim();
-          if (reply) {
-            console.log(`[Sarvam 105B Primary] ${agentName} reply in ${Date.now() - t0}ms: "${reply}"`);
-            yield reply;
+        if (res.ok && res.body) {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let sseBuffer = '';
+          let sentenceBuffer = '';
+          let fullReply = '';
+          let firstTokenTime = 0;
+
+          while (true) {
+            if (abortSignal?.aborted) break;
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split('\n');
+            sseBuffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data:')) continue;
+              const dataStr = trimmed.slice(5).trim();
+              if (dataStr === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(dataStr);
+                const token = parsed.choices?.[0]?.delta?.content || '';
+                if (token) {
+                  if (!firstTokenTime) {
+                    firstTokenTime = Date.now() - t0;
+                  }
+                  sentenceBuffer += token;
+                  fullReply += token;
+
+                  if (/[.!?\n]\s*$/.test(sentenceBuffer) && sentenceBuffer.trim().length > 8) {
+                    yield sentenceBuffer.trim();
+                    sentenceBuffer = '';
+                  }
+                }
+              } catch {}
+            }
+          }
+
+          if (sentenceBuffer.trim() && !abortSignal?.aborted) {
+            yield sentenceBuffer.trim();
+          }
+
+          if (fullReply.trim()) {
+            console.log(`[Sarvam 105B SSE Stream] ${agentName} TTFT=${firstTokenTime}ms total=${Date.now() - t0}ms: "${fullReply.trim()}"`);
             return;
           }
         } else if (res.status === 402 || res.status === 429) {
