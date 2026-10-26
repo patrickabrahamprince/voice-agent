@@ -95,14 +95,14 @@ export function buildStreamResponse(streamUrl: string): string {
     const response = plivo.Response();
     response.addStream(secureStreamUrl, {
       bidirectional: true,
-      streamTimeout: 86400,
-      audioTrack: 'inbound',
+      keepCallAlive: true,
+      contentType: 'audio/x-mulaw;rate=8000',
     });
     return response.toXML();
   } catch {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Stream bidirectional="true" streamTimeout="86400">${secureStreamUrl}</Stream>
+  <Stream bidirectional="true" keepCallAlive="true" streamTimeout="86400" contentType="audio/x-mulaw;rate=8000">${secureStreamUrl}</Stream>
 </Response>`;
   }
 }

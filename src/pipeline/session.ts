@@ -32,8 +32,11 @@ export class VoiceSession {
   private fullTranscriptLines: string[] = [];
   private isClosed: boolean = false;
 
-  constructor(telephonyWs: WebSocket) {
+  constructor(telephonyWs: WebSocket, callerNumber?: string) {
     this.telephonyWs = telephonyWs;
+    if (callerNumber) {
+      this.callerNumber = callerNumber;
+    }
     this.setupTelephonyListeners();
   }
 
@@ -60,13 +63,16 @@ export class VoiceSession {
   private async handleTelephonyMessage(msg: any): Promise<void> {
     switch (msg.event) {
       case 'start': {
-        this.streamSid = msg.start?.streamSid || msg.streamSid || '';
-        this.callSid = msg.start?.callSid || '';
-        this.callerNumber =
-          msg.start?.customParameters?.from ||
-          msg.start?.customParameters?.Caller ||
-          msg.start?.from ||
-          '+91-9880012345';
+        this.streamSid = msg.start?.streamId || msg.start?.streamSid || msg.streamId || msg.streamSid || '';
+        this.callSid = msg.start?.callId || msg.start?.callSid || msg.callId || '';
+        if (!this.callerNumber || this.callerNumber === '+91-9880012345') {
+          this.callerNumber =
+            msg.start?.customParameters?.from ||
+            msg.start?.customParameters?.Caller ||
+            msg.start?.from ||
+            this.callerNumber ||
+            '+91-9880012345';
+        }
 
         console.log(`[Session] Call started. StreamSid: ${this.streamSid}, Caller: ${this.callerNumber}`);
 
@@ -82,12 +88,11 @@ export class VoiceSession {
           content: llmPipeline.getPromptWithLearnings(this.callerNumber),
         };
 
-        // Trigger Dylan Dsouza Script Step 1 Greeting
+        // Priya greeting for Mittal Palms
         const memory = getCallerMemory(this.callerNumber);
-        const callerName = (memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer')
-          ? memory.existingLead.callerName
-          : 'you';
-        const greeting = `Hi, good morning — am I speaking with ${callerName}?`;
+        const greeting = (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer')
+          ? `Hello! Welcome back to Mittal Palms. This is Priya. Wonderful to connect with you again! Are you looking for a 2 BHK or a 3 BHK?`
+          : `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
 
         this.conversationHistory.push({ role: 'assistant', content: greeting });
         this.fullTranscriptLines.push(`${this.agentName}: ${greeting}`);
@@ -221,14 +226,17 @@ export class VoiceSession {
 
     console.log(`[Barge-In] Clearing PBX buffer on StreamSid: ${this.streamSid}`);
 
-    // 1. Instantly clear PBX audio buffer over telephony WebSocket
-    if (this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN && this.streamSid) {
-      this.telephonyWs.send(
-        JSON.stringify({
-          event: 'clear',
-          streamSid: this.streamSid,
-        })
-      );
+    // 1. Instantly clear PBX audio buffer over telephony WebSocket (Plivo clearAudio + Twilio clear)
+    if (this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
+      this.telephonyWs.send(JSON.stringify({ event: 'clearAudio' }));
+      if (this.streamSid) {
+        this.telephonyWs.send(
+          JSON.stringify({
+            event: 'clear',
+            streamSid: this.streamSid,
+          })
+        );
+      }
     }
 
     // 2. Abort ongoing LLM generation
@@ -336,21 +344,17 @@ export class VoiceSession {
       const mulawBuffer = await synthesizeTelephonyMulaw(normalized, 'kavya');
 
       if (mulawBuffer && mulawBuffer.length > 0 && this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
-        // Send synthesized 8kHz mulaw frames in 160-byte packets (20ms)
-        const chunkSize = 160;
-        for (let i = 0; i < mulawBuffer.length; i += chunkSize) {
-          if (!this.isAgentSpeaking) break; // Interrupted by barge-in
-          const chunk = mulawBuffer.subarray(i, i + chunkSize);
-          this.telephonyWs.send(
-            JSON.stringify({
-              event: 'media',
-              streamSid: this.streamSid,
-              media: {
-                payload: chunk.toString('base64'),
-              },
-            })
-          );
-        }
+        // Plivo expects the playAudio command with the complete base64 mulaw payload
+        this.telephonyWs.send(
+          JSON.stringify({
+            event: 'playAudio',
+            media: {
+              contentType: 'audio/x-mulaw',
+              sampleRate: 8000,
+              payload: mulawBuffer.toString('base64'),
+            },
+          })
+        );
       }
     } catch (err: any) {
       console.warn('[Session] Telephony speech dispatch notice:', err.message);

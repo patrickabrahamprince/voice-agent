@@ -154,8 +154,11 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
     }
   }
 
-  // Always return HTTP 200 + valid Voice XML
-  const xml = buildStreamResponse(streamUrl);
+  // Always return HTTP 200 + valid Voice XML with caller parameter
+  const streamUrlWithCaller = callerFrom && callerFrom !== 'Unknown'
+    ? `${streamUrl}?caller=${encodeURIComponent(callerFrom)}`
+    : streamUrl;
+  const xml = buildStreamResponse(streamUrlWithCaller);
   reply.header('Content-Type', 'text/xml');
   return reply.code(200).send(xml);
 });
@@ -168,7 +171,9 @@ app.get('/media-stream', { websocket: true }, (socket: WebSocket, req: FastifyRe
   activeWebSockets.add(socket);
   socket.on('close', () => activeWebSockets.delete(socket));
   app.log.info({ ip: req.ip }, '[MediaStream] Incoming telephony WebSocket connected');
-  new VoiceSession(socket);
+  const query = (req.query || {}) as any;
+  const callerNumber = query.caller ? decodeURIComponent(query.caller) : undefined;
+  new VoiceSession(socket, callerNumber);
 });
 
 
