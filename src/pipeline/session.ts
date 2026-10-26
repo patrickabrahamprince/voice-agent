@@ -1,8 +1,8 @@
 import { WebSocket } from 'ws';
 import crypto from 'crypto';
 import { normalizeRealEstateText } from './normalizer.js';
-import { llmPipeline, ChatMessage, DYLAN_SYSTEM_PROMPT, activeQualifiers } from './llm.js';
-import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcribeAudioSarvam } from './tts.js';
+import { llmPipeline, ChatMessage, PRIYA_SYSTEM_PROMPT, activeQualifiers } from './llm.js';
+import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcribeAudioTelephony } from './tts.js';
 import { createCall, updateCall, getCallerMemory } from '../tools/db.js';
 
 export class VoiceSession {
@@ -16,7 +16,7 @@ export class VoiceSession {
   private isAgentSpeaking: boolean = false;
   private currentContextId: string = '';
   private activeAbortController: AbortController | null = null;
-  private agentName: string = 'Dylan Dsouza';
+  private agentName: string = 'Priya';
 
   private deepgramWs: WebSocket | null = null;
   private inboundMulawChunks: Buffer[] = [];
@@ -250,31 +250,42 @@ export class VoiceSession {
   }
 
   /**
-   * Handles inbound telephony audio frames with energy VAD and Sarvam STT.
-   * Only accumulates audio when energy > threshold for >200ms (10 frames).
-   * Drops audio < 0.8s to avoid sending noise/clicks to Saaras STT.
+   * Calculates true 16-bit linear PCM RMS energy from 8kHz G.711 mulaw frame.
+   * Silence in mulaw is 0xFF (RMS: ~0). Real voice speech has RMS: 600 - 8000+.
+   */
+  private getMulawRms(chunk: Buffer): number {
+    let sumSquares = 0;
+    for (let i = 0; i < chunk.length; i++) {
+      const u = ~chunk[i] & 0xff;
+      const t = ((u & 0x0f) << 3) + 0x84;
+      const seg = (u & 0x70) >> 4;
+      const s = (t << seg) - 0x84;
+      const sample = (u & 0x80) !== 0 ? -s : s;
+      sumSquares += sample * sample;
+    }
+    return Math.sqrt(sumSquares / chunk.length);
+  }
+
+  /**
+   * Handles inbound telephony audio frames with energy VAD and ultra-low latency STT.
+   * Only accumulates audio when energy > threshold for >80ms (4 frames).
+   * Filters out short noise clicks < 0.35s before calling Whisper/Sarvam STT.
    */
   private handleInboundTelephonyAudio(chunk: Buffer): void {
-    let totalEnergy = 0;
-    for (let i = 0; i < chunk.length; i++) {
-      const byte = chunk[i];
-      const val = byte > 127 ? byte - 128 : 127 - byte;
-      totalEnergy += val;
-    }
-    const avgEnergy = totalEnergy / chunk.length;
-    const isSpeech = avgEnergy > 18;
+    const rms = this.getMulawRms(chunk);
+    const isSpeech = rms > 450;
 
     if (isSpeech) {
-      if (this.isAgentSpeaking) {
-        console.log(`[Barge-In] Caller speech energy detected (${avgEnergy.toFixed(1)}). Triggering interruption.`);
+      if (this.isAgentSpeaking && rms > 850) {
+        console.log(`[Barge-In] Caller speech energy detected (${rms.toFixed(0)} RMS). Triggering interruption.`);
         this.handleBargeIn();
       }
 
       this.speechFramesCount++;
       this.pendingSpeechChunks.push(chunk);
 
-      // Only accumulate audio into main buffer once energy persists for >200ms (10 frames)
-      if (this.speechFramesCount >= 10) {
+      // Accumulate audio into main buffer once energy persists for >80ms (4 frames)
+      if (this.speechFramesCount >= 4) {
         if (this.pendingSpeechChunks.length > 0) {
           this.inboundMulawChunks.push(...this.pendingSpeechChunks);
           this.pendingSpeechChunks = [];
@@ -294,19 +305,18 @@ export class VoiceSession {
           this.pendingSpeechChunks = [];
           this.speechFramesCount = 0;
 
-          // 8000 bytes = 1.0s in 8kHz mulaw. Filter out audio < 0.8s (clicks, noise, background)
+          // 8000 bytes = 1.0s in 8kHz mulaw. Filter out audio < 0.35s (clicks, line pops)
           const durationSec = fullAudio.length / 8000;
-          if (durationSec < 0.8) {
-            console.log(`[STT] skipped short audio ${durationSec.toFixed(1)}s`);
+          if (durationSec < 0.35) {
             return;
           }
 
           this.isProcessingSTT = true;
           try {
             const wav = mulawToWav(fullAudio);
-            const transcript = await transcribeAudioSarvam(wav);
+            const transcript = await transcribeAudioTelephony(wav);
             if (transcript && transcript.length > 1) {
-              console.log(`[Sarvam STT Telephony] Caller: "${transcript}"`);
+              console.log(`[Telephony STT] Caller: "${transcript}"`);
               await this.processCallerUtterance(transcript);
             }
           } catch (err: any) {
@@ -315,13 +325,13 @@ export class VoiceSession {
             this.isProcessingSTT = false;
           }
         }
-      }, 550);
+      }, 420);
     } else {
       if (this.inboundMulawChunks.length > 0) {
         // Trailing silence after confirmed speech
         this.inboundMulawChunks.push(chunk);
       } else {
-        // Isolated noise spike under 200ms — discard immediately
+        // Isolated noise spike under 80ms — discard immediately
         this.speechFramesCount = 0;
         this.pendingSpeechChunks = [];
       }

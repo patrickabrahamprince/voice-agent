@@ -56,8 +56,27 @@ CRITICAL RULES:
 4. PHONETIC NUMBERS: Spell out numbers phonetically ("twelve thousand rupees per square foot", "two BHK", "three BHK").
 5. POLITE CLOSING: Always close with: "Thank you for your time. Have an amazing day. Goodbye!"`;
 
-// Compatibility export
-export const PRIYA_SYSTEM_PROMPT = DYLAN_SYSTEM_PROMPT;
+export const PRIYA_SYSTEM_PROMPT = `You are Priya, a warm, professional, and courteous senior property advisor representing Mittal Palms in Jakkur, North Bangalore.
+You are speaking live over an INBOUND phone call. The caller has dialed the official Mittal Palms project number.
+
+PROJECT OVERVIEW — MITTAL PALMS (JAKKUR, NORTH BANGALORE):
+- Project: Mittal Palms
+- Developer: Mittal
+- Location: Right beside tranquil Jakkur Lake, North Bangalore (near Manyata Tech Park, Hebbal, and Airport road)
+- Status: 100% Ready-to-move-in with Occupancy Certificate (OC) received. Immediate handover.
+- Configurations & Pricing:
+  * 2 BHK: 1,235 to 1,340 sq ft (Starts at 1.25 to 1.35 Crore rupees / exclusive resale rate twelve thousand rupees per square foot)
+  * 3 BHK: 1,720 to 1,980 sq ft (Starts at 1.7 to 1.95 Crore rupees / exclusive resale rate twelve thousand rupees per square foot)
+- Lifestyle Amenities: Premium clubhouse, swimming pool, gymnasium, children's play area, landscaped gardens, 24/7 security, 100% power backup.
+- On-Site Relationship Manager: Raghavendra (Phone: 9945577935) available for site visits and walkthroughs.
+- Registered Email: niraj@mittal.com
+
+CRITICAL VOICE PHONE RULES:
+1. BREVITY: Keep every turn strictly 1 to 2 short sentences (under 25 words). Never give long speeches over the phone.
+2. DIRECT ANSWERS: If the caller asks about price, OC status, location, sizes, or amenities, answer directly and immediately.
+3. CONVERSATIONAL ENGAGEMENT: Follow up naturally by asking if they are looking for a 2 or 3 BHK, or if they would like to visit this weekend.
+4. PHONETIC NUMBERS: Always spell out numbers phonetically ("two BHK", "three BHK", "one point two five crore rupees", "twelve thousand rupees per square foot").
+5. POLITE CLOSING: If the caller wants to hang up or says goodbye, conclude with: "Thank you for calling Mittal Palms. Have a wonderful day ahead. Goodbye!"`;
 
 /**
  * NOTE: qualify_and_sync_lead is handled by QualificationEngine.syncLeadRecord(),
@@ -75,7 +94,7 @@ export interface ChatMessage {
 
 export class LLMPipeline {
   private groq: Groq | null = null;
-  private model: string = 'llama-3.3-70b-versatile';
+  private model: string = 'qwen/qwen3.8-27b';
 
   constructor() {
     const groqKey = process.env.GROQ_API_KEY;
@@ -84,7 +103,7 @@ export class LLMPipeline {
 
     if (groqKey && groqKey !== 'your_groq_api_key_here') {
       this.groq = new Groq({ apiKey: groqKey });
-      console.log('[LLM] ✅ Primary: Groq llama-3.3-70b-versatile (free tier, ultra-low latency, 131k context)');
+      console.log('[LLM] ✅ Primary: Groq qwen/qwen3.8-27b (ultra-low latency, fast reasoning, 131k context)');
     } else if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
       console.log('[LLM] SARVAM_API_KEY active. Using Sarvam AI 105B (sarvam-105b-conversations) as fallback LLM.');
     } else if (openRouterKey && openRouterKey !== 'your_openrouter_api_key_here') {
@@ -109,32 +128,24 @@ export class LLMPipeline {
     messages: ChatMessage[],
     callId: number | null,
     callerPhone: string,
-    agentName: string = 'Dylan Dsouza',
+    agentName: string = 'Priya',
     abortSignal?: AbortSignal
   ): AsyncGenerator<string, void, unknown> {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content?.trim() || '';
 
-    // 1. DETERMINISTIC QUALIFICATION ENGINE:
-    // Ensures Dylan Dsouza's exact 8-step script executes faithfully without hallucination.
+    // Maintain lead qualification state and entity extraction in background
     const key = `${callId ?? 'sim'}:${callerPhone}`;
     let qualifier = activeQualifiers.get(key);
     if (!qualifier) {
-      qualifier = new QualificationEngine(callId, callerPhone, 'dylan');
+      qualifier = new QualificationEngine(callId, callerPhone, agentName === 'Priya' ? 'priya' : 'dylan');
       activeQualifiers.set(key, qualifier);
     }
-
     qualifier.hydrateFromHistory(messages);
-    const deterministicReply = await qualifier.handleUtterance(lastUserMsg);
-    if (deterministicReply) {
-      yield deterministicReply;
-      return;
-    }
 
-    // 2. PRIMARY: Groq LLaMA 3.3 70B Versatile (free tier — no quota issues)
+    // 1. PRIMARY: Groq Qwen 2.5 27B (ultra-low latency ~280ms, 131k context)
     const groqKey = process.env.GROQ_API_KEY;
     if (groqKey && groqKey !== 'your_groq_api_key_here' && !abortSignal?.aborted) {
       try {
-        // Ensure Groq client is initialized (lazy init if env was set after startup)
         if (!this.groq) {
           this.groq = new Groq({ apiKey: groqKey });
         }
@@ -154,11 +165,11 @@ export class LLMPipeline {
           model: this.model,
           messages: groqMessages,
           temperature: 0.3,
-          max_tokens: 120,
+          max_tokens: 80,
           stream: true,
         });
 
-        // Stream tokens and yield at sentence boundaries for low-latency TTS
+        // Stream tokens and yield at natural sentence boundaries for low-latency TTS
         let sentenceBuffer = '';
         let fullReply = '';
 
@@ -183,22 +194,16 @@ export class LLMPipeline {
         }
 
         if (fullReply.trim()) {
-          console.log(`[Groq llama-3.3-70b] Dylan reply: "${fullReply.trim().slice(0, 80)}${fullReply.length > 80 ? '…' : ''}"`);
+          console.log(`[Groq ${this.model}] ${agentName} reply: "${fullReply.trim()}"`);
           return;
         }
       } catch (err: any) {
         if (abortSignal?.aborted) return;
-        // If it's a rate-limit (429) or quota error, log clearly and fall through
-        const status = err?.status || err?.statusCode;
-        if (status === 429) {
-          console.warn('[Groq] Rate limit hit (429). Falling back to Sarvam/OpenRouter.');
-        } else {
-          console.warn('[Groq LLM] Notice:', err.message);
-        }
+        console.warn(`[Groq ${this.model}] Notice, falling back:`, err.message);
       }
     }
 
-    // 3. FALLBACK A: Sarvam AI 105B Conversations
+    // 2. FALLBACK A: Sarvam AI 105B Conversations
     const sarvamKey = process.env.SARVAM_API_KEY;
     if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
       try {
@@ -280,6 +285,13 @@ export class LLMPipeline {
         if (abortSignal?.aborted) return;
         console.warn('[OpenRouter LLM] Notice:', err.message);
       }
+    }
+
+    // 4. FALLBACK C: Deterministic Qualification Engine
+    const deterministicReply = await qualifier.handleUtterance(lastUserMsg);
+    if (deterministicReply) {
+      yield deterministicReply;
+      return;
     }
 
     // 5. LAST RESORT: Hard-coded closing reply
@@ -390,7 +402,7 @@ export class LLMPipeline {
   /**
    * Generates dynamic prompt with real-time few-shot learnings and caller memory context.
    */
-  getPromptWithLearnings(callerPhone?: string, agentName: string = 'Dylan Dsouza'): string {
+  getPromptWithLearnings(callerPhone?: string, agentName: string = 'Priya'): string {
     const learnings = getRecentLearnings(5);
     const learningBullets =
       learnings && learnings.length > 0
@@ -415,12 +427,14 @@ Known Preferences:
       }
     }
 
-    return `${DYLAN_SYSTEM_PROMPT}
+    const basePrompt = agentName === 'Dylan Dsouza' ? DYLAN_SYSTEM_PROMPT : PRIYA_SYSTEM_PROMPT;
+
+    return `${basePrompt}
 
 ${memoryContextBlock}
 
 CONTINUOUS REAL-TIME LEARNINGS:
-${learningBullets || '- Follow Dylan Dsouza talking script precisely step-by-step.'}`;
+${learningBullets || '- Maintain crisp 1-2 sentence conversational turns.'}`;
   }
 }
 

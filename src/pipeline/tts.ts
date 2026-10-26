@@ -5,6 +5,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import os from 'os';
 import crypto from 'crypto';
+import Groq, { toFile } from 'groq-sdk';
 
 export interface TTSVoiceInfo {
   id: string;
@@ -480,3 +481,50 @@ export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> 
   }
   return '';
 }
+
+let groqSTTClient: Groq | null = null;
+
+const WHISPER_ARTIFACTS = new Set([
+  'thank you.',
+  'thank you',
+  'thanks for watching.',
+  'thanks for watching',
+  'bye.',
+  'bye',
+  'you',
+  '.',
+  'subtitles by the amara.org community',
+]);
+
+/**
+ * Ultra-low latency Telephony STT:
+ * 1. Groq whisper-large-v3-turbo (~250-350ms)
+ * 2. Fallback: Sarvam Saaras v3 (~1200ms)
+ */
+export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<string> {
+  const groqKey = process.env.GROQ_API_KEY;
+  if (groqKey && groqKey !== 'your_groq_api_key_here') {
+    try {
+      if (!groqSTTClient) {
+        groqSTTClient = new Groq({ apiKey: groqKey });
+      }
+      const file = await toFile(wavBuffer, 'telephony.wav', { type: 'audio/wav' });
+      const t0 = Date.now();
+      const res = await groqSTTClient.audio.transcriptions.create({
+        file,
+        model: 'whisper-large-v3-turbo',
+        language: 'en',
+      });
+      const transcript = (res.text || '').trim();
+      if (transcript.length > 0 && !WHISPER_ARTIFACTS.has(transcript.toLowerCase())) {
+        console.log(`[Groq Whisper STT] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
+        return transcript;
+      }
+    } catch (err: any) {
+      console.warn('[Groq Whisper STT] Notice, falling back to Sarvam:', err.message);
+    }
+  }
+
+  return transcribeAudioSarvam(wavBuffer);
+}
+
