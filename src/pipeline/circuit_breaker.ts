@@ -7,11 +7,11 @@
 class SarvamCircuitBreaker {
   private _isExhausted: boolean = true; // Initialized to true since Sarvam 402 was verified
   private _lastChecked: number = Date.now();
-  private readonly PROBE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly PROBE_INTERVAL_MS = 60 * 1000; // Auto-probe every 60s to detect recharged credits
 
   get isExhausted(): boolean {
     if (this._isExhausted && Date.now() - this._lastChecked > this.PROBE_INTERVAL_MS) {
-      // Allow 1 probe request after 5 minutes to test if user recharged credits
+      // Allow 1 probe request after 60s to test if user recharged credits
       return false;
     }
     return this._isExhausted;

@@ -33,6 +33,8 @@ export class VoiceSession {
   private inboundMulawChunks: Buffer[] = [];
   private speechFramesCount: number = 0;
   private pendingSpeechChunks: Buffer[] = [];
+  private interruptFramesCount: number = 0;
+  private interruptChunks: Buffer[] = [];
   private silenceTimer: NodeJS.Timeout | null = null;
   private stagedTranscript: string = '';
   private fallbackUtteranceTimer: NodeJS.Timeout | null = null;
@@ -264,6 +266,7 @@ export class VoiceSession {
     // Immediately stop agent speaking window
     this.agentSpeakingUntil = 0;
     this.postSpeechCooldownUntil = 0;
+    this.isSynthesizingSpeech = false;
 
     if (broadcastEvent) {
       callEventsBroadcaster.broadcast({
@@ -335,35 +338,149 @@ export class VoiceSession {
    * Full acoustic echo gating: Drops 100% of audio when Priya is speaking or during
    * the 800ms post-speech cooldown to eliminate mobile speaker acoustic echo loops.
    */
+  /**
+   * Finalizes accumulated caller speech frames into an audio utterance, runs STT and semantic turn evaluation.
+   */
+  private async finalizeCallerSpeech(): Promise<void> {
+    if (this.isProcessingSTT || this.inboundMulawChunks.length === 0 || this.isAgentSpeaking || Date.now() < this.postSpeechCooldownUntil) {
+      return;
+    }
+
+    const fullAudio = Buffer.concat(this.inboundMulawChunks);
+    this.inboundMulawChunks = [];
+    this.pendingSpeechChunks = [];
+    this.speechFramesCount = 0;
+
+    // Discard noises under 0.45s (coughs, clicks, isolated breath sounds)
+    const durationSec = fullAudio.length / 8000;
+    if (durationSec < 0.45) {
+      return;
+    }
+
+    this.isProcessingSTT = true;
+    try {
+      const wav = mulawToWav(fullAudio);
+      const rawTranscript = await transcribeAudioTelephony(wav);
+      const transcript = (rawTranscript || '').trim();
+
+      if (!transcript || transcript.length < 2) {
+        return;
+      }
+
+      // 1. Backchannel filter: Ignore "Hmm", "Uh", "Um", "Like"
+      if (semanticTurnDetector.isFillerOnly(transcript)) {
+        console.log(`[TurnDetector] Filtered backchannel/hesitation: "${transcript}". Attentive listening maintained.`);
+        return;
+      }
+
+      // 2. Stitch with any staged incomplete fragment from earlier pauses
+      const combined = this.stagedTranscript
+        ? `${this.stagedTranscript.trim()} ${transcript}`
+        : transcript;
+
+      const turnDecision = semanticTurnDetector.evaluateTurn(combined, durationSec);
+      console.log(`[TurnDetector] Evaluated: "${combined}" -> complete=${turnDecision.isLikelyComplete} (${turnDecision.reason})`);
+
+      if (turnDecision.shouldIgnore) {
+        console.log(`[TurnDetector] Ignoring non-turn sound/hallucination: "${combined}"`);
+        return;
+      }
+
+      if (!turnDecision.isLikelyComplete) {
+        this.stagedTranscript = combined;
+        console.log(`[TurnDetector] Incomplete thought staged: "${this.stagedTranscript}". Waiting for caller continuation...`);
+
+        if (this.fallbackUtteranceTimer) {
+          clearTimeout(this.fallbackUtteranceTimer);
+        }
+        this.fallbackUtteranceTimer = setTimeout(async () => {
+          if (this.stagedTranscript.trim() && !this.isProcessingUtterance && !this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
+            const utterance = this.stagedTranscript.trim();
+            this.stagedTranscript = '';
+            console.log(`[TurnDetector Safety Timer] Processing stalled utterance: "${utterance}"`);
+            await this.processCallerUtterance(utterance);
+          }
+        }, 2200);
+
+        return;
+      }
+
+      // Turn is complete! Cancel any pending safety timer and process immediately
+      if (this.fallbackUtteranceTimer) {
+        clearTimeout(this.fallbackUtteranceTimer);
+        this.fallbackUtteranceTimer = null;
+      }
+
+      this.stagedTranscript = '';
+      await this.processCallerUtterance(combined);
+    } catch (err: any) {
+      console.warn('[Session] STT processing notice:', err.message);
+    } finally {
+      this.isProcessingSTT = false;
+    }
+  }
+
+  /**
+   * Handles inbound telephony audio frames with energy VAD, instant barge-in interruption, and ultra-low latency STT.
+   */
   private handleInboundTelephonyAudio(chunk: Buffer): void {
     const now = Date.now();
+    const rms = this.getMulawRms(chunk);
 
-    // 1. ACOUSTIC ECHO & AGENT SPEAKING IMMUNITY GUARD:
-    // Drop all inbound audio if Priya is speaking, synthesizing, or in post-speech echo window.
+    // 1. LIVE BARGE-IN INTERRUPTION (Caller speaks while Agent is speaking or in cooldown):
     if (this.isAgentSpeaking || now < this.postSpeechCooldownUntil) {
-      this.inboundMulawChunks = [];
-      this.pendingSpeechChunks = [];
-      this.speechFramesCount = 0;
-      if (this.silenceTimer) {
-        clearTimeout(this.silenceTimer);
-        this.silenceTimer = null;
+      // Intentional human speech directly into phone microphone is high energy (> 1500 RMS),
+      // whereas earpiece speaker leakage or line hiss is lower (300 - 1100 RMS).
+      if (rms > 1500) {
+        this.interruptFramesCount++;
+        this.interruptChunks.push(chunk);
+
+        // Require 3 consecutive frames (~60ms) of sustained caller vocal energy to trigger barge-in
+        if (this.interruptFramesCount >= 3) {
+          console.log(`⚡ [Barge-In] Live caller interruption detected (RMS=${Math.round(rms)}, frames=${this.interruptFramesCount})! Halting agent speech immediately.`);
+
+          // Save chunks prior to handleBargeIn clearing buffers
+          const callerSpokenChunks = [...this.interruptChunks];
+          const frameCount = this.interruptFramesCount;
+          this.interruptFramesCount = 0;
+          this.interruptChunks = [];
+
+          // Halt agent speech instantly over PBX (Plivo clearAudio + abort LLM + clear agentSpeakingUntil)
+          this.handleBargeIn(true);
+
+          // Transfer interrupted speech into speech buffer so caller's words are retained
+          this.inboundMulawChunks = callerSpokenChunks;
+          this.speechFramesCount = frameCount;
+          this.pendingSpeechChunks = [];
+
+          // Start silence timer so once caller pauses, their question is transcribed
+          if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+            this.silenceTimer = null;
+          }
+          this.silenceTimer = setTimeout(async () => {
+            await this.finalizeCallerSpeech();
+          }, 600);
+
+          return;
+        }
+      } else {
+        // Below speech threshold — reset interrupt accumulator to avoid leakage buildup
+        this.interruptFramesCount = 0;
+        this.interruptChunks = [];
       }
       return;
     }
 
-    // 2. Caller Speaking Phase:
-    // Strict noise rejection floor:
-    // Phone line hiss, room ambience, breathing, air conditioning: 300 - 1000 RMS.
-    // True human vocalization directly into phone mic: > 1300 RMS.
-    const rms = this.getMulawRms(chunk);
+    // 2. NORMAL CALLER SPEAKING (Agent is silent):
     const isSpeech = rms > 1300;
 
     if (isSpeech) {
       this.speechFramesCount++;
       this.pendingSpeechChunks.push(chunk);
 
-      // Accumulate audio once real speech persists for >160ms (8 frames)
-      if (this.speechFramesCount >= 8) {
+      // Accumulate audio once real speech persists for >120ms (6 frames)
+      if (this.speechFramesCount >= 6) {
         if (this.pendingSpeechChunks.length > 0) {
           this.inboundMulawChunks.push(...this.pendingSpeechChunks);
           this.pendingSpeechChunks = [];
@@ -381,87 +498,14 @@ export class VoiceSession {
       const debounceMs = currentSpeechDuration > 1.2 ? 550 : 650;
 
       this.silenceTimer = setTimeout(async () => {
-        if (!this.isProcessingSTT && this.inboundMulawChunks.length > 0 && !this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
-          const fullAudio = Buffer.concat(this.inboundMulawChunks);
-          this.inboundMulawChunks = [];
-          this.pendingSpeechChunks = [];
-          this.speechFramesCount = 0;
-
-          // Discard noises under 0.55s (coughs, clicks, isolated breath sounds)
-          const durationSec = fullAudio.length / 8000;
-          if (durationSec < 0.55) {
-            return;
-          }
-
-          this.isProcessingSTT = true;
-          try {
-            const wav = mulawToWav(fullAudio);
-            const rawTranscript = await transcribeAudioTelephony(wav);
-            const transcript = (rawTranscript || '').trim();
-
-            if (!transcript || transcript.length < 2) {
-              return;
-            }
-
-            // 1. Backchannel filter: Ignore "Hmm", "Uh", "Um", "Like"
-            if (semanticTurnDetector.isFillerOnly(transcript)) {
-              console.log(`[TurnDetector] Filtered backchannel/hesitation: "${transcript}". Attentive listening maintained.`);
-              return;
-            }
-
-            // 2. Stitch with any staged incomplete fragment from earlier pauses
-            const combined = this.stagedTranscript
-              ? `${this.stagedTranscript.trim()} ${transcript}`
-              : transcript;
-
-            const turnDecision = semanticTurnDetector.evaluateTurn(combined, durationSec);
-            console.log(`[TurnDetector] Evaluated: "${combined}" -> complete=${turnDecision.isLikelyComplete} (${turnDecision.reason})`);
-
-            if (turnDecision.shouldIgnore) {
-              console.log(`[TurnDetector] Ignoring non-turn sound/hallucination: "${combined}"`);
-              return;
-            }
-
-            if (!turnDecision.isLikelyComplete) {
-              this.stagedTranscript = combined;
-              console.log(`[TurnDetector] Incomplete thought staged: "${this.stagedTranscript}". Waiting for caller continuation...`);
-
-              if (this.fallbackUtteranceTimer) {
-                clearTimeout(this.fallbackUtteranceTimer);
-              }
-              this.fallbackUtteranceTimer = setTimeout(async () => {
-                if (this.stagedTranscript.trim() && !this.isProcessingUtterance && !this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
-                  const utterance = this.stagedTranscript.trim();
-                  this.stagedTranscript = '';
-                  console.log(`[TurnDetector Safety Timer] Processing stalled utterance: "${utterance}"`);
-                  await this.processCallerUtterance(utterance);
-                }
-              }, 2200);
-
-              return;
-            }
-
-            // Turn is complete! Cancel any pending safety timer and process immediately
-            if (this.fallbackUtteranceTimer) {
-              clearTimeout(this.fallbackUtteranceTimer);
-              this.fallbackUtteranceTimer = null;
-            }
-
-            this.stagedTranscript = '';
-            await this.processCallerUtterance(combined);
-          } catch (err: any) {
-            console.warn('[Session] STT processing notice:', err.message);
-          } finally {
-            this.isProcessingSTT = false;
-          }
-        }
+        await this.finalizeCallerSpeech();
       }, debounceMs);
     } else {
       if (this.inboundMulawChunks.length > 0) {
         // Trailing silence after confirmed speech
         this.inboundMulawChunks.push(chunk);
       } else {
-        // Isolated noise spike under 160ms — discard immediately
+        // Isolated noise spike under 120ms — discard immediately
         this.speechFramesCount = 0;
         this.pendingSpeechChunks = [];
       }
