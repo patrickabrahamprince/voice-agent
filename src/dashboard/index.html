@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mittal Palms — Priya Voice AI Dashboard</title>
+  <title>Trishul Mittal Palms — Dylan Dsouza Voice AI Dashboard</title>
   
   <!-- High-Legibility Typography: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -938,8 +938,8 @@
             </svg>
           </div>
           <div>
-            <div class="brand-name">Mittal Palms</div>
-            <div class="brand-sub">Priya Voice Agent</div>
+            <div class="brand-name">Trishul Mittal Palms</div>
+            <div class="brand-sub">Dylan Dsouza • Property Advisor</div>
           </div>
         </a>
 
@@ -969,7 +969,7 @@
       <div class="header-right">
         <a id="sheet-link" href="#" target="_blank" class="header-link">Google Sheets ↗</a>
         <div class="status-capsule">
-          <span class="pulse-dot"></span> Priya Ready
+          <span class="pulse-dot"></span> Dylan Ready (Jakkur)
         </div>
         <button onclick="loadData()" class="btn-refresh" title="Refresh Data">
           <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -1025,8 +1025,8 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
                 </svg>
               </div>
-              <h3>Priya Voice Agent Simulator</h3>
-              <p>Click <strong style="color: var(--accent-emerald);">"Start Call"</strong> to test conversational calling. Priya answers buyer questions on ready 2 & 3 BHK homes in Jakkur, qualifies budget, and schedules walkthroughs.</p>
+              <h3>Dylan Dsouza Voice Advisor</h3>
+              <p>Click <strong style="color: var(--accent-emerald);">"Start Call"</strong> to test conversational calling. Dylan checks if the buyer is exploring Bangalore properties, gathers requirements, presents Trishul Mittal Palms resale highlights, and schedules WhatsApp follow-up.</p>
             </div>
           </div>
 
@@ -1048,20 +1048,23 @@
             </div>
           </div>
 
-          <!-- Quick Test Question Chips -->
+          <!-- Quick Test Question Chips (Dylan Script Steps) -->
           <div class="quick-chips">
-            <span class="quick-chips-title">1-Click Buyer Prompts:</span>
-            <button onclick="sendQuickUtterance('What are the prices and sizes for ready 2 and 3 BHK homes in Mittal Palms?')" class="chip-btn">
-              🏠 Pricing & OC
+            <span class="quick-chips-title">1-Click Script Steps:</span>
+            <button onclick="sendQuickUtterance('Yes, speaking.')" class="chip-btn">
+              ✓ Yes, Speaking
             </button>
-            <button onclick="sendQuickUtterance('Tell me about the location in Jakkur and distance to Manyata Tech Park.')" class="chip-btn">
-              📍 Jakkur Location
+            <button onclick="sendQuickUtterance('Yes, I am exploring properties in Bangalore.')" class="chip-btn">
+              🏢 Exploring Bangalore
             </button>
-            <button onclick="sendQuickUtterance('Can we book a walkthrough with Raghavendra this Saturday at 11 AM?')" class="chip-btn success">
-              ✓ Book Walkthrough
+            <button onclick="sendQuickUtterance('Looking for a 3 BHK, around 1800 square feet.')" class="chip-btn success">
+              🏠 3 BHK (1,800 sqft)
             </button>
-            <button onclick="sendQuickUtterance('I want a 3 BHK in Jakkur for 35 Lakhs only.')" class="chip-btn warning">
-              ⚠️ Budget ₹35L
+            <button onclick="sendQuickUtterance('It is for self-use in Jakkur, budget around 2.2 Crore.')" class="chip-btn">
+              📍 Self-Use / ₹2.2 Cr
+            </button>
+            <button onclick="sendQuickUtterance('Please share details on WhatsApp. Tomorrow at 11 AM works.')" class="chip-btn success">
+              🗓 Tomorrow 11 AM WhatsApp
             </button>
             <button onclick="triggerBargeIn()" class="chip-btn interrupt">
               ⚡ Interrupt
@@ -1090,10 +1093,9 @@
             </div>
             
             <select id="voice-select" class="voice-select-clean">
-              <option value="kavya" selected>Priya — Kavya (Warm Indian English)</option>
-              <option value="roopa">Priya — Roopa (Crisp Indian English)</option>
-              <option value="priya">Priya — Classic</option>
-              <option value="shubh">Raghavendra — Shubh (Relationship Mgr)</option>
+              <option value="shubh" selected>👨 Dylan Dsouza — Sarvam AI Bulbul (Shubh • Advisor)</option>
+              <option value="kavya">👩 Kavya — Sarvam AI Bulbul (Conversational)</option>
+              <option value="roopa">👩 Roopa — Sarvam AI Bulbul (Crisp)</option>
             </select>
 
             <button id="btn-preview-voice" type="button" onclick="previewPriyaVoice()" class="btn-preview">
@@ -1105,32 +1107,48 @@
           <div class="side-widget">
             <div class="widget-title">
               <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-              Mittal Palms Details
+              Trishul Mittal Palms Details
             </div>
             
             <div class="fact-row">
               <span class="fact-label">Location</span>
-              <span class="fact-value">Jakkur, North Bangalore</span>
+              <span class="fact-value">Jakkur, Bangalore</span>
             </div>
             <div class="fact-row">
-              <span class="fact-label">Inventory</span>
-              <span class="fact-value">Ready 2 & 3 BHK</span>
+              <span class="fact-label">Setting</span>
+              <span class="fact-value">Jakkur Lake & Aerodrome</span>
             </div>
             <div class="fact-row">
-              <span class="fact-label">Sizes</span>
-              <span class="fact-value">1,235 – 1,980 sq.ft</span>
+              <span class="fact-label">Resale Rate</span>
+              <span class="fact-value" style="color: var(--accent-emerald);">₹12,000 / sq. ft.</span>
             </div>
             <div class="fact-row">
-              <span class="fact-label">Price Range</span>
-              <span class="fact-value">₹1.15 Cr – ₹1.95 Cr</span>
+              <span class="fact-label">2 BHK Sizes</span>
+              <span class="fact-value">1,235 – 1,340 sq.ft</span>
             </div>
             <div class="fact-row">
-              <span class="fact-label">OC Status</span>
-              <span class="fact-value" style="color: var(--accent-emerald);">Received (Ready)</span>
+              <span class="fact-label">3 BHK Sizes</span>
+              <span class="fact-value">1,720 – 1,980 sq.ft</span>
             </div>
             <div class="fact-row">
-              <span class="fact-label">Site Contact</span>
-              <span class="fact-value">Raghavendra</span>
+              <span class="fact-label">Balconies</span>
+              <span class="fact-value">Up to 3 + Open Utility</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-label">Amenities</span>
+              <span class="fact-value">Clubhouse, Pool, Gym, Sports</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-label">Connectivity</span>
+              <span class="fact-value">Manyata 6.5 km • Airport Road</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-label">Advisor</span>
+              <span class="fact-value">Dylan Dsouza</span>
+            </div>
+            <div class="fact-row">
+              <span class="fact-label">Contact Ref</span>
+              <span class="fact-value">Nisha (9148957101)</span>
             </div>
           </div>
         </div>
@@ -1158,9 +1176,9 @@
           <div class="kpi-desc">Budget &lt; ₹50L / Mismatch</div>
         </div>
         <div class="kpi-box">
-          <div class="kpi-label">Voice Agent Persona</div>
-          <div class="kpi-val" style="font-size: 20px; color: var(--accent-purple);">Priya (Kavya)</div>
-          <div class="kpi-desc">Sarvam AI Bulbul v4-Flash</div>
+          <div class="kpi-label">Voice Advisor Persona</div>
+          <div class="kpi-val" style="font-size: 20px; color: var(--accent-purple);">Dylan Dsouza</div>
+          <div class="kpi-desc">Sarvam AI Bulbul (Shubh)</div>
         </div>
       </div>
 
@@ -1916,11 +1934,8 @@
     }
 
     function previewPriyaVoice() {
-      const selectedVoice = document.getElementById('voice-select')?.value || 'kavya';
-      const isMale = selectedVoice === 'shubh';
-      const sample = isMale
-        ? `Hello! This is Raghavendra from Mittal Palms in Jakkur. We have premium ready-to-move 2 and 3 BHK residences here. Would you like to schedule an exclusive walkthrough this Saturday or Sunday?`
-        : `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+      const selectedVoice = document.getElementById('voice-select')?.value || 'shubh';
+      const sample = `Hi, good morning — am I speaking with Rahul? Hi, I’m Dylan Dsouza, a property advisor. I just wanted to check if you are exploring properties in Bangalore?`;
       const previewBtnText = document.getElementById('preview-btn-text');
 
       if (!isSarvamActive()) {
@@ -2120,22 +2135,14 @@
         document.getElementById('btn-send-utterance').disabled = false;
         if (document.getElementById('btn-mic')) document.getElementById('btn-mic').disabled = false;
 
-        const greeting = data.greetingText || `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+        const greeting = data.greetingText || `Hi, good morning — am I speaking with you?`;
         
         clientDialogueHistory = [{ role: 'assistant', content: greeting }];
 
-        const mem = data.callerMemory;
-        const memoryBanner = (mem && mem.isReturningCaller)
-          ? `<div style="padding: 7px 10px; margin-bottom: 10px; border-radius: 6px; background: #EFF6FF; border: 1px solid #BFDBFE; font-size: 11px; color: #1E40AF;">
-               🧠 <strong>Returning Buyer Recognized:</strong> ${mem.existingLead?.config || 'Preferences loaded'}${mem.existingLead?.budget ? ' • ' + mem.existingLead.budget : ''}
-             </div>`
-          : '';
-
         const box = document.getElementById('dialogue-box');
         box.innerHTML = `
-          ${memoryBanner}
           <div class="bubble-wrapper agent">
-            <span class="bubble-sender-tag">Priya • Mittal Palms Voice AI</span>
+            <span class="bubble-sender-tag">Dylan Dsouza • Property Advisor</span>
             <div class="bubble-card">
               ${greeting}
             </div>
@@ -2226,7 +2233,7 @@
           clientDialogueHistory.push({ role: 'assistant', content: reply });
           box.innerHTML += `
             <div class="bubble-wrapper agent">
-              <span class="bubble-sender-tag">Priya • Mittal Palms Voice AI</span>
+              <span class="bubble-sender-tag">Dylan Dsouza • Property Advisor</span>
               <div class="bubble-card">
                 ${reply}
               </div>

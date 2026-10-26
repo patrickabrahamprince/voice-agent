@@ -8,7 +8,7 @@ interface ScenarioResult {
   details: string;
 }
 
-const SERVER_WS_URL = process.env.WS_URL || 'ws://localhost:3000/media-stream';
+const SERVER_WS_URL = process.env.WS_URL || 'ws://localhost:3001/media-stream';
 
 /**
  * Runs a single simulated phone call against the live media-stream WebSocket.

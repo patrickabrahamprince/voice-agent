@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 import crypto from 'crypto';
 import { normalizeRealEstateText } from './normalizer.js';
-import { llmPipeline, ChatMessage, PRIYA_SYSTEM_PROMPT } from './llm.js';
+import { llmPipeline, ChatMessage, DYLAN_SYSTEM_PROMPT, activeQualifiers } from './llm.js';
 import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcribeAudioSarvam } from './tts.js';
 import { createCall, updateCall, getCallerMemory } from '../tools/db.js';
 
@@ -16,7 +16,7 @@ export class VoiceSession {
   private isAgentSpeaking: boolean = false;
   private currentContextId: string = '';
   private activeAbortController: AbortController | null = null;
-  private agentName: string = 'Priya';
+  private agentName: string = 'Dylan Dsouza';
 
   private deepgramWs: WebSocket | null = null;
   private inboundMulawChunks: Buffer[] = [];
@@ -24,6 +24,7 @@ export class VoiceSession {
   private pendingSpeechChunks: Buffer[] = [];
   private silenceTimer: NodeJS.Timeout | null = null;
   private isProcessingSTT: boolean = false;
+  private isProcessingUtterance: boolean = false;
 
   private conversationHistory: ChatMessage[] = [
     { role: 'system', content: llmPipeline.getPromptWithLearnings() },
@@ -81,14 +82,15 @@ export class VoiceSession {
           content: llmPipeline.getPromptWithLearnings(this.callerNumber),
         };
 
-        // Trigger context-aware greeting
+        // Trigger Dylan Dsouza Script Step 1 Greeting
         const memory = getCallerMemory(this.callerNumber);
-        const greeting = memory.isReturningCaller
-          ? 'Hello! Welcome back to Mittal Palms. This is Priya. Wonderful to connect with you again! Are you looking to schedule your site walkthrough with Raghavendra, or did you have more questions about our homes?'
-          : 'Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here. Are you looking for a 2 BHK or a 3 BHK for your family?';
+        const callerName = (memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer')
+          ? memory.existingLead.callerName
+          : 'you';
+        const greeting = `Hi, good morning — am I speaking with ${callerName}?`;
 
         this.conversationHistory.push({ role: 'assistant', content: greeting });
-        this.fullTranscriptLines.push(`Priya: ${greeting}`);
+        this.fullTranscriptLines.push(`${this.agentName}: ${greeting}`);
 
         await this.speakText(greeting);
         break;
@@ -360,9 +362,17 @@ export class VoiceSession {
   /**
    * Handles user dialogue turn, invokes LLM with streaming and function calling,
    * enforces 20s rejection exit and 240s duration cap, and dispatches TTS chunks.
+   * Guard: concurrent utterances are dropped to prevent history corruption.
    */
   public async processCallerUtterance(callerText: string): Promise<string> {
     if (!callerText || !callerText.trim()) return '';
+
+    // Drop concurrent utterance if a turn is already in flight
+    if (this.isProcessingUtterance) {
+      console.log(`[Session] Dropping concurrent utterance (still processing): "${callerText.slice(0, 40)}"`);
+      return '';
+    }
+    this.isProcessingUtterance = true;
 
     const callDuration = Math.round((Date.now() - this.startTime) / 1000);
     const lower = callerText.toLowerCase().trim();
@@ -385,6 +395,7 @@ export class VoiceSession {
       await this.speakText(politeExit);
       this.conversationHistory.push({ role: 'assistant', content: politeExit });
       this.fullTranscriptLines.push(`${this.agentName}: ${politeExit}`);
+      this.isProcessingUtterance = false;
       await this.closeSession();
       return politeExit;
     }
@@ -392,12 +403,13 @@ export class VoiceSession {
     // 2. Max call duration cap: If call duration > 240s (4 mins)
     if (callDuration > 240) {
       console.log(`[Session] Call duration reached ${callDuration}s (>240s cap). Concluding call.`);
-      const wrapUp = "Thank you so much for your time. Our project head Raghavendra will call you back with all details and pricing sheet. Have a great day!";
+      const wrapUp = "Thank you for your time. Have an amazing day. Goodbye!";
       this.conversationHistory.push({ role: 'user', content: callerText });
       this.fullTranscriptLines.push(`Caller: ${callerText}`);
       await this.speakText(wrapUp);
       this.conversationHistory.push({ role: 'assistant', content: wrapUp });
       this.fullTranscriptLines.push(`${this.agentName}: ${wrapUp}`);
+      this.isProcessingUtterance = false;
       await this.closeSession();
       return wrapUp;
     }
@@ -449,6 +461,7 @@ export class VoiceSession {
       }
     } finally {
       this.activeAbortController = null;
+      this.isProcessingUtterance = false;
     }
 
     return fullResponse.trim();
@@ -474,6 +487,10 @@ export class VoiceSession {
       this.silenceTimer = null;
     }
     this.inboundMulawChunks = [];
+
+    // Release the QualificationEngine for this call to prevent memory leak
+    const qualifierKey = `${this.callId ?? 'sim'}:${this.callerNumber}`;
+    activeQualifiers.delete(qualifierKey);
 
     if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
       try {

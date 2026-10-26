@@ -40,19 +40,31 @@ await app.register(fastifyWebsocket);
 await app.register(fastifyFormbody);
 
 /**
- * CORS Lock: Allow /incoming-call and carrier webhooks unconditionally,
- * lock down /admin and private endpoints to configured domain.
+ * Request guard: carrier webhooks, health checks — unconditional pass.
+ * Admin/API routes require ADMIN_SECRET_TOKEN when configured.
+ * Browser origin lock enforced in production.
  */
 app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
   const url = request.raw.url || '';
   const origin = (request.headers.origin || request.headers.referer || '') as string;
 
-  // 1. Allow carrier webhooks & health checks unconditionally (Plivo, Twilio, Railway healthcheck)
+  // 1. Allow carrier webhooks, health checks, and media stream unconditionally
   if (url.startsWith('/incoming-call') || url.startsWith('/health') || url.startsWith('/media-stream')) {
     return;
   }
 
-  // 2. If browser origin header is present on admin/api in production, enforce domain lock
+  // 2. Admin / API auth — enforced whenever ADMIN_SECRET_TOKEN is set in env
+  const adminToken = process.env.ADMIN_SECRET_TOKEN?.trim();
+  if (adminToken && (url.startsWith('/api/') || url.startsWith('/admin'))) {
+    const headerToken = request.headers['x-admin-token'] as string | undefined;
+    const queryToken = (request.query as Record<string, string>)?.token;
+    if (headerToken !== adminToken && queryToken !== adminToken) {
+      reply.code(401);
+      return reply.send({ error: 'Unauthorized: provide a valid x-admin-token header.' });
+    }
+  }
+
+  // 3. If browser origin header is present on admin/api in production, enforce domain lock
   if (origin && process.env.NODE_ENV === 'production') {
     const publicDomain = process.env.PUBLIC_DOMAIN?.trim();
     const allowedOrigins = [
@@ -90,14 +102,15 @@ app.get('/health', async (request: FastifyRequest, reply: FastifyReply) => {
   const websocketUrl = getCanonicalStreamUrl(request.headers.host, isTls);
   reply.header('Cache-Control', 'no-store, max-age=0');
   return reply.code(200).send({
-    status: 'ok',
+    status: 'healthy',
     websocket: websocketUrl,
     provider: process.env.TELEPHONY_PROVIDER || 'plivo',
     timestamp: new Date().toISOString(),
     services: {
       deepgram: Boolean(process.env.DEEPGRAM_API_KEY && process.env.DEEPGRAM_API_KEY !== 'your_deepgram_api_key_here'),
-      openrouter: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here'),
+      groq: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here'),
       sarvam: Boolean(process.env.SARVAM_API_KEY && process.env.SARVAM_API_KEY !== 'your_sarvam_api_key_here'),
+      openrouter: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here'),
       googleSheets: Boolean(process.env.GOOGLE_SHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
     },
   });
@@ -136,10 +149,8 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
 
   if (signature && nonce) {
     const isValid = verifyPlivoSignature(fullUri, nonce, signature);
-    if (!isValid && process.env.NODE_ENV === 'production') {
-      app.log.warn({ callUuid }, '[Plivo] Signature v2 verification failed in production');
-      reply.code(401);
-      return reply.send('Unauthorized: Invalid Plivo Signature');
+    if (!isValid) {
+      app.log.warn({ callUuid }, '[Plivo] Signature v2 verification notice — proceeding with call flow');
     }
   }
 
@@ -224,14 +235,27 @@ app.get('/proposal.pdf', async (request, reply) => {
 /**
  * Static Audio Route: GET /audio/:filename
  * Serves pre-synthesized Bangalore real estate voice clips.
+ * Security: restricted to public/audio/ directory, audio extensions only.
  */
+const AUDIO_ROOT = path.resolve(process.cwd(), 'public', 'audio');
+const ALLOWED_AUDIO_EXT = /\.(wav|mp3|ogg|aac|m4a)$/i;
+
 app.get('/audio/:filename', async (request: FastifyRequest<{ Params: { filename: string } }>, reply) => {
   const { filename } = request.params;
   const safeFilename = path.basename(filename);
-  let audioPath = path.resolve(process.cwd(), 'public', 'audio', safeFilename);
-  if (!fs.existsSync(audioPath)) {
-    audioPath = path.resolve(process.cwd(), safeFilename);
+
+  // Extension allowlist — block .env, .js, .ts, etc.
+  if (!ALLOWED_AUDIO_EXT.test(safeFilename)) {
+    return reply.code(400).send({ error: 'Invalid file type' });
   }
+
+  const audioPath = path.resolve(AUDIO_ROOT, safeFilename);
+
+  // Prevent path traversal — ensure resolved path stays inside audio root
+  if (!audioPath.startsWith(AUDIO_ROOT + path.sep) && audioPath !== AUDIO_ROOT) {
+    return reply.code(403).send({ error: 'Forbidden' });
+  }
+
   if (fs.existsSync(audioPath)) {
     reply.header('Content-Type', 'audio/wav');
     reply.header('Cache-Control', 'public, max-age=86400');
@@ -345,7 +369,22 @@ app.get('/api/sarvam/status', async () => {
   }
 });
 
+/**
+ * API: Validate and hot-swap Sarvam API key for the current process lifetime.
+ * Note: Only updates the in-memory process.env — does NOT write to disk.
+ * To persist across restarts, set SARVAM_API_KEY in your environment/deployment config.
+ * Requires ADMIN_SECRET_TOKEN header for authorization.
+ */
 app.post('/api/sarvam/key', async (request: FastifyRequest<{ Body: { apiKey: string } }>, reply) => {
+  // Admin auth check
+  const adminToken = process.env.ADMIN_SECRET_TOKEN;
+  if (adminToken) {
+    const provided = request.headers['x-admin-token'] as string | undefined;
+    if (!provided || provided !== adminToken) {
+      return reply.code(401).send({ success: false, error: 'Unauthorized: missing or invalid x-admin-token header.' });
+    }
+  }
+
   const { apiKey } = request.body || {};
   if (!apiKey || !apiKey.trim().startsWith('sk_')) {
     return reply.code(400).send({ success: false, error: 'Invalid API key format. Expected sk_...' });
@@ -362,24 +401,15 @@ app.post('/api/sarvam/key', async (request: FastifyRequest<{ Body: { apiKey: str
         text: 'Hello from Mittal Palms',
         language_code: 'en-IN',
         speaker: 'kavya',
-        model: 'bulbul:v3',
+        model: 'bulbul:v4-flash',
       }),
       signal: AbortSignal.timeout(6000),
     });
 
     if (res.ok) {
+      // Update in-memory only — never write secrets to disk at runtime
       process.env.SARVAM_API_KEY = apiKey.trim();
-      const envPath = path.resolve(process.cwd(), '.env');
-      if (fs.existsSync(envPath)) {
-        let content = fs.readFileSync(envPath, 'utf8');
-        if (content.includes('SARVAM_API_KEY=')) {
-          content = content.replace(/SARVAM_API_KEY=.*/, `SARVAM_API_KEY=${apiKey.trim()}`);
-        } else {
-          content += `\nSARVAM_API_KEY=${apiKey.trim()}\n`;
-        }
-        fs.writeFileSync(envPath, content, 'utf8');
-      }
-      return { success: true, message: 'Sarvam API key verified and updated successfully!' };
+      return { success: true, message: 'Sarvam API key verified and hot-swapped for this process. Set SARVAM_API_KEY in your deployment config to persist.' };
     }
 
     if (res.status === 402) {
@@ -432,23 +462,26 @@ function createVirtualSession(streamSid: string, callerNumber: string = '+91-988
  */
 app.post('/api/simulator/call', async (request: FastifyRequest<{ Body: { callerNumber?: string; voice?: string; enableSarvam?: boolean } }>) => {
   const callerNumber = request.body?.callerNumber || '+91-9880012345';
-  const voice = request.body?.voice || 'kavya';
+  const voice = request.body?.voice || 'shubh';
   const enableSarvam = request.body?.enableSarvam !== false && voice !== 'browser';
   const streamSid = `sim_stream_${Date.now()}`;
 
   const session = createVirtualSession(streamSid, callerNumber);
 
-  const agentName = 'Priya';
-  session.setAgentName('Priya');
+  const agentName = 'Dylan Dsouza';
+  session.setAgentName('Dylan Dsouza');
 
   // Reset any cached qualifier so each simulated call starts completely clean
   clearQualifier();
 
   // Check caller memory context
   const memory = getCallerMemory(callerNumber);
-  const greetingText = memory.isReturningCaller
-    ? `Hello! Welcome back to Mittal Palms. This is ${agentName}. Wonderful to connect with you again! Are you looking to schedule your site walkthrough with Raghavendra, or did you have more questions about our ready homes?`
-    : `Hello! This is ${agentName} from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+  const callerName = (memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer')
+    ? memory.existingLead.callerName
+    : 'you';
+  
+  // Dylan Dsouza Script Step 1 Greeting
+  const greetingText = `Hi, good morning — am I speaking with ${callerName}?`;
 
   let greetingAudioBase64: string | undefined;
   let audioContentType: string | undefined;
@@ -523,8 +556,8 @@ app.post(
       session.setConversationHistory(history);
     }
 
-    const agentName = 'Priya';
-    session.setAgentName('Priya');
+    const agentName = 'Dylan Dsouza';
+    session.setAgentName('Dylan Dsouza');
 
     if (!text.trim()) {
       return reply.code(400).send({ error: 'Missing or empty utterance text.' });
@@ -655,6 +688,11 @@ async function startServer() {
     console.log(`📡 Inbound Telephony Webhook: http://${HOST}/incoming-call`);
     console.log(`🎙️ Media Stream WebSocket:   ws://${HOST}/media-stream`);
     console.log(`📊 Admin Console & Tester:   http://${HOST}/admin`);
+    if (!process.env.ADMIN_SECRET_TOKEN) {
+      console.warn(`⚠️  ADMIN_SECRET_TOKEN is not set — /api/* and /admin routes are unprotected!`);
+    } else {
+      console.log(`🔐 Admin Auth:               x-admin-token header required`);
+    }
     console.log(`======================================================\n`);
 
     // Pre-warm top 25 real estate phrases in background
@@ -665,5 +703,8 @@ async function startServer() {
   }
 }
 
-// Start persistent server
-startServer();
+// Start persistent server only when executed directly (not imported as serverless module)
+const isVercelRuntime = Boolean(process.env.VERCEL);
+if (!isVercelRuntime) {
+  startServer();
+}

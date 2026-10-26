@@ -26,4 +26,6 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: LEAD_EMAIL
-        value: niraj@mittal.com
+        sync: false
+      - key: ADMIN_SECRET_TOKEN
+        sync: false

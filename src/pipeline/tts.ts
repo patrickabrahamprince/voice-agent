@@ -2,6 +2,9 @@ import 'dotenv/config';
 import { normalizeRealEstateText } from './normalizer.js';
 import fs from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
+import os from 'os';
+import crypto from 'crypto';
 
 export interface TTSVoiceInfo {
   id: string;
@@ -15,16 +18,24 @@ export interface TTSVoiceInfo {
 // Exclusive Voice Provider: Sarvam AI Bulbul (India's Premier Voice AI)
 export const AVAILABLE_VOICES: TTSVoiceInfo[] = [
   {
-    id: 'kavya',
-    name: '👩 Priya — Sarvam AI Bulbul (Kavya • Warm & Conversational)',
-    gender: 'Female',
+    id: 'shubh',
+    name: '👨 Dylan Dsouza — Property Advisor (Sarvam AI Bulbul • Shubh)',
+    gender: 'Male',
     accent: 'Bangalore Indian English',
     provider: 'sarvam',
     isDefault: true,
   },
   {
+    id: 'kavya',
+    name: '👩 Kavya — Sarvam AI Bulbul (Warm & Conversational)',
+    gender: 'Female',
+    accent: 'Bangalore Indian English',
+    provider: 'sarvam',
+    isDefault: false,
+  },
+  {
     id: 'roopa',
-    name: '👩 Priya — Sarvam AI Bulbul (Roopa • Crisp & Direct)',
+    name: '👩 Roopa — Sarvam AI Bulbul (Crisp & Direct)',
     gender: 'Female',
     accent: 'Bangalore Indian English',
     provider: 'sarvam',
@@ -32,17 +43,9 @@ export const AVAILABLE_VOICES: TTSVoiceInfo[] = [
   },
   {
     id: 'priya',
-    name: '👩 Priya — Sarvam AI Bulbul (Priya • Classic)',
+    name: '👩 Priya — Sarvam AI Bulbul (Classic)',
     gender: 'Female',
     accent: 'Indian English',
-    provider: 'sarvam',
-    isDefault: false,
-  },
-  {
-    id: 'shubh',
-    name: '👨 Raghavendra — Sarvam AI Bulbul (Shubh • Relationship Manager)',
-    gender: 'Male',
-    accent: 'Bangalore Indian English',
     provider: 'sarvam',
     isDefault: false,
   },
@@ -50,14 +53,49 @@ export const AVAILABLE_VOICES: TTSVoiceInfo[] = [
 
 export const AVAILABLE_FEMALE_VOICES = AVAILABLE_VOICES;
 
-import { spawn } from 'child_process';
-import os from 'os';
-import crypto from 'crypto';
+// ---------------------------------------------------------------------------
+// Bounded LRU cache for WAV audio responses — max 200 entries
+// Prevents unbounded memory growth from unique utterances.
+// ---------------------------------------------------------------------------
+class WavLruCache {
+  private cache = new Map<string, { buffer: Buffer; contentType: string }>();
+  private readonly maxEntries: number;
 
-// In-memory cache for instant playback
-const audioCache = new Map<string, { buffer: Buffer; contentType: string }>();
+  constructor(maxEntries: number = 200) {
+    this.maxEntries = maxEntries;
+  }
 
+  public get(key: string): { buffer: Buffer; contentType: string } | undefined {
+    const val = this.cache.get(key);
+    if (val) {
+      // Move to end (most recently used)
+      this.cache.delete(key);
+      this.cache.set(key, val);
+      return val;
+    }
+    return undefined;
+  }
+
+  public set(key: string, value: { buffer: Buffer; contentType: string }): void {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxEntries) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest) this.cache.delete(oldest);
+    }
+    this.cache.set(key, value);
+  }
+
+  public has(key: string): boolean {
+    return this.cache.has(key);
+  }
+}
+
+const audioCache = new WavLruCache(200);
+
+// ---------------------------------------------------------------------------
 // Native macOS High-Quality Indian English Voice Synthesis (Tara / Rishi)
+// ---------------------------------------------------------------------------
 function synthesizeMacSpeech(text: string, voiceName: 'Tara' | 'Rishi'): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     if (process.platform !== 'darwin') {
@@ -89,116 +127,29 @@ function synthesizeMacSpeech(text: string, voiceName: 'Tara' | 'Rishi'): Promise
   });
 }
 
-// Preload local studio clips for instant 0ms latency playback
-function preloadStudioAudio(): void {
-  const mappings: [string, string[], 'kavya'][] = [
-    [
-      'mittal_greeting_priya.wav',
-      [
-        'Hello! This is Priya from Mittal Palms in Jakkur. We have ready-to-move 2 and 3 BHK homes with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?',
-        'Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?'
-      ],
-      'kavya'
-    ],
-    [
-      'mittal_location_priya.wav',
-      ['Mittal Palms is located in Jakkur, North Bangalore, very close to Manyata Tech Park and Hebbal. This is our only project. Does that commute work for you?'],
-      'kavya'
-    ],
-    [
-      'mittal_pricing_priya.wav',
-      ['Our 2 BHKs range from 1.25 to 1.35 Crores, and 3 BHKs range from 1.7 to 1.95 Crores all-inclusive. Full Occupancy Certificate is received, so zero GST and immediate possession.'],
-      'kavya'
-    ],
-    [
-      'mittal_visit_priya.wav',
-      ['I would love to arrange a private walkthrough for you this weekend. Our project head Raghavendra at 9945577935 can coordinate directly. Would Saturday or Sunday suit you best?'],
-      'kavya'
-    ],
-    [
-      'mittal_goodbye_priya.wav',
-      ['Thank you for your time. Have an amazing day. Goodbye!'],
-      'kavya'
-    ]
-  ];
-
-  for (const [file, texts, voiceKey] of mappings) {
-    let fullPath = path.resolve(process.cwd(), 'public', 'audio', file);
-    if (!fs.existsSync(fullPath)) {
-      fullPath = path.resolve(process.cwd(), file);
-    }
-    if (fs.existsSync(fullPath)) {
-      try {
-        const buffer = fs.readFileSync(fullPath);
-        for (const text of texts) {
-          const normalized = normalizeRealEstateText(text);
-          const item = { buffer, contentType: 'audio/wav' };
-          audioCache.set(`sarvam:bulbul:v3:${voiceKey}:${normalized}`, item);
-          audioCache.set(`local:${voiceKey}:${normalized}`, item);
-          audioCache.set(`any:${normalized}`, item);
-        }
-      } catch {}
-    }
-  }
-}
-
-preloadStudioAudio();
-
-const BULBUL_V3_SPEAKERS = new Set([
-  'kavya',
-  'priya',
-  'shubh',
-  'aditya',
-  'roopa',
-  'simran',
-  'ritu',
-  'neha',
-  'rahul',
-  'pooja',
-  'rohan',
-  'amit',
-  'dev',
-  'ishita',
-  'shreya',
-  'ratan',
-  'varun',
-  'manan',
-  'sumit',
-  'kabir',
-  'aayan',
-  'advait',
-  'anand',
-  'tanya',
-  'tarun',
-  'sunny',
-]);
-
 /**
  * Synthesizes speech using Sarvam AI Bulbul as primary engine.
- * If Sarvam API key has exhausted credits (HTTP 402) or errors,
- * it seamlessly generates natural Indian English audio via macOS Tara / Rishi.
+ * Falls back to macOS Tara/Rishi if Sarvam key is missing or exhausted.
  */
 export async function synthesizeNeuralSpeech(
   rawText: string,
-  voiceId: string = 'kavya'
+  voiceId: string = 'shubh'
 ): Promise<{ buffer: Buffer; contentType: string }> {
   const normalizedText = normalizeRealEstateText(rawText);
   if (!normalizedText.trim()) {
     return { buffer: Buffer.alloc(0), contentType: 'audio/wav' };
   }
 
-  // Exclusive Sarvam Bulbul speaker for Priya & Raghavendra
-  const v4Speaker = (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'shubh') ? 'shubh_en_narration' : 'kavya_hi_conversational');
-  const isMale = voiceId === 'shubh';
+  const v4Speaker = (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'kavya') ? 'kavya_hi_conversational' : 'shubh_en_narration');
+  const isMale = voiceId === 'shubh' || voiceId === 'aditya' || voiceId === 'dev';
   const model = 'bulbul:v4-flash';
   const cacheKey = `sarvam:${model}:${voiceId}:${normalizedText}`;
 
-  if (audioCache.has(cacheKey)) {
-    return audioCache.get(cacheKey)!;
-  }
-  if (audioCache.has(`any:${normalizedText}`)) {
-    return audioCache.get(`any:${normalizedText}`)!;
-  }
+  const cached = audioCache.get(cacheKey);
+  if (cached) return cached;
+
+  const cachedAny = audioCache.get(`any:${normalizedText}`);
+  if (cachedAny) return cachedAny;
 
   // 1. Primary: Try Sarvam AI Bulbul (v4-flash)
   const sarvamKey = process.env.SARVAM_API_KEY;
@@ -261,7 +212,29 @@ export async function synthesizeNeuralSpeech(
 }
 
 /**
- * Converts 16-bit linear PCM audio buffer to 8kHz G.711 mulaw for telephony PBX (Twilio / Exotel).
+ * Finds the offset of the PCM data within a WAV buffer by scanning for the 'data' chunk header.
+ * WAV files can have variable-length headers (fmt extra data, LIST chunks, etc.).
+ * Avoids the common bug of hardcoding offset 44 which breaks on non-minimal WAV headers.
+ */
+function findWavDataOffset(wavBuf: Buffer): number {
+  // WAV structure: RIFF(4) + size(4) + WAVE(4), then sub-chunks
+  if (wavBuf.length < 12) return 44;
+  let offset = 12; // skip RIFF/WAVE header
+  while (offset + 8 <= wavBuf.length) {
+    const chunkId = wavBuf.toString('ascii', offset, offset + 4);
+    const chunkSize = wavBuf.readUInt32LE(offset + 4);
+    offset += 8;
+    if (chunkId === 'data') {
+      return offset; // PCM data starts immediately after this
+    }
+    // Advance past this chunk's payload, aligned to 2-byte boundary
+    offset += chunkSize + (chunkSize % 2);
+  }
+  return 44; // safe fallback for minimal headers
+}
+
+/**
+ * Converts 16-bit linear PCM audio buffer to 8kHz G.711 mulaw for telephony PBX.
  */
 export function pcmToMulaw(pcm16Buffer: Buffer): Buffer {
   const sampleCount = Math.floor(pcm16Buffer.length / 2);
@@ -277,7 +250,7 @@ export function pcmToMulaw(pcm16Buffer: Buffer): Buffer {
     for (let expMask = 0x4000; (sample & expMask) === 0 && exponent > 0; expMask >>= 1) {
       exponent--;
     }
-    let mantissa = (sample >> (exponent + 3)) & 0x0f;
+    const mantissa = (sample >> (exponent + 3)) & 0x0f;
     mulaw[i] = ~(sign | (exponent << 4) | mantissa) & 0xff;
   }
   return mulaw;
@@ -289,10 +262,10 @@ export function pcmToMulaw(pcm16Buffer: Buffer): Buffer {
 export function mulawToWav(mulawBuffer: Buffer): Buffer {
   const pcm = new Int16Array(mulawBuffer.length);
   for (let i = 0; i < mulawBuffer.length; i++) {
-    let u = ~mulawBuffer[i] & 0xff;
-    let t = ((u & 0x0f) << 3) + 0x84;
-    let seg = (u & 0x70) >> 4;
-    let s = (t << seg) - 0x84;
+    const u = ~mulawBuffer[i] & 0xff;
+    const t = ((u & 0x0f) << 3) + 0x84;
+    const seg = (u & 0x70) >> 4;
+    const s = (t << seg) - 0x84;
     pcm[i] = (u & 0x80) !== 0 ? -s : s;
   }
   const wavHeader = Buffer.alloc(44);
@@ -314,7 +287,7 @@ export function mulawToWav(mulawBuffer: Buffer): Buffer {
 }
 
 /**
- * 500-Item LRU Cache for bit-identical 8kHz G.711 mulaw telephony audio playback.
+ * 500-Item LRU Cache for 8kHz G.711 mulaw telephony audio.
  */
 class MulawLruCache {
   private cache = new Map<string, Buffer>();
@@ -335,7 +308,6 @@ class MulawLruCache {
     const val = this.cache.get(key);
     if (val) {
       this.hits++;
-      // Move to end (most recently used)
       this.cache.delete(key);
       this.cache.set(key, val);
       this.logStats();
@@ -411,7 +383,7 @@ export async function prewarmTtsCache(): Promise<void> {
 
 /**
  * Synthesizes speech directly into 8kHz G.711 mulaw format required by Plivo / Telephony PBX.
- * Uses Bulbul v4-flash (40% faster, higher quality, ₹20/10k chars) with Kavya voice.
+ * Uses Bulbul v4-flash with Kavya voice. WAV headers are properly parsed before PCM extraction.
  */
 export async function synthesizeTelephonyMulaw(
   rawText: string,
@@ -422,11 +394,8 @@ export async function synthesizeTelephonyMulaw(
 
   const cacheKey = telephonyLruCache.normalizeKey(normalizedText);
   const cached = telephonyLruCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
-  // Model used logging requirement: [TTS] model=v4-flash chars=xxx
   console.log(`[TTS] model=v4-flash chars=${normalizedText.length}`);
 
   const sarvamKey = process.env.SARVAM_API_KEY;
@@ -454,8 +423,9 @@ export async function synthesizeTelephonyMulaw(
         const base64Audio = data.audio || data.audios?.[0];
         if (base64Audio) {
           const wavBuf = Buffer.from(base64Audio, 'base64');
-          // WAV data starts at byte 44
-          const pcmBytes = wavBuf.length > 44 ? wavBuf.subarray(44) : wavBuf;
+          // Properly parse WAV header — do not assume fixed 44-byte offset
+          const dataOffset = findWavDataOffset(wavBuf);
+          const pcmBytes = wavBuf.length > dataOffset ? wavBuf.subarray(dataOffset) : wavBuf;
           const mulawBuf = pcmToMulaw(pcmBytes);
           telephonyLruCache.set(cacheKey, mulawBuf);
           return mulawBuf;
@@ -468,11 +438,14 @@ export async function synthesizeTelephonyMulaw(
 
   // Fallback to standard neural speech converted to mulaw
   const { buffer } = await synthesizeNeuralSpeech(normalizedText, voiceId);
-  if (buffer && buffer.length > 44) {
-    const pcmBytes = buffer.subarray(44);
-    const mulawBuf = pcmToMulaw(pcmBytes);
-    telephonyLruCache.set(cacheKey, mulawBuf);
-    return mulawBuf;
+  if (buffer && buffer.length > 12) {
+    const dataOffset = findWavDataOffset(buffer);
+    if (buffer.length > dataOffset) {
+      const pcmBytes = buffer.subarray(dataOffset);
+      const mulawBuf = pcmToMulaw(pcmBytes);
+      telephonyLruCache.set(cacheKey, mulawBuf);
+      return mulawBuf;
+    }
   }
 
   return Buffer.alloc(0);
@@ -507,4 +480,3 @@ export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> 
   }
   return '';
 }
-

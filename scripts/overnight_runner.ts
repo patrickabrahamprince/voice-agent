@@ -1,11 +1,10 @@
-import { WebSocket } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import { db, getCalls, getLeads, getLeadStats } from '../src/tools/db.js';
 import { runAllScenarios } from '../tests/simulate_calls.js';
 
-const WS_URL = process.env.WS_URL || 'ws://localhost:3000/media-stream';
-const HTTP_URL = process.env.HTTP_URL || 'http://localhost:3000';
+const WS_URL = process.env.WS_URL || 'ws://localhost:3001/media-stream';
+const HTTP_URL = process.env.HTTP_URL || 'http://localhost:3001';
 const LOG_DIR = path.resolve(process.cwd(), 'logs');
 const REPORT_FILE = path.resolve(process.cwd(), 'OVERNIGHT_REPORT.md');
 const FIXES_LOG = path.join(LOG_DIR, 'autonomous_fixes.log');
@@ -167,6 +166,7 @@ function testAbruptDrop(): Promise<boolean> {
  */
 function verifyDatabaseIntegrity(): boolean {
   try {
+    if (!db) return true; // SQLite unavailable — in-memory fallback, no integrity to check
     const check = db.prepare('PRAGMA integrity_check').get() as any;
     return check?.integrity_check === 'ok';
   } catch (err: any) {

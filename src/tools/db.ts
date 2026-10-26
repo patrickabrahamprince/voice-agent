@@ -76,12 +76,21 @@ try {
   console.warn('SQLite native init warning, fallback active:', err);
 }
 
-export const db: Database.Database = sqliteDb as any;
+// Use a type-safe nullable export; callers guard with `if (!db)` checks
+export const db: Database.Database | null = sqliteDb;
+
+/** Throws a descriptive error if SQLite is unavailable — prevents silent null dereferences. */
+function requireDb(): Database.Database {
+  if (!sqliteDb) {
+    throw new Error('SQLite database is unavailable (native binding failed to load).');
+  }
+  return sqliteDb;
+}
 
 export function initDatabase(): void {
-  if (!db) return;
+  if (!sqliteDb) return;
   try {
-    db.exec(`
+    sqliteDb.exec(`
     CREATE TABLE IF NOT EXISTS calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       stream_sid TEXT,
@@ -106,7 +115,7 @@ export function initDatabase(): void {
       visit_day TEXT DEFAULT '',
       status TEXT DEFAULT '',
       summary TEXT DEFAULT '',
-      lead_email TEXT DEFAULT 'niraj@mittal.com',
+      lead_email TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (call_id) REFERENCES calls(id) ON DELETE SET NULL
     );
@@ -127,22 +136,24 @@ export function initDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_learnings_call_id ON agent_learnings(call_id);
   `);
 
+    // Additive migrations (idempotent — errors are expected on re-run and silently skipped)
     try {
-      db.exec("ALTER TABLE leads ADD COLUMN lead_quality TEXT DEFAULT 'Good Lead'");
+      sqliteDb.exec("ALTER TABLE leads ADD COLUMN lead_quality TEXT DEFAULT 'Good Lead'");
     } catch { }
     try {
-      db.exec("ALTER TABLE leads ADD COLUMN lead_email TEXT DEFAULT 'niraj@mittal.com'");
+      sqliteDb.exec("ALTER TABLE leads ADD COLUMN lead_email TEXT DEFAULT ''");
     } catch { }
   } catch (err) {
     console.warn('initDatabase exec error:', err);
   }
 }
 
-// Initialize tables immediately
+// Initialize tables once on module load
 initDatabase();
 
 // Call operations
 export function createCall(streamSid: string, callerNumber: string): number {
+  const db = requireDb();
   const stmt = db.prepare(`
     INSERT INTO calls (stream_sid, caller_number, created_at)
     VALUES (?, ?, CURRENT_TIMESTAMP)
@@ -157,6 +168,7 @@ export function updateCall(
   fullTranscript: string,
   summary: string
 ): void {
+  const db = requireDb();
   const stmt = db.prepare(`
     UPDATE calls
     SET duration_seconds = ?, full_transcript = ?, summary = ?
@@ -166,7 +178,8 @@ export function updateCall(
 }
 
 export function getCalls(limit: number = 50): CallRecord[] {
-  const stmt = db.prepare(`
+  if (!sqliteDb) return memCalls.slice(0, limit);
+  const stmt = sqliteDb.prepare(`
     SELECT * FROM calls
     ORDER BY id DESC
     LIMIT ?
@@ -175,14 +188,16 @@ export function getCalls(limit: number = 50): CallRecord[] {
 }
 
 export function getCallById(id: number): CallRecord | undefined {
-  const stmt = db.prepare('SELECT * FROM calls WHERE id = ?');
+  if (!sqliteDb) return memCalls.find((c) => c.id === id);
+  const stmt = sqliteDb.prepare('SELECT * FROM calls WHERE id = ?');
   return stmt.get(id) as CallRecord | undefined;
 }
 
 // Lead operations
 export function insertLead(lead: LeadRecord): number {
+  const db = requireDb();
   const quality = lead.lead_quality || (lead.status?.includes('Bad') || lead.status?.includes('Cold') ? 'Bad Lead' : 'Good Lead');
-  const leadEmail = lead.lead_email || process.env.LEAD_EMAIL || 'niraj@mittal.com';
+  const leadEmail = lead.lead_email || process.env.LEAD_EMAIL || '';
   const stmt = db.prepare(`
     INSERT INTO leads (
       call_id, caller_phone, caller_name, lead_quality, config, intent,
@@ -209,7 +224,8 @@ export function insertLead(lead: LeadRecord): number {
 }
 
 export function getLeads(limit: number = 50): LeadRecord[] {
-  const stmt = db.prepare(`
+  if (!sqliteDb) return memLeads.slice(0, limit);
+  const stmt = sqliteDb.prepare(`
     SELECT * FROM leads
     ORDER BY id DESC
     LIMIT ?
@@ -228,6 +244,10 @@ export interface LeadStats {
 }
 
 export function getLeadStats(): LeadStats {
+  if (!sqliteDb) {
+    return { totalCalls: memCalls.length, totalLeads: memLeads.length, goodLeads: 0, badLeads: 0, hotLeads: 0, warmLeads: 0, locations: {} };
+  }
+  const db = sqliteDb;
   const totalCalls = (db.prepare('SELECT count(*) as count FROM calls').get() as any)?.count || 0;
   const totalLeads = (db.prepare('SELECT count(*) as count FROM leads').get() as any)?.count || 0;
   const goodLeads = (db.prepare("SELECT count(*) as count FROM leads WHERE lead_quality = 'Good Lead' OR status LIKE '%Good%' OR status LIKE '%Hot%' OR status LIKE '%Warm%'").get() as any)?.count || 0;
@@ -291,7 +311,7 @@ export function exportLeadsToCsv(): string {
     escapeCsv(lead.visit_day),
     escapeCsv(lead.status),
     escapeCsv(lead.summary),
-    escapeCsv(lead.lead_email || 'niraj@mittal.com'),
+    escapeCsv(lead.lead_email || process.env.LEAD_EMAIL || ''),
   ]);
 
   return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -308,6 +328,7 @@ export interface AgentLearning {
 }
 
 export function saveAgentLearning(learning: AgentLearning): number {
+  const db = requireDb();
   const stmt = db.prepare(`
     INSERT INTO agent_learnings (call_id, learning_type, key_insight, caller_utterance, best_response)
     VALUES (?, ?, ?, ?, ?)
@@ -323,7 +344,8 @@ export function saveAgentLearning(learning: AgentLearning): number {
 }
 
 export function getRecentLearnings(limit: number = 8): AgentLearning[] {
-  const stmt = db.prepare(`
+  if (!sqliteDb) return memLearnings.slice(0, limit);
+  const stmt = sqliteDb.prepare(`
     SELECT * FROM agent_learnings
     ORDER BY id DESC
     LIMIT ?
@@ -410,7 +432,3 @@ export function getCallerMemory(phoneNumber: string): CallerMemoryContext {
       : undefined,
   };
 }
-
-// Initialize on module load
-initDatabase();
-

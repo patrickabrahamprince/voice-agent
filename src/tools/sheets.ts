@@ -115,7 +115,7 @@ class GoogleSheetsService {
         ? 'Bad Lead'
         : 'Good Lead');
 
-    const leadEmail = params.lead_email || process.env.LEAD_EMAIL || 'niraj@mittal.com';
+    const leadEmail = params.lead_email || process.env.LEAD_EMAIL || '';
 
     const leadRecord: LeadRecord = {
       call_id: params.call_id ?? null,
