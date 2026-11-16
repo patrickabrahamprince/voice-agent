@@ -1,21 +1,24 @@
 import { WebSocket } from 'ws';
 import crypto from 'crypto';
 import { normalizeRealEstateText } from './normalizer.js';
-import { llmPipeline, ChatMessage, PRIYA_SYSTEM_PROMPT, activeQualifiers } from './llm.js';
+import { llmPipeline, ChatMessage, activeQualifiers } from './llm.js';
 import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcribeAudioTelephony } from './tts.js';
 import { createCall, updateCall, getCallerMemory, updateLeadRecording } from '../tools/db.js';
 import { callEventsBroadcaster } from './events.js';
 import { CallAudioRecorder } from './recorder.js';
 import { semanticTurnDetector } from './turn_detector.js';
+import { isTransferIntent, transferCallToHuman } from './transfer.js';
 
 export class VoiceSession {
   private telephonyWs: WebSocket;
   private streamSid: string = '';
   private callSid: string = '';
+  private callUuid: string = '';
   private callerNumber: string = '+91-XXXXXXXXXX';
   private callId: number | null = null;
   private startTime: number = Date.now();
 
+  private agentSpeakingStartedAt: number = 0;
   private agentSpeakingUntil: number = 0;
   private postSpeechCooldownUntil: number = 0;
   private isSynthesizingSpeech: boolean = false;
@@ -27,6 +30,7 @@ export class VoiceSession {
   private currentContextId: string = '';
   private activeAbortController: AbortController | null = null;
   private agentName: string = 'Priya';
+  private agentVoice: string = 'ishita';
   private recorder: CallAudioRecorder | null = null;
 
   private deepgramWs: WebSocket | null = null;
@@ -40,17 +44,19 @@ export class VoiceSession {
   private fallbackUtteranceTimer: NodeJS.Timeout | null = null;
   private isProcessingSTT: boolean = false;
   private isProcessingUtterance: boolean = false;
+  private currentLanguage: 'en' | 'hi' = 'en';
 
-  private conversationHistory: ChatMessage[] = [
-    { role: 'system', content: llmPipeline.getPromptWithLearnings() },
-  ];
+  private conversationHistory: ChatMessage[] = [];
   private fullTranscriptLines: string[] = [];
   private isClosed: boolean = false;
 
-  constructor(telephonyWs: WebSocket, callerNumber?: string) {
+  constructor(telephonyWs: WebSocket, callerNumber?: string, callUuid?: string) {
     this.telephonyWs = telephonyWs;
     if (callerNumber) {
       this.callerNumber = callerNumber;
+    }
+    if (callUuid) {
+      this.callUuid = callUuid;
     }
     this.setupTelephonyListeners();
   }
@@ -97,20 +103,19 @@ export class VoiceSession {
         // Start full-duplex call audio recording
         this.recorder = new CallAudioRecorder(this.callId, this.startTime);
 
-        // Initialize STT socket
-        await this.initDeepgram();
-
         // Preload memory context into conversation system prompt
-        this.conversationHistory[0] = {
-          role: 'system',
-          content: llmPipeline.getPromptWithLearnings(this.callerNumber),
-        };
+        this.conversationHistory = [
+          {
+            role: 'system',
+            content: llmPipeline.getPromptWithLearnings(this.callerNumber, this.agentName),
+          },
+        ];
 
-        // Priya greeting for Mittal Palms
-        const memory = getCallerMemory(this.callerNumber);
-        const greeting = (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there')
-          ? `Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?`
-          : `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+        // Initialize STT socket asynchronously in background
+        this.initDeepgram().catch((e) => console.warn('[Session] Deepgram init notice:', e.message));
+
+        // Priya greeting for Trishul Mittal Palms
+        const greeting = this.getInitialGreeting();
 
         this.conversationHistory.push({ role: 'assistant', content: greeting });
         this.fullTranscriptLines.push(`${this.agentName}: ${greeting}`);
@@ -140,15 +145,18 @@ export class VoiceSession {
           this.recorder.recordInboundChunk(audioBuffer);
         }
 
-        // 1. If Deepgram is connected, stream 8kHz G.711 mulaw directly (gated by agent speaking state)
-        if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
-          if (!this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
-            this.deepgramWs.send(audioBuffer);
-          }
+        // Strict Acoustic Echo Gate: Drop audio while agent is speaking or during echo cooldown
+        if (this.isAgentSpeaking || this.isSynthesizingSpeech || Date.now() < this.postSpeechCooldownUntil) {
           return;
         }
 
-        // 2. Fallback: Sarvam Saaras v3 STT with Voice Activity & Barge-In Detection
+        // 1. If Deepgram is connected, stream 8kHz G.711 mulaw directly
+        if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
+          this.deepgramWs.send(audioBuffer);
+          return;
+        }
+
+        // 2. Fallback: Local STT with Voice Activity Detection
         this.handleInboundTelephonyAudio(audioBuffer);
         break;
       }
@@ -175,7 +183,6 @@ export class VoiceSession {
       }
 
       case 'mark': {
-        // Telephony playback mark completed
         break;
       }
     }
@@ -187,7 +194,7 @@ export class VoiceSession {
   private async initDeepgram(): Promise<void> {
     const apiKey = process.env.DEEPGRAM_API_KEY;
     if (!apiKey || apiKey === 'your_deepgram_api_key_here') {
-      console.warn('[Deepgram] Missing DEEPGRAM_API_KEY. Live voice STT disabled (audio passthrough only).');
+      console.warn('[Deepgram] Missing DEEPGRAM_API_KEY. Using local telephony STT.');
       return;
     }
 
@@ -230,23 +237,13 @@ export class VoiceSession {
    * Handles Deepgram live transcriptions and VAD events.
    */
   private handleDeepgramEvent(event: any): void {
-    // 1. Barge-in detection: VAD SpeechStarted or interim transcript
-    if (event.type === 'SpeechStarted') {
-      if (this.isAgentSpeaking) {
-        console.log('[Barge-In] SpeechStarted detected! Triggering interruption flush.');
-        this.handleBargeIn();
-      }
+    // If agent is speaking or in post-speech cooldown, ignore to prevent echo loops
+    if (this.isAgentSpeaking || this.isSynthesizingSpeech || Date.now() < this.postSpeechCooldownUntil) {
       return;
     }
 
     const transcript = event.channel?.alternatives?.[0]?.transcript?.trim();
     if (!transcript) return;
-
-    // Caller started speaking while agent was speaking -> Barge-in!
-    if (this.isAgentSpeaking && transcript.length > 2) {
-      console.log(`[Barge-In] Caller speech detected during agent speech: "${transcript}"`);
-      this.handleBargeIn();
-    }
 
     // Process final user utterance
     if (event.speech_final || (event.is_final && transcript.length > 0)) {
@@ -259,14 +256,14 @@ export class VoiceSession {
    * Executes ultra-low latency barge-in interruption (<50ms).
    */
   public handleBargeIn(broadcastEvent: boolean = true): void {
-    if (!this.isAgentSpeaking && !this.activeAbortController) return;
+    if (!this.isAgentSpeaking && !this.activeAbortController && !this.isProcessingUtterance) return;
 
     console.log(`[Barge-In] Clearing PBX buffer on StreamSid: ${this.streamSid}`);
 
-    // Immediately stop agent speaking window
     this.agentSpeakingUntil = 0;
     this.postSpeechCooldownUntil = 0;
     this.isSynthesizingSpeech = false;
+    this.isProcessingUtterance = false;
 
     if (broadcastEvent) {
       callEventsBroadcaster.broadcast({
@@ -280,7 +277,6 @@ export class VoiceSession {
       });
     }
 
-    // Discard any audio accumulated during agent speaking to avoid echoing self
     this.inboundMulawChunks = [];
     this.pendingSpeechChunks = [];
     this.speechFramesCount = 0;
@@ -294,7 +290,6 @@ export class VoiceSession {
     }
     this.stagedTranscript = '';
 
-    // Instantly clear PBX audio buffer over telephony WebSocket (Plivo clearAudio + Twilio clear)
     if (this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
       this.telephonyWs.send(JSON.stringify({ event: 'clearAudio' }));
       if (this.streamSid) {
@@ -307,7 +302,6 @@ export class VoiceSession {
       }
     }
 
-    // Abort ongoing LLM generation
     if (this.activeAbortController) {
       this.activeAbortController.abort();
       this.activeAbortController = null;
@@ -318,7 +312,6 @@ export class VoiceSession {
 
   /**
    * Calculates true 16-bit linear PCM RMS energy from 8kHz G.711 mulaw frame.
-   * Silence in mulaw is 0xFF (RMS: ~0). Real voice speech has RMS: 600 - 8000+.
    */
   private getMulawRms(chunk: Buffer): number {
     let sumSquares = 0;
@@ -334,10 +327,44 @@ export class VoiceSession {
   }
 
   /**
-   * Handles inbound telephony audio frames with energy VAD and ultra-low latency STT.
-   * Full acoustic echo gating: Drops 100% of audio when Priya is speaking or during
-   * the 800ms post-speech cooldown to eliminate mobile speaker acoustic echo loops.
+   * Tracks and updates conversation language state between English and Hindi/Hinglish.
    */
+  private updateLanguageFromCaller(text: string): void {
+    if (!text) return;
+    const lower = text.toLowerCase().trim();
+
+    if (
+      lower.includes('english please') ||
+      lower.includes('in english') ||
+      lower.includes('speak in english') ||
+      lower.includes('talk in english') ||
+      lower.includes('angrezi') ||
+      lower.includes('angreji')
+    ) {
+      this.currentLanguage = 'en';
+      return;
+    }
+
+    if (/[\u0900-\u097F]/.test(text)) {
+      this.currentLanguage = 'hi';
+      return;
+    }
+
+    const hindiTriggers = [
+      'hindi', 'kya', 'hai', 'hain', 'ho', 'batao', 'bataiye', 'bataie', 'boliye',
+      'bolo', 'sunie', 'suno', 'kaunsa', 'kitna', 'kitne', 'chahiye', 'namaste',
+      'namaskar', 'dhanyawad', 'shukriya', 'hanji', 'haanji', 'haan', 'theek', 'thik',
+      'sahi', 'bilkul', 'kahan', 'kidhar', 'accha', 'achha', 'acha', 'mujhe', 'humko',
+      'humein', 'aap', 'aapka', 'mera', 'dono', 'kuch', 'bhi', 'paas', 'mein', 'me'
+    ];
+
+    const words = lower.split(/[^a-z0-9]+/);
+    const hasHindi = words.some((w) => hindiTriggers.includes(w));
+    if (hasHindi) {
+      this.currentLanguage = 'hi';
+    }
+  }
+
   /**
    * Finalizes accumulated caller speech frames into an audio utterance, runs STT and semantic turn evaluation.
    */
@@ -351,9 +378,9 @@ export class VoiceSession {
     this.pendingSpeechChunks = [];
     this.speechFramesCount = 0;
 
-    // Discard noises under 0.45s (coughs, clicks, isolated breath sounds)
+    // Discard noises under 0.4s
     const durationSec = fullAudio.length / 8000;
-    if (durationSec < 0.45) {
+    if (durationSec < 0.4) {
       return;
     }
 
@@ -367,13 +394,9 @@ export class VoiceSession {
         return;
       }
 
-      // 1. Backchannel filter: Ignore "Hmm", "Uh", "Um", "Like"
-      if (semanticTurnDetector.isFillerOnly(transcript)) {
-        console.log(`[TurnDetector] Filtered backchannel/hesitation: "${transcript}". Attentive listening maintained.`);
-        return;
-      }
+      this.updateLanguageFromCaller(transcript);
 
-      // 2. Stitch with any staged incomplete fragment from earlier pauses
+      // Stitch with any staged incomplete fragment
       const combined = this.stagedTranscript
         ? `${this.stagedTranscript.trim()} ${transcript}`
         : transcript;
@@ -400,12 +423,11 @@ export class VoiceSession {
             console.log(`[TurnDetector Safety Timer] Processing stalled utterance: "${utterance}"`);
             await this.processCallerUtterance(utterance);
           }
-        }, 2200);
+        }, 550);
 
         return;
       }
 
-      // Turn is complete! Cancel any pending safety timer and process immediately
       if (this.fallbackUtteranceTimer) {
         clearTimeout(this.fallbackUtteranceTimer);
         this.fallbackUtteranceTimer = null;
@@ -421,66 +443,31 @@ export class VoiceSession {
   }
 
   /**
-   * Handles inbound telephony audio frames with energy VAD, instant barge-in interruption, and ultra-low latency STT.
+   * Handles inbound telephony audio frames with energy VAD and echo protection.
+   * Completely mutes/discards audio when agent is speaking to eliminate overlapping voice.
    */
   private handleInboundTelephonyAudio(chunk: Buffer): void {
     const now = Date.now();
-    const rms = this.getMulawRms(chunk);
 
-    // 1. LIVE BARGE-IN INTERRUPTION (Caller speaks while Agent is speaking or in cooldown):
-    if (this.isAgentSpeaking || now < this.postSpeechCooldownUntil) {
-      // Intentional human speech directly into phone microphone is high energy (> 1500 RMS),
-      // whereas earpiece speaker leakage or line hiss is lower (300 - 1100 RMS).
-      if (rms > 1500) {
-        this.interruptFramesCount++;
-        this.interruptChunks.push(chunk);
-
-        // Require 3 consecutive frames (~60ms) of sustained caller vocal energy to trigger barge-in
-        if (this.interruptFramesCount >= 3) {
-          console.log(`⚡ [Barge-In] Live caller interruption detected (RMS=${Math.round(rms)}, frames=${this.interruptFramesCount})! Halting agent speech immediately.`);
-
-          // Save chunks prior to handleBargeIn clearing buffers
-          const callerSpokenChunks = [...this.interruptChunks];
-          const frameCount = this.interruptFramesCount;
-          this.interruptFramesCount = 0;
-          this.interruptChunks = [];
-
-          // Halt agent speech instantly over PBX (Plivo clearAudio + abort LLM + clear agentSpeakingUntil)
-          this.handleBargeIn(true);
-
-          // Transfer interrupted speech into speech buffer so caller's words are retained
-          this.inboundMulawChunks = callerSpokenChunks;
-          this.speechFramesCount = frameCount;
-          this.pendingSpeechChunks = [];
-
-          // Start silence timer so once caller pauses, their question is transcribed
-          if (this.silenceTimer) {
-            clearTimeout(this.silenceTimer);
-            this.silenceTimer = null;
-          }
-          this.silenceTimer = setTimeout(async () => {
-            await this.finalizeCallerSpeech();
-          }, 600);
-
-          return;
-        }
-      } else {
-        // Below speech threshold — reset interrupt accumulator to avoid leakage buildup
-        this.interruptFramesCount = 0;
-        this.interruptChunks = [];
-      }
+    // Strict Acoustic Echo Protection: drop audio when agent is speaking or in cooldown
+    if (this.isAgentSpeaking || this.isSynthesizingSpeech || now < this.postSpeechCooldownUntil) {
+      this.interruptFramesCount = 0;
+      this.interruptChunks = [];
+      this.pendingSpeechChunks = [];
+      this.inboundMulawChunks = [];
+      this.speechFramesCount = 0;
       return;
     }
 
-    // 2. NORMAL CALLER SPEAKING (Agent is silent):
-    const isSpeech = rms > 1300;
+    const rms = this.getMulawRms(chunk);
+    const isSpeech = rms > 1400;
 
     if (isSpeech) {
       this.speechFramesCount++;
       this.pendingSpeechChunks.push(chunk);
 
-      // Accumulate audio once real speech persists for >120ms (6 frames)
-      if (this.speechFramesCount >= 6) {
+      // Accumulate audio once real speech persists for >160ms (8 frames)
+      if (this.speechFramesCount >= 8) {
         if (this.pendingSpeechChunks.length > 0) {
           this.inboundMulawChunks.push(...this.pendingSpeechChunks);
           this.pendingSpeechChunks = [];
@@ -493,19 +480,23 @@ export class VoiceSession {
         this.silenceTimer = null;
       }
 
-      // Conversational silence debounce: 550-650ms (snappy turn transition, no awkward silence)
+      // Conversational silence debounce: 400ms
       const currentSpeechDuration = this.inboundMulawChunks.length / 8000;
-      const debounceMs = currentSpeechDuration > 1.2 ? 550 : 650;
+      const debounceMs = currentSpeechDuration > 1.0 ? 380 : 450;
 
       this.silenceTimer = setTimeout(async () => {
+        if (this.isAgentSpeaking || this.isSynthesizingSpeech || Date.now() < this.postSpeechCooldownUntil) {
+          this.inboundMulawChunks = [];
+          this.pendingSpeechChunks = [];
+          this.speechFramesCount = 0;
+          return;
+        }
         await this.finalizeCallerSpeech();
       }, debounceMs);
     } else {
       if (this.inboundMulawChunks.length > 0) {
-        // Trailing silence after confirmed speech
         this.inboundMulawChunks.push(chunk);
       } else {
-        // Isolated noise spike under 120ms — discard immediately
         this.speechFramesCount = 0;
         this.pendingSpeechChunks = [];
       }
@@ -522,7 +513,7 @@ export class VoiceSession {
     this.currentContextId = crypto.randomUUID();
     this.isSynthesizingSpeech = true;
 
-    // Immediately flush any accumulated inbound audio and timers so noise during TTS is never queued
+    // Flush any pending audio chunks
     this.inboundMulawChunks = [];
     this.pendingSpeechChunks = [];
     this.speechFramesCount = 0;
@@ -550,24 +541,23 @@ export class VoiceSession {
     });
 
     try {
-      const mulawBuffer = await synthesizeTelephonyMulaw(normalized, 'kavya');
+      let firstChunkDispatched = false;
+      const onAudioChunk = (chunk: Buffer) => {
+        if (!chunk || chunk.length === 0) return;
+        if (!this.telephonyWs || this.telephonyWs.readyState !== WebSocket.OPEN) return;
+        if (this.activeAbortController?.signal.aborted) return;
 
-      if (mulawBuffer && mulawBuffer.length > 0 && this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
-        // Capture Priya's synthesized speech in the call recording
-        if (this.recorder) {
-          this.recorder.recordOutboundChunk(mulawBuffer);
+        if (!firstChunkDispatched) {
+          firstChunkDispatched = true;
+          this.agentSpeakingStartedAt = Date.now();
         }
 
-        // 8000 samples per sec = 1 byte per millisecond in 8kHz mulaw
-        const durationMs = mulawBuffer.length / 8;
+        const chunkDurationMs = chunk.length / 8;
         const now = Date.now();
-        // Cumulative speaking time: extend if previous chunk is still playing
         const currentEnd = Math.max(now, this.agentSpeakingUntil);
-        this.agentSpeakingUntil = currentEnd + durationMs + 300;
-        // 400ms acoustic echo cooldown window after Priya finishes speaking
-        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 400;
+        this.agentSpeakingUntil = currentEnd + chunkDurationMs;
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 800; // 800ms echo cooldown to prevent voice overlap
 
-        // Discard any inbound audio accumulated prior to this speech
         this.inboundMulawChunks = [];
         this.pendingSpeechChunks = [];
         this.speechFramesCount = 0;
@@ -576,7 +566,35 @@ export class VoiceSession {
           this.silenceTimer = null;
         }
 
-        // Plivo expects the playAudio command with the complete base64 mulaw payload
+        if (this.recorder) {
+          this.recorder.recordOutboundChunk(chunk);
+        }
+
+        this.telephonyWs.send(
+          JSON.stringify({
+            event: 'playAudio',
+            media: {
+              contentType: 'audio/x-mulaw',
+              sampleRate: 8000,
+              payload: chunk.toString('base64'),
+            },
+          })
+        );
+      };
+
+      const mulawBuffer = await synthesizeTelephonyMulaw(normalized, this.agentVoice, onAudioChunk);
+
+      if (!firstChunkDispatched && mulawBuffer && mulawBuffer.length > 0 && this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
+        if (this.recorder) {
+          this.recorder.recordOutboundChunk(mulawBuffer);
+        }
+        const durationMs = mulawBuffer.length / 8;
+        const now = Date.now();
+        const currentEnd = Math.max(now, this.agentSpeakingUntil);
+        this.agentSpeakingStartedAt = now;
+        this.agentSpeakingUntil = currentEnd + durationMs;
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 800; // 800ms echo cooldown to prevent voice overlap
+
         this.telephonyWs.send(
           JSON.stringify({
             event: 'playAudio',
@@ -596,16 +614,14 @@ export class VoiceSession {
   }
 
   /**
-   * Handles user dialogue turn, invokes LLM with streaming and function calling,
-   * enforces 20s rejection exit and 240s duration cap, and dispatches TTS chunks.
-   * Guard: concurrent utterances are dropped to prevent history corruption.
+   * Handles user dialogue turn, executing strict script progression.
+   * Completely avoids wandering, enforces unskippable questions, and updates lead intelligence.
    */
   public async processCallerUtterance(callerText: string): Promise<string> {
     if (!callerText || !callerText.trim()) return '';
 
-    // Drop concurrent utterance if a turn is already in flight
     if (this.isProcessingUtterance) {
-      console.log(`[Session] Dropping concurrent utterance (still processing): "${callerText.slice(0, 40)}"`);
+      console.log(`[Session] Waiting for prior utterance to complete before processing: "${callerText.slice(0, 40)}"`);
       return '';
     }
     this.isProcessingUtterance = true;
@@ -621,6 +637,7 @@ export class VoiceSession {
       },
     });
 
+    this.updateLanguageFromCaller(callerText);
     const callDuration = Math.round((Date.now() - this.startTime) / 1000);
     const lower = callerText.toLowerCase().trim();
 
@@ -633,7 +650,9 @@ export class VoiceSession {
         lower.includes('dont call') ||
         lower.includes('not looking') ||
         lower.includes('stop calling') ||
-        lower.includes('remove my number'))
+        lower.includes('remove my number') ||
+        lower.includes('nahin chahiye') ||
+        lower.includes('nahi dekh'))
     ) {
       console.log(`[Session] Early exit trigger within ${callDuration}s: "${callerText}". Ending call immediately.`);
       const politeExit = "I completely understand. Thank you for your time, have a wonderful day ahead. Goodbye!";
@@ -647,18 +666,22 @@ export class VoiceSession {
       return politeExit;
     }
 
-    // 2. Max call duration cap: If call duration > 240s (4 mins)
-    if (callDuration > 240) {
-      console.log(`[Session] Call duration reached ${callDuration}s (>240s cap). Concluding call.`);
-      const wrapUp = "Thank you for your time. Have an amazing day. Goodbye!";
-      this.conversationHistory.push({ role: 'user', content: callerText });
-      this.fullTranscriptLines.push(`Caller: ${callerText}`);
-      await this.speakText(wrapUp);
-      this.conversationHistory.push({ role: 'assistant', content: wrapUp });
-      this.fullTranscriptLines.push(`${this.agentName}: ${wrapUp}`);
+    // 2. Check if caller requested live human transfer
+    if (isTransferIntent(callerText)) {
+      console.log(`[Session] Caller requested human escalation: "${callerText}". Initiating transfer...`);
+      const transferMsg = "Sure, let me connect your call to our on-site property advisor team right away. Please stay on the line.";
+      this.conversationHistory.push({ role: 'assistant', content: transferMsg });
+      this.fullTranscriptLines.push(`${this.agentName}: ${transferMsg}`);
+      await this.speakText(transferMsg);
+      await transferCallToHuman({
+        callUuid: this.callUuid || this.callSid,
+        streamSid: this.streamSid,
+        callerNumber: this.callerNumber,
+        reason: callerText,
+      });
       this.isProcessingUtterance = false;
       await this.closeSession();
-      return wrapUp;
+      return transferMsg;
     }
 
     this.conversationHistory.push({ role: 'user', content: callerText });
@@ -703,7 +726,7 @@ export class VoiceSession {
         this.fullTranscriptLines.push(`${this.agentName}: ${fullResponse.trim()}`);
       }
 
-      // Broadcast lead updates extracted so far
+      // Broadcast dynamic lead updates extracted so far from QualificationEngine
       const qualifierKey = `${this.callId ?? 'sim'}:${this.callerNumber}`;
       const qualifier = activeQualifiers.get(qualifierKey);
       if (qualifier) {
@@ -724,21 +747,22 @@ export class VoiceSession {
           },
         });
       }
+
+      return fullResponse.trim();
     } catch (err: any) {
       if (!abortSignal.aborted) {
         console.error('[Session] Error during dialogue turn:', err);
       }
+      return '';
     } finally {
       this.activeAbortController = null;
       this.isProcessingUtterance = false;
     }
-
-    return fullResponse.trim();
   }
 
   /**
    * Concludes the call, generates post-call summary, updates SQLite audit record,
-   * and cleanly closes all sockets.
+   * inserts finalized lead via qualifier, and cleanly closes all sockets.
    */
   public async closeSession(): Promise<void> {
     if (this.isClosed) return;
@@ -747,9 +771,8 @@ export class VoiceSession {
     const durationSeconds = Math.round((Date.now() - this.startTime) / 1000);
     const fullTranscript = this.fullTranscriptLines.join('\n');
 
-    console.log(`[Session] Call finished. Duration: ${durationSeconds}s. Generating summary...`);
+    console.log(`[Session] Call finished. Duration: ${durationSeconds}s. Finalizing audit record...`);
 
-    // Clean up active streams without broadcasting a fake caller barge-in
     this.handleBargeIn(false);
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
@@ -757,8 +780,16 @@ export class VoiceSession {
     }
     this.inboundMulawChunks = [];
 
-    // Release the QualificationEngine for this call to prevent memory leak
+    // Sync lead with QualificationEngine before releasing
     const qualifierKey = `${this.callId ?? 'sim'}:${this.callerNumber}`;
+    const qualifier = activeQualifiers.get(qualifierKey);
+    if (qualifier) {
+      try {
+        await qualifier.syncLeadRecord();
+      } catch (err) {
+        console.warn('[Session] QualificationEngine sync notice:', err);
+      }
+    }
     activeQualifiers.delete(qualifierKey);
 
     if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
@@ -781,15 +812,13 @@ export class VoiceSession {
       }
     }
 
-    // Generate call summary and update SQLite in background
+    // Generate call summary and update SQLite
     let finalSummary = 'Call ended.';
     if (this.callId) {
       try {
         finalSummary = await llmPipeline.generateSummary(fullTranscript);
         updateCall(this.callId, durationSeconds, fullTranscript, finalSummary, recordingUrl);
-        console.log(`[Database] Call record #${this.callId} updated with summary and recording: "${finalSummary}"`);
-
-        // Train LLM after every call by extracting learnings and objection patterns
+        console.log(`[Database] Call record #${this.callId} updated with summary: "${finalSummary}"`);
         await llmPipeline.extractAndStoreLearnings(this.callId, fullTranscript);
       } catch (err) {
         console.error('[Session] Error finalizing call audit record:', err);
@@ -832,7 +861,7 @@ export class VoiceSession {
   }
 
   public setConversationHistory(history: ChatMessage[]): void {
-    const systemPrompt = llmPipeline.getPromptWithLearnings(this.callerNumber);
+    const systemPrompt = llmPipeline.getPromptWithLearnings(this.callerNumber, this.agentName);
     this.conversationHistory = [
       { role: 'system', content: systemPrompt },
       ...history.filter((m) => m.role !== 'system'),
@@ -853,5 +882,20 @@ export class VoiceSession {
 
   public getAgentName(): string {
     return this.agentName;
+  }
+
+  public setAgentVoice(voice: string): void {
+    this.agentVoice = voice;
+  }
+
+  public getAgentVoice(): string {
+    return this.agentVoice;
+  }
+
+  public getInitialGreeting(): string {
+    const memory = getCallerMemory(this.callerNumber);
+    return (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there')
+      ? `Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?`
+      : `Hello! This is Priya from Trishul Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
   }
 }

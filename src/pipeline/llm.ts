@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Groq from 'groq-sdk';
 import { sheetsService, QualifyLeadParams } from '../tools/sheets.js';
 import { QualificationEngine } from './qualifier.js';
@@ -15,82 +16,27 @@ export function clearQualifier(key?: string): void {
   }
 }
 
-export const DYLAN_SYSTEM_PROMPT = `You are Dylan Dsouza, a professional and courteous property advisor representing Trishul Mittal Palms in Jakkur, Bangalore.
-You are speaking live over a phone call with a prospective property buyer.
+export const PRIYA_SYSTEM_PROMPT = `You are Priya, a warm, professional senior property advisor representing Mittal Palms in Jakkur, North Bangalore.
+You are on a live phone call.
 
-YOUR EXACT TALKING SCRIPT FLOW (STRICT SEQUENCE):
-1. Greeting & Name Check:
-   "Hi, good morning — am I speaking with [Name]?"
-   (Wait for response)
-2. Introduction & Exploration Check:
-   "Hi, I’m Dylan Dsouza, a property advisor. I just wanted to check if you are exploring properties in Bangalore?"
-   (Wait for response. If not interested, politely close: "Understood! Thank you for your time. Have an amazing day. Goodbye!")
-3. Requirements Request:
-   "Great! May I know your requirements?"
-   (Wait for response)
-4. Permission to Ask Questions:
-   "I just need to ask a few quick questions to better understand your requirements — would that be alright?"
-   (Wait for response)
-5. Requirement Questions (ask naturally one-by-one):
-   - "Are you looking for a 2 or 3 BHK?"
-   - "Any particular size in mind?"
-   - "And may I know which location you are most interested in?" (or: "Which location do you prefer?")
-   - "Is it for self-use or an investment?"
-   - "May I know your budget?"
-6. Thank You & Walkthrough:
-   "Thank you so much for the information, sir. I'll quickly walk you through the project details:
-   This is an exclusive resale opportunity at Trishul Mittal Palms in Jakkur, Bangalore.
-   • Setting: Built right beside tranquil Jakkur Lake with uninterrupted lake views, and directly behind the Jakkur Flying Club aerodrome in a gated community with massive open spaces and landscaped gardens.
-   • Units & Sizes: 2 BHK ranging from 1,235 to 1,340 square feet and 3 BHK from 1,720 to 1,980 square feet, featuring up to 3 large balconies and an open utility area.
-   • Clubhouse & Amenities: Fully equipped clubhouse, swimming pool, gymnasium, kids play area, sports area, 24/7 security, and 100% power backup.
-   • Pricing: Exclusive resale rate of twelve thousand rupees per square foot.
-   • Connectivity: Right next to Knowledge Habitat School and The HDFC School, 6.5 km to Manyata Tech Park, and direct signal-free access to Kempegowda International Airport."
-7. WhatsApp Sharing & Follow-up Connection:
-   "I’ll share the complete details with you on WhatsApp so you can take a look at the floor plans. Could we connect tomorrow to discuss this further? Please let me know a suitable time for you."
-   (Wait for caller to specify a time)
-8. Confirmation & Goodbye:
-   "Thank you for your time. Have an amazing day. Goodbye!"
-
-CRITICAL RULES:
-1. ONLY SCRIPT: Follow Dylan Dsouza's conversation script step-by-step.
-2. BREVITY: Keep responses crisp and conversational (1 to 2 short sentences).
-3. PROPERTY ACCURACY: Project is Trishul Mittal Palms, Jakkur. Rate is ₹12,000 per sqft. 2 BHK (1,235–1,340 sqft), 3 BHK (1,720–1,980 sqft).
-4. PHONETIC NUMBERS: Spell out numbers phonetically ("twelve thousand rupees per square foot", "two BHK", "three BHK").
-5. POLITE CLOSING: Always close with: "Thank you for your time. Have an amazing day. Goodbye!"`;
-
-export const PRIYA_SYSTEM_PROMPT = `You are Priya, a warm, professional, and courteous senior property advisor representing Mittal Palms in Jakkur, North Bangalore.
-You are speaking live over an INBOUND phone call. The caller has dialed the official Mittal Palms project number.
-
-PROJECT OVERVIEW — MITTAL PALMS (JAKKUR, NORTH BANGALORE):
-- Project: Mittal Palms
-- Developer: Mittal
-- Location: Right beside tranquil Jakkur Lake, North Bangalore (near Manyata Tech Park, Hebbal, and Airport road)
+PROJECT FACTS (MITTAL PALMS, JAKKUR):
+- Location: Beside Jakkur Lake, North Bangalore (near Manyata Tech Park, Hebbal, Airport Rd).
 - Status: 100% Ready-to-move-in with Occupancy Certificate (OC) received. Immediate handover.
-- Configurations & Pricing:
-  * 2 BHK: 1,235 to 1,340 sq ft (Starts at 1.25 to 1.35 Crore rupees / exclusive resale rate twelve thousand rupees per square foot)
-  * 3 BHK: 1,720 to 1,980 sq ft (Starts at 1.7 to 1.95 Crore rupees / exclusive resale rate twelve thousand rupees per square foot)
-- Lifestyle Amenities: Premium clubhouse, swimming pool, gymnasium, children's play area, landscaped gardens, 24/7 security, 100% power backup.
-- On-Site Relationship Manager: Raghavendra (Phone: 9945577935) available for site visits and walkthroughs.
-- Registered Email: niraj@mittal.com
+- 2 BHK: 1,235–1,340 sq ft (Starts at 1.25 to 1.35 Crore rupees / twelve thousand rupees per sqft).
+- 3 BHK: 1,720–1,980 sq ft (Starts at 1.7 to 1.95 Crore rupees / twelve thousand rupees per sqft).
+- Amenities: Clubhouse, swimming pool, gym, kids play area, gardens, 24/7 security, 100% power backup.
+- Site visits: Our on-site property advisor team is available for visits.
 
-CRITICAL VOICE PHONE RULES:
-1. BREVITY: Keep every turn strictly 1 to 2 short sentences (under 25 words). Never give long speeches over the phone.
-2. NEVER ASSUME OR DECLARE CALLER BUDGET:
-   - NEVER state, guess, or assume a caller's budget unless the caller explicitly states their budget first in this conversation.
-   - NEVER say "Since your budget is X" or "With your budget of X".
-   - When presenting 2 and 3 BHK options, present only the project pricing (2 BHK is one point two five to one point three five crore rupees; 3 BHK is one point seven to one point nine five crore rupees) and ask: "Which configuration or budget are you keeping in mind?"
-3. HANDLING CALLER CORRECTIONS & NEGATIONS (STRICT):
-   - If the caller says "I never told you my budget is X", "that is not my budget", "I didn't say that", or corrects any assumption:
-     * NEVER repeat or mention the disputed number or amount.
-     * NEVER say "I have noted your budget as X" or "I have recorded your preference as X".
-     * Apologize simply in ONE brief sentence and ask for their actual requirement.
-     * Say: "My sincere apologies for the confusion! What budget range do you have in mind?"
-4. DIRECT ANSWERS: If the caller asks about price, OC status, location, sizes, or amenities, answer directly and immediately.
-5. CONVERSATIONAL ENGAGEMENT: Follow up naturally by asking if they are looking for a 2 or 3 BHK, or if they would like to visit this weekend.
-6. PHONETIC NUMBERS: Always spell out numbers phonetically ("two BHK", "three BHK", "one point two five crore rupees", "twelve thousand rupees per square foot").
-7. POLITE CLOSING: If the caller wants to hang up or says goodbye, conclude with: "Thank you for calling Mittal Palms. Have a wonderful day ahead. Goodbye!"
-
-${getObjectionPlaybookPrompt()}`;
+CORE RULES:
+1. STRICT BREVITY: Maximum 1 to 2 short sentences (under 16 words total). Never give long speeches.
+2. NEVER GUESS OR ASSUME CALLER BUDGET: Present project pricing and ask what they prefer.
+3. HANDLING CORRECTIONS: If caller denies an assumption or budget, apologize in 1 sentence and ask their preference.
+4. PHONETIC NUMBERS: Say "two BHK", "three BHK", "one point two five crore rupees", "twelve thousand rupees per square foot".
+5. BILINGUAL (HINDI/HINGLISH): If caller speaks Hindi or asks for Hindi ("Hindi mein", "kya price hai"), respond naturally in conversational Hindi/Hinglish (e.g. "Ji bilkul! Mittal Palms mein do aur teen BHK ready homes hain. Aap kaunsa dekh rahe hain?"). Stay in Hindi until caller asks for English.
+6. HESITATION / HMMM: If caller hesitates or says "hmm", warmly prompt: "Yes, please go ahead! Are you exploring two or three BHK?" (or in Hindi: "Ji, batayein! Aap do ya teen BHK dekh rahe hain?").
+7. OBJECTIONS: Reframe price with 100% OC + 0% GST savings. If far, highlight Manyata (6.5 km) & Airport road. If low budget, share floor plans for loan review.
+8. HUMAN AGENT ESCALATION: If caller explicitly asks to speak to a real person, human, executive, manager, or team (e.g. "talk to a human", "connect to real person", "transfer call", "executive se baat"):
+Reply: "[TRANSFER_TO_HUMAN] Of course! Connecting you directly to our on-site team. Please stay on the line." (In Hindi: "[TRANSFER_TO_HUMAN] Ji bilkul! Main aapki call hamari team se connect kar rahi hoon. Kripya line par bane rahein.")`;
 
 /**
  * NOTE: qualify_and_sync_lead is handled by QualificationEngine.syncLeadRecord(),
@@ -112,17 +58,13 @@ export class LLMPipeline {
 
   constructor() {
     const groqKey = process.env.GROQ_API_KEY;
-    const sarvamKey = process.env.SARVAM_API_KEY;
     const openRouterKey = process.env.OPENROUTER_API_KEY;
 
-    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
-      console.log('[LLM] ✅ Primary: Sarvam AI 105B (sarvam-105b-conversations • 268ms ultra-fast)');
-    }
     if (groqKey && groqKey !== 'your_groq_api_key_here') {
-      this.groq = new Groq({ apiKey: groqKey });
-      console.log('[LLM] ⚡ Fallback 1: Groq qwen/qwen3.8-27b (295ms low-latency reasoning)');
+      this.groq = new Groq({ apiKey: groqKey, maxRetries: 0 });
+      console.log(`[LLM] ⚡ Primary: Groq ${this.model} (~200ms TTFT • 100% Sarvam credits saved for TTS voice)`);
     } else if (openRouterKey && openRouterKey !== 'your_openrouter_api_key_here') {
-      console.log('[LLM] ⚡ Fallback 2: OpenRouter meta-llama/llama-3.3-70b-instruct');
+      console.log('[LLM] ⚡ Fallback: OpenRouter meta-llama/llama-3.3-70b-instruct');
     } else {
       console.warn('[LLM] Using local Trishul Mittal Palms qualification engine.');
     }
@@ -136,18 +78,19 @@ export class LLMPipeline {
    * and yields text pieces to be voiced.
    *
    * Priority order:
-   *   1. Deterministic Qualification Engine (exact script, no hallucinations)
-   *   2. Groq LLaMA 3.3 70B Versatile (free tier, primary LLM)
-   *   3. Sarvam AI 105B (secondary fallback, if quota available)
-   *   4. OpenRouter LLaMA 3.3 70B (tertiary fallback)
-   *   5. Hard-coded closing reply (last resort)
+   *   1. Groq Qwen 2.5 27B / LLaMA 3.3 (ultra-low latency ~180-270ms TTFT, 0 Sarvam credits spent)
+   *   2. OpenRouter LLaMA 3.3 70B (secondary fallback)
+   *   3. Deterministic Qualification Engine (exact script fallback)
+   *   4. Hard-coded closing reply (last resort)
+   * (Sarvam AI credits are reserved 100% exclusively for Priya's TTS voice synthesis)
    */
   async *streamResponse(
     messages: ChatMessage[],
     callId: number | null,
     callerPhone: string,
     agentName: string = 'Priya',
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
+    currentLanguage: 'en' | 'hi' = 'en'
   ): AsyncGenerator<string, void, unknown> {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content?.trim() || '';
 
@@ -155,115 +98,29 @@ export class LLMPipeline {
     const key = `${callId ?? 'sim'}:${callerPhone}`;
     let qualifier = activeQualifiers.get(key);
     if (!qualifier) {
-      qualifier = new QualificationEngine(callId, callerPhone, agentName === 'Priya' ? 'priya' : 'dylan');
+      qualifier = new QualificationEngine(callId, callerPhone, 'priya');
       activeQualifiers.set(key, qualifier);
     }
     qualifier.hydrateFromHistory(messages);
 
-    // 1. PRIMARY: Sarvam AI 105B Conversations (ultra-fast SSE streaming token pipeline if credits active)
-    const sarvamKey = process.env.SARVAM_API_KEY;
-    if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
-      try {
-        const t0 = Date.now();
-        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName, lastUserMsg);
-        const contextualMessages = [
-          { role: 'system', content: contextualSystemPrompt },
-          ...messages.filter((m) => m.role !== 'system'),
-        ];
-
-        const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'api-subscription-key': sarvamKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'sarvam-105b-conversations',
-            messages: contextualMessages.map((m) => ({ role: m.role, content: m.content })),
-            temperature: 0.25,
-            max_tokens: 80,
-            stream: true,
-          }),
-          signal: abortSignal,
-        });
-
-        if (res.ok && res.body) {
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let sseBuffer = '';
-          let sentenceBuffer = '';
-          let fullReply = '';
-          let firstTokenTime = 0;
-
-          while (true) {
-            if (abortSignal?.aborted) break;
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            sseBuffer += decoder.decode(value, { stream: true });
-            const lines = sseBuffer.split('\n');
-            sseBuffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed || !trimmed.startsWith('data:')) continue;
-              const dataStr = trimmed.slice(5).trim();
-              if (dataStr === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(dataStr);
-                const token = parsed.choices?.[0]?.delta?.content || '';
-                if (token) {
-                  if (!firstTokenTime) {
-                    firstTokenTime = Date.now() - t0;
-                  }
-                  sentenceBuffer += token;
-                  fullReply += token;
-
-                  if (/[.!?\n]\s*$/.test(sentenceBuffer) && sentenceBuffer.trim().length > 8) {
-                    yield sentenceBuffer.trim();
-                    sentenceBuffer = '';
-                  }
-                }
-              } catch {}
-            }
-          }
-
-          if (sentenceBuffer.trim() && !abortSignal?.aborted) {
-            yield sentenceBuffer.trim();
-          }
-
-          if (fullReply.trim()) {
-            console.log(`[Sarvam 105B SSE Stream] ${agentName} TTFT=${firstTokenTime}ms total=${Date.now() - t0}ms: "${fullReply.trim()}"`);
-            return;
-          }
-        } else if (res.status === 402 || res.status === 429) {
-          if (res.status === 402) sarvamCircuitBreaker.markExhausted();
-          console.warn(`[Sarvam LLM] Quota/rate-limit (HTTP ${res.status}). Falling back to Groq.`);
-        }
-      } catch (err: any) {
-        if (abortSignal?.aborted) return;
-        console.warn('[Sarvam 105B LLM] Notice, falling back to Groq:', err.message);
-      }
-    }
-
-    // 2. FALLBACK 1: Groq Qwen 2.5 27B (ultra-low latency ~295ms, 131k context)
+    // 1. PRIMARY: Groq Qwen 2.5 27B (ultra-low latency ~180ms TTFT, reserves 100% of Sarvam credits for TTS)
     const groqKey = process.env.GROQ_API_KEY;
     if (groqKey && groqKey !== 'your_groq_api_key_here' && !abortSignal?.aborted) {
       try {
         if (!this.groq) {
-          this.groq = new Groq({ apiKey: groqKey });
+          this.groq = new Groq({ apiKey: groqKey, maxRetries: 0 });
         }
 
-        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName, lastUserMsg);
+        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName, lastUserMsg, currentLanguage);
+        const nonSystemMessages = messages
+          .filter((m) => m.role !== 'system')
+          .slice(-6); // Keep last 6 dialogue messages (3 turns) to minimize tokens and prevent 429 ITPM limits
         const groqMessages = [
           { role: 'system' as const, content: contextualSystemPrompt },
-          ...messages
-            .filter((m) => m.role !== 'system')
-            .map((m) => ({
-              role: m.role as 'user' | 'assistant',
-              content: m.content || '',
-            })),
+          ...nonSystemMessages.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content || '',
+          })),
         ];
 
         const stream = await this.groq.chat.completions.create({
@@ -299,7 +156,7 @@ export class LLMPipeline {
         }
 
         if (fullReply.trim()) {
-          console.log(`[Groq ${this.model} Fallback 1] ${agentName} reply: "${fullReply.trim()}"`);
+          console.log(`[Groq ${this.model} Primary] ${agentName} reply: "${fullReply.trim()}"`);
           return;
         }
       } catch (err: any) {
@@ -308,7 +165,7 @@ export class LLMPipeline {
       }
     }
 
-    // 4. FALLBACK B: OpenRouter LLaMA 3.3 70B
+    // 2. FALLBACK A: OpenRouter LLaMA 3.3 70B (free / budget LLM fallback)
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     if (openRouterKey && openRouterKey !== 'your_openrouter_api_key_here' && !abortSignal?.aborted) {
       try {
@@ -324,7 +181,7 @@ export class LLMPipeline {
             Authorization: `Bearer ${openRouterKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://getmoreos.com',
-            'X-Title': 'Trishul Mittal Palms Dylan Dsouza Voice Agent',
+            'X-Title': 'Trishul Mittal Palms Priya Voice Agent',
           },
           body: JSON.stringify({
             model: 'meta-llama/llama-3.3-70b-instruct',
@@ -339,7 +196,7 @@ export class LLMPipeline {
           const data: any = await res.json();
           const reply = data.choices?.[0]?.message?.content?.trim();
           if (reply) {
-            console.log(`[OpenRouter Fallback] Dylan Dsouza reply: "${reply.slice(0, 80)}${reply.length > 80 ? '…' : ''}"`);
+            console.log(`[OpenRouter Fallback] ${agentName} reply: "${reply.slice(0, 80)}${reply.length > 80 ? '…' : ''}"`);
             yield reply;
             return;
           }
@@ -350,64 +207,20 @@ export class LLMPipeline {
       }
     }
 
-    // 4. FALLBACK C: Deterministic Qualification Engine
-    const deterministicReply = await qualifier.handleUtterance(lastUserMsg);
-    if (deterministicReply) {
-      yield deterministicReply;
-      return;
-    }
-
-    // 5. LAST RESORT: Hard-coded closing reply
-    yield "I'll share the complete details and floor plans on WhatsApp. Could we connect tomorrow to discuss this further? Please let me know a suitable time for you.";
+    // 3. LAST RESORT FALLBACK: Conversational reply from Priya
+    yield "Trishul Mittal Palms offers ready-to-move 2 and 3 BHK homes right beside Jakkur Lake. Are you looking for a 2 BHK or a 3 BHK for your family?";
   }
 
   /**
    * Generates a 2-sentence call summary for post-call logging.
-   * Priority: Groq → Sarvam → static fallback.
+   * Handled by Groq Qwen/LLaMA (0 Sarvam credits spent).
    */
   async generateSummary(transcript: string): Promise<string> {
     if (!transcript || transcript.trim().length === 0) {
       return 'No conversation recorded.';
     }
 
-    // 1. Sarvam AI 105B (primary if credits active)
-    const sarvamKey = process.env.SARVAM_API_KEY;
-    if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
-      try {
-        const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'api-subscription-key': sarvamKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'sarvam-105b-conversations',
-            messages: [
-              {
-                role: 'system',
-                content:
-                  'Summarize this property inquiry call with advisor Priya for Mittal Palms in 1-2 concise sentences. Focus ONLY on confirmed requirements explicitly stated by the caller. If the caller denied or corrected an assumed budget (e.g. stating they never specified a budget), do NOT record that denied number as their budget. Note any scheduled site visit or follow-up.',
-              },
-              { role: 'user', content: `Call transcript:\n${transcript}` },
-            ],
-            temperature: 0.2,
-            max_tokens: 80,
-          }),
-        });
-
-        if (res.ok) {
-          const data: any = await res.json();
-          const summary = data.choices?.[0]?.message?.content?.trim();
-          if (summary) return summary;
-        } else if (res.status === 402) {
-          sarvamCircuitBreaker.markExhausted();
-        }
-      } catch (err: any) {
-        console.warn('[Sarvam Summary] Notice:', err.message);
-      }
-    }
-
-    // 2. Groq Qwen (fallback)
+    // Primary: Groq Qwen (ultra-fast, 0 Sarvam credits spent)
     const groqKey = process.env.GROQ_API_KEY;
     if (groqKey && groqKey !== 'your_groq_api_key_here') {
       try {
@@ -420,7 +233,7 @@ export class LLMPipeline {
             {
               role: 'system',
               content:
-                'Summarize this property inquiry call with advisor Priya for Mittal Palms in 1-2 concise sentences. Focus ONLY on confirmed requirements explicitly stated by the caller. If the caller denied or corrected an assumed budget (e.g. stating they never specified a budget), do NOT record that denied number as their budget. Note any scheduled site visit or follow-up.',
+                'Summarize this property inquiry call with advisor Priya for Trishul Mittal Palms in 1-2 concise sentences. Focus ONLY on confirmed requirements explicitly stated by the caller. If the caller denied or corrected an assumed budget (e.g. stating they never specified a budget), do NOT record that denied number as their budget. Note any scheduled site visit or follow-up.',
             },
             { role: 'user', content: `Call transcript:\n${transcript}` },
           ],
@@ -434,7 +247,7 @@ export class LLMPipeline {
       }
     }
 
-    return 'Inquiry regarding Mittal Palms in Jakkur, Bangalore with advisor Priya.';
+    return 'Inquiry regarding Trishul Mittal Palms in Jakkur, Bangalore with advisor Priya.';
   }
 
   /**
@@ -467,7 +280,7 @@ export class LLMPipeline {
   /**
    * Generates dynamic prompt with real-time few-shot learnings and caller memory context.
    */
-  getPromptWithLearnings(callerPhone?: string, agentName: string = 'Priya', lastUserMsg?: string): string {
+  getPromptWithLearnings(callerPhone?: string, agentName: string = 'Priya', lastUserMsg?: string, currentLanguage: 'en' | 'hi' = 'en'): string {
     const learnings = getRecentLearnings(8);
     // Deduplicate learnings to avoid repeating identical bullets
     const uniqueLearnings = Array.from(new Set((learnings || []).map((l) => l.key_insight)))
@@ -501,13 +314,25 @@ ${hint}
       }
     }
 
-    const basePrompt = agentName === 'Dylan Dsouza' ? DYLAN_SYSTEM_PROMPT : PRIYA_SYSTEM_PROMPT;
+    let languageDirectiveBlock = '';
+    if (currentLanguage === 'hi') {
+      languageDirectiveBlock = `
+========================================================================
+ACTIVE CONVERSATION LANGUAGE: HINDI / HINGLISH
+The caller is speaking in Hindi. You MUST reply in conversational Hindi or Hinglish (e.g. "Ji bilkul! Mittal Palms mein do aur teen BHK ready homes hain. Aap kaunsa configuration dekh rahe hain?").
+Do NOT switch back to English unless caller explicitly asks for English. Keep strictly under 16 words.
+========================================================================`;
+    }
+
+    const basePrompt = PRIYA_SYSTEM_PROMPT;
 
     return `${basePrompt}
 
 ${memoryContextBlock}
 
 ${coachingDirectiveBlock}
+
+${languageDirectiveBlock}
 
 CONTINUOUS REAL-TIME LEARNINGS:
 ${uniqueLearnings || '- Maintain crisp 1-2 sentence conversational turns.'}`;

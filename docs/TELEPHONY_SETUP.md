@@ -127,7 +127,7 @@ Expected response:
    - Ask: *"What is the starting price for a 3 BHK?"*
    - Priya answers: Starts from ~₹1.70 Cr all-inclusive, OC received.
    - Say: *"Can I visit this Saturday at 11 AM?"*
-   - Priya answers: Confirms 11 AM walkthrough with Raghavendra (`9945577935`) and offers brochure over WhatsApp.
+   - Priya answers: Confirms 11 AM walkthrough with Dylan Dsouza(`8064348409`) and offers brochure over WhatsApp.
 4. **Test Barge-In / Interruption**:
    - Speak while Priya is mid-sentence.
    - Priya stops speaking immediately (<50ms buffer flush) and listens to your new statement.

@@ -7,3 +7,7 @@ dist
 data/*.db*
 data/recordings/
 *.png
+.env*
+data/audio_cache/
+data/latency_benchmark_results.json
+scratch/

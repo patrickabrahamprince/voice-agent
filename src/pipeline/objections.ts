@@ -58,7 +58,7 @@ export const OBJECTION_SCENARIOS: ObjectionScenario[] = [
     title: 'Occupancy Certificate (OC) & Khata verification',
     customerObjection: 'Is the Occupancy Certificate actually approved? Are there any pending legal or title issues?',
     underlyingConcern: 'Fear of legal traps, delayed handover, unapproved deviations, or demolition notices.',
-    idealResponse: 'Yes, 100 percent clear title with full Occupancy Certificate and A-Khata already received. Our relationship manager Raghavendra can show you all original government approvals during your visit.',
+    idealResponse: 'Yes, 100 percent clear title with full Occupancy Certificate and A-Khata already received. I can share all original government approvals directly with you or during your visit.',
     strategicPrinciple: 'State 100% OC and A-Khata with absolute clarity and offer verification of physical documents on-site.',
     keywords: ['oc received', 'occupancy certificate', 'a-khata', 'a khata', 'legal issue', 'litigation', 'bbmp approved', 'bda approved', 'clear title', 'approvals'],
   },

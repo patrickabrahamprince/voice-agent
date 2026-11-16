@@ -6,10 +6,11 @@ import fastifyWebsocket from '@fastify/websocket';
 import fastifyFormbody from '@fastify/formbody';
 import { WebSocket } from 'ws';
 import { VoiceSession } from './pipeline/session.js';
-import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory } from './tools/db.js';
+import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory, deleteAllCalls, deleteAllLeads, deleteAllData } from './tools/db.js';
 import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech, prewarmTtsCache } from './pipeline/tts.js';
 import { clearQualifier, llmPipeline } from './pipeline/llm.js';
+import { sarvamCircuitBreaker } from './pipeline/circuit_breaker.js';
 import { verifyPlivoSignature, buildStreamResponse, logInboundCall, getPlivoConfig } from './telephony/plivo.js';
 import plivo from 'plivo';
 import { callEventsBroadcaster, LiveCallEvent } from './pipeline/events.js';
@@ -42,28 +43,88 @@ export const activeWebSockets = new Set<WebSocket>();
 await app.register(fastifyWebsocket);
 await app.register(fastifyFormbody);
 
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'mittal@palms2026';
+const ADMIN_SECRET_TOKEN = process.env.ADMIN_SECRET_TOKEN || 'mittal_palms_secret_2026';
+
+function parseCookies(cookieHeader?: string): Record<string, string> {
+  const list: Record<string, string> = {};
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach((cookie) => {
+    const parts = cookie.split('=');
+    const name = parts[0]?.trim();
+    if (!name) return;
+    const value = parts.slice(1).join('=').trim();
+    list[name] = decodeURIComponent(value);
+  });
+  return list;
+}
+
+function extractAuthToken(request: FastifyRequest): string | undefined {
+  const headerToken = (
+    request.headers['x-admin-token'] ||
+    request.headers['x-auth-token'] ||
+    (request.headers['authorization'] ? (request.headers['authorization'] as string).replace(/^Bearer\s+/i, '') : '')
+  ) as string | undefined;
+  if (headerToken) return headerToken.trim();
+
+  try {
+    const rawUrl = request.raw.url || '';
+    if (rawUrl.includes('?')) {
+      const parsedUrl = new URL(rawUrl, 'http://localhost');
+      const token = parsedUrl.searchParams.get('token');
+      if (token) return token.trim();
+    }
+  } catch {}
+
+  const queryToken = (request.query as Record<string, string>)?.token;
+  if (queryToken) return queryToken.trim();
+
+  const cookies = parseCookies(request.headers.cookie);
+  if (cookies.admin_token) return cookies.admin_token.trim();
+
+  return undefined;
+}
+
 /**
- * Request guard: carrier webhooks, health checks — unconditional pass.
- * Admin/API routes require ADMIN_SECRET_TOKEN when configured.
+ * Request guard: carrier webhooks, health checks, media streams, UI pages — unconditional pass.
+ * Data and admin routes require authenticated session or ADMIN_SECRET_TOKEN.
  * Browser origin lock enforced in production.
  */
 app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
   const url = request.raw.url || '';
   const origin = (request.headers.origin || request.headers.referer || '') as string;
 
-  // 1. Allow carrier webhooks, health checks, media stream, and live-feed unconditionally
-  if (url.startsWith('/incoming-call') || url.startsWith('/health') || url.startsWith('/media-stream') || url.startsWith('/api/live-feed')) {
+  // 1. Allow carrier webhooks, health checks, media stream, audio assets, live feed stream, proposal, and UI/auth routes unconditionally
+  if (
+    url.startsWith('/incoming-call') ||
+    url.startsWith('/health') ||
+    url.startsWith('/media-stream') ||
+    url.startsWith('/audio/') ||
+    url.startsWith('/api/live-feed') ||
+    url.startsWith('/api/tts/') ||
+    url.startsWith('/api/sarvam/status') ||
+    url.startsWith('/proposal.pdf') ||
+    url.startsWith('/transfer-to-human') ||
+    url.startsWith('/transfer-fallback') ||
+    url.startsWith('/api/auth/') ||
+    (url.startsWith('/api/calls/') && url.includes('/audio')) ||
+    url === '/' ||
+    url.startsWith('/?') ||
+    url === '/admin' ||
+    url.startsWith('/admin?') ||
+    url === '/api' ||
+    url.startsWith('/api?')
+  ) {
     return;
   }
 
-  // 2. Admin / API auth — enforced whenever ADMIN_SECRET_TOKEN is set in env
-  const adminToken = process.env.ADMIN_SECRET_TOKEN?.trim();
-  if (adminToken && (url.startsWith('/api/') || url.startsWith('/admin'))) {
-    const headerToken = request.headers['x-admin-token'] as string | undefined;
-    const queryToken = (request.query as Record<string, string>)?.token;
-    if (headerToken !== adminToken && queryToken !== adminToken) {
+  // 2. Admin / API authentication — protect data routes (/api/* and /admin/* data exports)
+  if (url.startsWith('/api/') || url.startsWith('/admin/')) {
+    const token = extractAuthToken(request);
+    if (!token || token !== ADMIN_SECRET_TOKEN) {
       reply.code(401);
-      return reply.send({ error: 'Unauthorized: provide a valid x-admin-token header.' });
+      return reply.send({ error: 'Unauthorized: Valid username & password login required.' });
     }
   }
 
@@ -72,6 +133,9 @@ app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) =>
     const publicDomain = process.env.PUBLIC_DOMAIN?.trim();
     const allowedOrigins = [
       publicDomain,
+      'knowaeo.com',
+      'www.knowaeo.com',
+      'getmoreos-voice-agent.vercel.app',
       request.headers.host,
       'localhost',
       '127.0.0.1',
@@ -83,6 +147,47 @@ app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) =>
       return reply.send({ error: 'CORS policy: Access restricted to authorized domain.' });
     }
   }
+});
+
+/**
+ * Auth API: Sign In with Username and Password
+ */
+app.post('/api/auth/login', async (request: FastifyRequest<{ Body: { username?: string; password?: string } }>, reply) => {
+  const { username, password } = request.body || {};
+  if (!username || !password) {
+    return reply.code(400).send({ success: false, error: 'Username and password are required.' });
+  }
+
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    reply.header('Set-Cookie', `admin_token=${ADMIN_SECRET_TOKEN}; Path=/; SameSite=Lax; Max-Age=2592000`);
+    return reply.send({
+      success: true,
+      token: ADMIN_SECRET_TOKEN,
+      username: ADMIN_USERNAME,
+      message: 'Authentication successful.',
+    });
+  }
+
+  return reply.code(401).send({ success: false, error: 'Invalid username or password.' });
+});
+
+/**
+ * Auth API: Check Session Validity
+ */
+app.get('/api/auth/check', async (request: FastifyRequest, reply) => {
+  const token = extractAuthToken(request);
+  if (token && token === ADMIN_SECRET_TOKEN) {
+    return reply.send({ authenticated: true, username: ADMIN_USERNAME });
+  }
+  return reply.code(401).send({ authenticated: false, error: 'Not authenticated.' });
+});
+
+/**
+ * Auth API: Sign Out
+ */
+app.post('/api/auth/logout', async (request: FastifyRequest, reply) => {
+  reply.header('Set-Cookie', 'admin_token=; Path=/; SameSite=Lax; Max-Age=0');
+  return reply.send({ success: true, message: 'Logged out successfully.' });
 });
 
 /**
@@ -157,21 +262,9 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
     }
   }
 
-  // Instantly broadcast to live dashboard that an incoming call is connecting
-  callEventsBroadcaster.broadcast({
-    type: 'call_started',
-    streamSid: callUuid,
-    callerNumber: callerFrom,
-    timestamp: new Date().toISOString(),
-    data: {
-      agentName: 'Priya',
-      callerNumber: callerFrom,
-      callSid: callUuid,
-      greeting: 'Connecting to Priya (Trishul Mittal Palms Advisor)...',
-      status: 'active',
-    },
-  });
-
+  // Plivo incoming call is accepted. The live media session will connect to /media-stream WebSocket,
+  // where VoiceSession will handle real-time audio and broadcast call_started when caller connects.
+  
   // Trigger Plivo carrier-grade call recording as secondary backup
   const plivoConfig = getPlivoConfig();
   if (plivoConfig.authId && plivoConfig.authToken && callUuid && !callUuid.startsWith('sim_')) {
@@ -183,10 +276,10 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
     } catch {}
   }
 
-  // Always return HTTP 200 + valid Voice XML with caller parameter
+  // Always return HTTP 200 + valid Voice XML with caller and callUuid parameters
   const streamUrlWithCaller = callerFrom && callerFrom !== 'Unknown'
-    ? `${streamUrl}?caller=${encodeURIComponent(callerFrom)}`
-    : streamUrl;
+    ? `${streamUrl}?caller=${encodeURIComponent(callerFrom)}&callUuid=${encodeURIComponent(callUuid)}`
+    : `${streamUrl}?callUuid=${encodeURIComponent(callUuid)}`;
   const xml = buildStreamResponse(streamUrlWithCaller);
   reply.header('Content-Type', 'text/xml');
   return reply.code(200).send(xml);
@@ -196,8 +289,9 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
  * API: Stream Call Audio Recording: GET /api/calls/:id/audio
  * Delivers full call WAV recording with HTTP range support for immediate browser review and playback.
  */
-app.get('/api/calls/:id/audio', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+app.get('/api/calls/:id/audio', async (request: FastifyRequest<{ Params: { id: string }; Querystring: { download?: string } }>, reply: FastifyReply) => {
   const callId = request.params.id;
+  const isDownload = request.query?.download === '1' || request.query?.download === 'true';
   const recordingsDir = path.resolve(process.cwd(), 'data', 'recordings');
   const filePath = path.join(recordingsDir, `call_${callId}.wav`);
 
@@ -208,6 +302,10 @@ app.get('/api/calls/:id/audio', async (request: FastifyRequest<{ Params: { id: s
   const stat = fs.statSync(filePath);
   const fileSize = stat.size;
   const range = request.headers.range;
+
+  const disposition = isDownload ? 'attachment' : 'inline';
+  reply.header('Content-Disposition', `${disposition}; filename="call_${callId}.wav"`);
+  reply.header('Access-Control-Allow-Origin', '*');
 
   if (range) {
     const parts = range.replace(/bytes=/, '').split('-');
@@ -221,7 +319,9 @@ app.get('/api/calls/:id/audio', async (request: FastifyRequest<{ Params: { id: s
       'Accept-Ranges': 'bytes',
       'Content-Length': chunkSize,
       'Content-Type': 'audio/wav',
+      'Content-Disposition': `${disposition}; filename="call_${callId}.wav"`,
       'Cache-Control': 'public, max-age=86400',
+      'Access-Control-Allow-Origin': '*',
     });
     return reply.send(fileStream);
   }
@@ -243,7 +343,46 @@ app.get('/media-stream', { websocket: true }, (socket: WebSocket, req: FastifyRe
   app.log.info({ ip: req.ip }, '[MediaStream] Incoming telephony WebSocket connected');
   const query = (req.query || {}) as any;
   const callerNumber = query.caller ? decodeURIComponent(query.caller) : undefined;
-  new VoiceSession(socket, callerNumber);
+  const callUuid = query.callUuid ? decodeURIComponent(query.callUuid) : undefined;
+  new VoiceSession(socket, callerNumber, callUuid);
+});
+
+/**
+ * Telephony: Live Call Transfer: POST/GET /transfer-to-human
+ * Plivo executes this XML when transferring caller to the human property advisor team.
+ */
+app.all('/transfer-to-human', async (request: FastifyRequest, reply: FastifyReply) => {
+  const query = (request.query || {}) as any;
+  const body = (request.body || {}) as any;
+  const targetPhone = query.target || body.target || process.env.HUMAN_ADVISOR_PHONE || '+919738397933';
+  const publicDomain = process.env.PUBLIC_DOMAIN || 'knowaeo.com';
+
+  app.log.info({ targetPhone }, '[Telephony] Generating Plivo transfer XML to human agent');
+
+  const xml = `<Response><Speak voice="WOMAN" language="en-IN">Connecting your call to our on-site property advisor team. Please stay on the line.</Speak><Dial callerId="${process.env.PLIVO_PHONE_NUMBER || '08064348409'}" timeout="25" action="https://${publicDomain}/transfer-fallback" method="POST"><Number>${targetPhone}</Number></Dial></Response>`;
+
+  reply.header('Content-Type', 'text/xml');
+  return reply.code(200).send(xml);
+});
+
+/**
+ * Telephony: Fallback Endpoint: POST/GET /transfer-fallback
+ * Executed if human agent does not answer within 25 seconds or line is busy.
+ */
+app.all('/transfer-fallback', async (request: FastifyRequest, reply: FastifyReply) => {
+  const body = (request.body || {}) as any;
+  const query = (request.query || {}) as any;
+  const dialStatus = body.DialStatus || query.DialStatus || 'failed';
+
+  app.log.info({ dialStatus }, '[Telephony] Human transfer fallback triggered');
+
+  if (dialStatus !== 'completed') {
+    const xml = `<Response><Speak voice="WOMAN" language="en-IN">Our team is currently walking a client through the site. I have notified them with your details, and they will connect with you shortly. Thank you!</Speak></Response>`;
+    reply.header('Content-Type', 'text/xml');
+    return reply.code(200).send(xml);
+  }
+
+  return reply.code(200).send('<Response/>');
 });
 
 
@@ -256,10 +395,49 @@ app.get('/api/calls', async () => {
 });
 
 /**
+ * API: Delete / Clear all calls
+ */
+app.delete('/api/calls', async () => {
+  deleteAllCalls();
+  return { success: true, message: 'All call records have been deleted.' };
+});
+
+app.post('/api/calls/clear', async () => {
+  deleteAllCalls();
+  return { success: true, message: 'All call records have been deleted.' };
+});
+
+/**
  * API: Get recent leads
  */
 app.get('/api/leads', async () => {
   return getLeads(50);
+});
+
+/**
+ * API: Delete / Clear all leads
+ */
+app.delete('/api/leads', async () => {
+  deleteAllLeads();
+  return { success: true, message: 'All lead records have been deleted.' };
+});
+
+app.post('/api/leads/clear', async () => {
+  deleteAllLeads();
+  return { success: true, message: 'All lead records have been deleted.' };
+});
+
+/**
+ * API: Delete / Clear ALL portal data (Calls, Leads, and Learnings)
+ */
+app.delete('/api/data', async () => {
+  deleteAllData();
+  return { success: true, message: 'All calls, leads, and analytics data have been deleted.' };
+});
+
+app.post('/api/data/clear', async () => {
+  deleteAllData();
+  return { success: true, message: 'All calls, leads, and analytics data have been deleted.' };
 });
 
 /**
@@ -280,6 +458,7 @@ app.get('/api/live-feed', (request: FastifyRequest, reply: FastifyReply) => {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
     'Access-Control-Allow-Origin': '*',
   });
 
@@ -322,6 +501,14 @@ app.get('/api/live-feed/active', async () => {
 });
 
 /**
+ * API: Clear any stale active call feeds: POST /api/live-feed/clear
+ */
+app.post('/api/live-feed/clear', async () => {
+  callEventsBroadcaster.clearAllActive();
+  return { success: true, message: 'Active call feed cleared.' };
+});
+
+/**
  * API: Get autonomous agent learnings
  */
 app.get('/api/learnings', async () => {
@@ -353,7 +540,7 @@ app.post('/api/training/test-objection', async (request, reply) => {
     {
       role: 'assistant',
       content:
-        'Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?',
+        'Hello! Welcome to Trishul Mittal Palms in Jakkur. I\'m Priya, property advisor. Thanks for calling! Are you exploring 2 or 3 BHK properties in Bangalore?',
     },
     {
       role: 'user',
@@ -543,15 +730,22 @@ app.get('/api/sarvam/status', async () => {
       signal: AbortSignal.timeout(4000),
     });
     if (res.ok) {
+      sarvamCircuitBreaker.reset();
       return { keyPresent: true, status: 'valid', message: 'Sarvam AI Bulbul is active with valid credits.' };
     }
     if (res.status === 402) {
+      sarvamCircuitBreaker.markExhausted();
       return { keyPresent: true, status: 'quota_exhausted', message: 'Sarvam AI account has 0 credits (402 Payment Required).' };
     }
     return { keyPresent: true, status: 'error', code: res.status, message: `Sarvam returned HTTP ${res.status}` };
   } catch (err: any) {
     return { keyPresent: true, status: 'network_error', message: err.message };
   }
+});
+
+app.post('/api/sarvam/reset', async () => {
+  sarvamCircuitBreaker.reset();
+  return { success: true, message: 'Sarvam circuit breaker reset. Probing Sarvam directly for next TTS call.' };
 });
 
 /**
@@ -562,12 +756,9 @@ app.get('/api/sarvam/status', async () => {
  */
 app.post('/api/sarvam/key', async (request: FastifyRequest<{ Body: { apiKey: string } }>, reply) => {
   // Admin auth check
-  const adminToken = process.env.ADMIN_SECRET_TOKEN;
-  if (adminToken) {
-    const provided = request.headers['x-admin-token'] as string | undefined;
-    if (!provided || provided !== adminToken) {
-      return reply.code(401).send({ success: false, error: 'Unauthorized: missing or invalid x-admin-token header.' });
-    }
+  const provided = extractAuthToken(request);
+  if (!provided || provided !== ADMIN_SECRET_TOKEN) {
+    return reply.code(401).send({ success: false, error: 'Unauthorized: missing or invalid credentials.' });
   }
 
   const { apiKey } = request.body || {};
@@ -647,29 +838,22 @@ function createVirtualSession(streamSid: string, callerNumber: string = '+91-988
  */
 app.post('/api/simulator/call', async (request: FastifyRequest<{ Body: { callerNumber?: string; voice?: string; enableSarvam?: boolean } }>) => {
   const callerNumber = request.body?.callerNumber || '+91-9880012345';
-  const voice = request.body?.voice || 'kavya';
+  const voice = request.body?.voice || 'ishita';
   const enableSarvam = request.body?.enableSarvam !== false && voice !== 'browser';
   const streamSid = `sim_stream_${Date.now()}`;
 
   const session = createVirtualSession(streamSid, callerNumber);
 
-  const agentName = (voice === 'shubh' || voice === 'dylan') ? 'Dylan Dsouza' : 'Priya';
+  const agentName = 'Priya';
   session.setAgentName(agentName);
+  session.setAgentVoice(voice);
 
   // Reset any cached qualifier so each simulated call starts completely clean
   clearQualifier();
 
   // Check caller memory context
   const memory = getCallerMemory(callerNumber);
-  const callerName = (memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer')
-    ? memory.existingLead.callerName
-    : 'you';
-  
-  const greetingText = agentName === 'Priya'
-    ? (callerName !== 'you' && callerName !== 'there' && callerName !== 'Valued Buyer'
-        ? `Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?`
-        : `Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`)
-    : `Hi, good morning — am I speaking with ${callerName}?`;
+  const greetingText = session.getInitialGreeting();
 
   let greetingAudioBase64: string | undefined;
   let audioContentType: string | undefined;
@@ -725,7 +909,7 @@ app.post(
     const body = request.body || ({} as any);
     const streamSid = body.streamSid || `sim_stream_${Date.now()}`;
     const text = body.text || body.transcript || '';
-    const voice = body.voice || 'kavya';
+    const voice = body.voice || 'ishita';
     const enableSarvam = body.enableSarvam !== false && voice !== 'browser';
     const includeAudio = body.includeAudio !== false && enableSarvam;
     const history = body.history;
@@ -744,8 +928,9 @@ app.post(
       session.setConversationHistory(history);
     }
 
-    const agentName = (voice === 'shubh' || voice === 'dylan') ? 'Dylan Dsouza' : (session.getAgentName() || 'Priya');
+    const agentName = 'Priya';
     session.setAgentName(agentName);
+    session.setAgentVoice(voice);
 
     if (!text.trim()) {
       return reply.code(400).send({ error: 'Missing or empty utterance text.' });
@@ -806,19 +991,21 @@ app.post('/api/simulator/hangup', async (request: FastifyRequest<{ Body: { strea
 });
 
 /**
- * 7. Admin UI: GET /admin
- * State-of-the-art interactive dashboard with real-time audit tables and live caller tester.
+ * Helper to render the complete Voice AI Agent Web Console & Interactive Tester.
  */
-app.get('/admin', async (request, reply) => {
+function renderVoiceAgentDashboard(request: FastifyRequest, reply: FastifyReply) {
   const sheetUrl = sheetsService.getSheetUrl() || '#';
   const hasSheetConfigured = Boolean(process.env.GOOGLE_SHEET_ID);
-  const dashboardPath = path.join(process.cwd(), 'src', 'dashboard', 'index.html');
+  let dashboardPath = path.join(process.cwd(), 'src', 'dashboard', 'index.html');
+  if (!fs.existsSync(dashboardPath)) {
+    dashboardPath = path.join(process.cwd(), 'dist', 'dashboard', 'index.html');
+  }
 
   let html = '';
   if (fs.existsSync(dashboardPath)) {
     html = fs.readFileSync(dashboardPath, 'utf8');
   } else {
-    html = '<h1>Admin Dashboard</h1>';
+    html = '<h1>Trishul Mittal Palms — AI Voice Advisor</h1>';
   }
 
   // Inject dynamic variables
@@ -834,11 +1021,21 @@ app.get('/admin', async (request, reply) => {
   reply.header('Pragma', 'no-cache');
   reply.header('Expires', '0');
   return reply.send(html);
+}
+
+// 1. Direct Voice Agent Web Console at root: www.knowaeo.com /
+app.get('/', async (request, reply) => {
+  return renderVoiceAgentDashboard(request, reply);
 });
 
-// Redirect root to /admin for intuitive developer experience
-app.get('/', async (request, reply) => {
-  return reply.redirect('/admin');
+// 2. Direct Voice Agent Web Console at /admin
+app.get('/admin', async (request, reply) => {
+  return renderVoiceAgentDashboard(request, reply);
+});
+
+// 3. Fallback for serverless rewrite root /api
+app.get('/api', async (request, reply) => {
+  return renderVoiceAgentDashboard(request, reply);
 });
 
 // Graceful Shutdown Handler for WebSockets and Fastify Server
@@ -898,4 +1095,14 @@ async function startServer() {
 const isVercelRuntime = Boolean(process.env.VERCEL);
 if (!isVercelRuntime) {
   startServer();
+}
+
+// Export default handler for Vercel Serverless Function invocations
+let isServerlessReady = false;
+export default async function handler(req: any, res: any) {
+  if (!isServerlessReady) {
+    await app.ready();
+    isServerlessReady = true;
+  }
+  app.server.emit('request', req, res);
 }

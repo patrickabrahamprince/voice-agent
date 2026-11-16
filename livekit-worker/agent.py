@@ -32,7 +32,7 @@ PROJECT OVERVIEW:
   * 2 BHK (1,235 to 1,340 sqft): Starts at 1.25 to 1.35 Crore rupees (₹12,000 per sqft).
   * 3 BHK (1,720 to 1,980 sqft): Starts at 1.7 to 1.95 Crore rupees (₹12,000 per sqft).
 - Zero GST on ready resale homes.
-- Relationship Manager: Raghavendra (9945577935) available for site visits.
+- Property Advisor: Dylan Dsouza available for site visits.
 
 CRITICAL VOICE PHONE RULES:
 1. BREVITY: Keep every turn strictly 1 to 2 short sentences (under 25 words).
@@ -47,13 +47,12 @@ async def book_site_visit(
     day_and_time: str,
     configuration: str = "2 or 3 BHK",
 ):
-    """Book a preview site walkthrough at Mittal Palms with relationship manager Raghavendra."""
+    """Book a preview site walkthrough at Trishul Mittal Palms with property advisor Dylan Dsouza."""
     return {
         "status": "confirmed",
         "day_and_time": day_and_time,
-        "manager": "Raghavendra",
-        "phone": "9945577935",
-        "message": f"Site visit reserved for {day_and_time}. Raghavendra will welcome the buyer at the gate."
+        "advisor": "Dylan Dsouza",
+        "message": f"Site visit reserved for {day_and_time}. Dylan Dsouza will welcome the buyer at Trishul Mittal Palms."
     }
 
 server = AgentServer()

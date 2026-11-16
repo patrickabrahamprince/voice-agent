@@ -64,7 +64,6 @@ export function verifyPlivoSignature(
   const tokens = Array.from(new Set([
     authToken,
     process.env.PLIVO_AUTH_TOKEN,
-    'OThiNzk3MWUtZGRhZS00MDdhLTc3ODMtNTM1OTYz',
   ].filter(Boolean))) as string[];
 
   for (const t of tokens) {

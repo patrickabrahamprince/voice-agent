@@ -82,7 +82,7 @@ export function buildTrainingDataset(): { train: SFTRecord[]; val: SFTRecord[] }
     },
     {
       q: 'Who can I contact for a site visit at the property?',
-      a: 'Our on-site Relationship Manager Raghavendra is available at 9945577935 to give you an exclusive walkthrough. What time works best for you this Saturday?',
+      a: 'Our on-site Relationship Manager Dylan Dsouzais available at 8064348409 to give you an exclusive walkthrough. What time works best for you this Saturday?',
     },
     {
       q: 'I never told you that my budget is 2.25 crores.',
@@ -94,11 +94,11 @@ export function buildTrainingDataset(): { train: SFTRecord[]; val: SFTRecord[] }
     },
     {
       q: 'Is it for self-use or investment? I want to invest for rental income.',
-      a: 'Mittal Palms offers excellent rental yields due to Manyata Tech Park and airport corridor demand. Would you like our relationship manager Raghavendra to walk you through the rental ROI data?',
+      a: 'Mittal Palms offers excellent rental yields due to Manyata Tech Park and airport corridor demand. Would you like our relationship manager Dylan Dsouzato walk you through the rental ROI data?',
     },
     {
       q: 'Can we visit this Saturday at 11 AM?',
-      a: 'Saturday at eleven AM is confirmed! Our Relationship Manager Raghavendra will meet you on-site. Have a wonderful day ahead. Goodbye!',
+      a: 'Saturday at eleven AM is confirmed! Our Relationship Manager Dylan Dsouzawill meet you on-site. Have a wonderful day ahead. Goodbye!',
     },
   ];
 

@@ -41,7 +41,8 @@ if (!fs.existsSync(DB_DIR)) {
   } catch { }
 }
 
-const DB_PATH = path.join(DB_DIR, 'voice_agent.db');
+const DB_NAME = 'voice_agent_v3.db';
+const DB_PATH = path.join(DB_DIR, DB_NAME);
 
 // If on Vercel and DB doesn't exist in /tmp yet, copy source DB
 if (isVercel && !fs.existsSync(DB_PATH)) {
@@ -228,6 +229,59 @@ export function getCallById(id: number): CallRecord | undefined {
   if (!sqliteDb) return memCalls.find((c) => c.id === id);
   const stmt = sqliteDb.prepare('SELECT * FROM calls WHERE id = ?');
   return stmt.get(id) as CallRecord | undefined;
+}
+
+export function deleteAllCalls(): void {
+  if (sqliteDb) {
+    try {
+      sqliteDb.exec('DELETE FROM calls');
+      sqliteDb.exec('VACUUM');
+    } catch (err) {
+      console.warn('[DB] Failed to delete calls from SQLite:', err);
+    }
+  }
+  memCalls = [];
+}
+
+export function deleteAllLeads(): void {
+  if (sqliteDb) {
+    try {
+      sqliteDb.exec('DELETE FROM leads');
+      sqliteDb.exec('VACUUM');
+    } catch (err) {
+      console.warn('[DB] Failed to delete leads from SQLite:', err);
+    }
+  }
+  memLeads = [];
+}
+
+export function deleteAllData(): void {
+  if (sqliteDb) {
+    try {
+      sqliteDb.exec('DELETE FROM calls');
+      sqliteDb.exec('DELETE FROM leads');
+      sqliteDb.exec('DELETE FROM agent_learnings');
+      sqliteDb.exec('VACUUM');
+    } catch (err) {
+      console.warn('[DB] Failed to delete all data from SQLite:', err);
+    }
+  }
+  memCalls = [];
+  memLeads = [];
+  memLearnings = [];
+
+  // Also clear any cached recordings
+  try {
+    const recDir = path.resolve(process.cwd(), 'data', 'recordings');
+    if (fs.existsSync(recDir)) {
+      const files = fs.readdirSync(recDir);
+      for (const f of files) {
+        if (f.endsWith('.wav') || f.endsWith('.mp3')) {
+          fs.unlinkSync(path.join(recDir, f));
+        }
+      }
+    }
+  } catch {}
 }
 
 // Lead operations

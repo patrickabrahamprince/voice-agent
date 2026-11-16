@@ -21,26 +21,34 @@ export interface TTSVoiceInfo {
 // Exclusive Voice Provider: Sarvam AI Bulbul (India's Premier Voice AI)
 export const AVAILABLE_VOICES: TTSVoiceInfo[] = [
   {
-    id: 'kavya',
-    name: '👩 Priya — Property Advisor (Sarvam AI Bulbul • Kavya)',
+    id: 'ishita',
+    name: '👩 Priya — Expressive Advisor (Sarvam Bulbul • Ishita Customer Expressive • Female)',
     gender: 'Female',
-    accent: 'Bangalore Indian English',
+    accent: 'Bilingual Indian English / Hinglish / Hindi (Ultra-Realistic Expressive)',
     provider: 'sarvam',
     isDefault: true,
   },
   {
-    id: 'roopa',
-    name: '👩 Roopa — Sarvam AI Bulbul (Crisp & Direct)',
+    id: 'shalini',
+    name: '👩 Shalini — Property Advisor (Sarvam Bulbul • Shalini Customer • Female)',
     gender: 'Female',
-    accent: 'Bangalore Indian English',
+    accent: 'Bangalore Indian English / Hindi (Corporate & Articulate)',
     provider: 'sarvam',
     isDefault: false,
   },
   {
-    id: 'shubh',
-    name: '👨 Dylan Dsouza — Property Advisor (Sarvam AI Bulbul • Shubh)',
-    gender: 'Male',
-    accent: 'Bangalore Indian English',
+    id: 'kavya',
+    name: '👩 Kavya — Conversational (Sarvam Bulbul • Kavya • Female)',
+    gender: 'Female',
+    accent: 'Warm Conversational Hindi / English',
+    provider: 'sarvam',
+    isDefault: false,
+  },
+  {
+    id: 'simran',
+    name: '👩 Simran — Standard Telephony (Sarvam Bulbul • Simran • Female)',
+    gender: 'Female',
+    accent: 'Bilingual Indian English / Hindi',
     provider: 'sarvam',
     isDefault: false,
   },
@@ -134,14 +142,24 @@ export function synthesizeMacSpeech(
  */
 export async function synthesizeNeuralSpeech(
   rawText: string,
-  voiceId: string = 'kavya'
+  voiceId: string = 'ishita'
 ): Promise<{ buffer: Buffer; contentType: string }> {
   const normalizedText = normalizeRealEstateText(rawText);
   if (!normalizedText.trim()) {
     return { buffer: Buffer.alloc(0), contentType: 'audio/wav' };
   }
 
-  const v4Speaker = (voiceId === 'shubh') ? 'shubh_en_narration' : ((voiceId === 'roopa') ? 'roopa_en_conversational' : 'kavya_hi_conversational');
+  const v4Speaker = (voiceId === 'shubh')
+    ? 'shubh_en_narration'
+    : (voiceId === 'shalini')
+    ? 'shalini_enhi_customer'
+    : (voiceId === 'kavya')
+    ? 'kavya_hi_conversational'
+    : (voiceId === 'simran')
+    ? 'simran_enhi_customer'
+    : (voiceId === 'roopa')
+    ? 'roopa_en_conversational'
+    : 'ishita_enhi_customer_expressive';
   const isMale = voiceId === 'shubh' || voiceId === 'aditya' || voiceId === 'dev';
   const model = 'bulbul:v4-flash';
   const cacheKey = `sarvam:${model}:${voiceId}:${normalizedText}`;
@@ -158,6 +176,9 @@ export async function synthesizeNeuralSpeech(
     try {
       console.log(`[TTS] model=v4-flash chars=${normalizedText.length} speaker=${voiceId}`);
 
+      const isHindiText = /[\u0900-\u097F]/.test(normalizedText) || /\b(ji|aap|hain|hai|kaunsa|bhk|dekh|rahe|kya|bataiye|bilkul|namaste|theek|dhanyawad|shukriya|hanji|haanji|haan)\b/i.test(normalizedText);
+      const targetLang = isHindiText ? 'hi-IN' : 'en-IN';
+
       const res = await fetch('https://api.sarvam.ai/text-to-speech', {
         method: 'POST',
         headers: {
@@ -166,7 +187,7 @@ export async function synthesizeNeuralSpeech(
         },
         body: JSON.stringify({
           text: normalizedText,
-          language_code: 'en-IN',
+          language_code: targetLang,
           speaker: v4Speaker,
           model: 'bulbul:v4-flash',
           speech_sample_rate: 24000,
@@ -290,8 +311,16 @@ export function mulawToWav(mulawBuffer: Buffer): Buffer {
   return Buffer.concat([wavHeader, Buffer.from(pcm.buffer)]);
 }
 
+const DISK_CACHE_DIR = path.resolve(process.cwd(), 'data', 'audio_cache');
+if (!fs.existsSync(DISK_CACHE_DIR)) {
+  try {
+    fs.mkdirSync(DISK_CACHE_DIR, { recursive: true });
+  } catch {}
+}
+
 /**
- * 500-Item LRU Cache for 8kHz G.711 mulaw telephony audio.
+ * 500-Item LRU Memory + Persistent Disk Cache for 8kHz G.711 mulaw telephony audio.
+ * Saves Sarvam credits: Every unique utterance is synthesized ONCE and cached forever.
  */
 class MulawLruCache {
   private cache = new Map<string, Buffer>();
@@ -303,12 +332,13 @@ class MulawLruCache {
     this.maxEntries = maxEntries;
   }
 
-  public normalizeKey(text: string): string {
-    const clean = text.toLowerCase().trim().replace(/\s+/g, ' ');
+  public normalizeKey(text: string, voiceId: string = 'kavya'): string {
+    const clean = `${voiceId}:${text.toLowerCase().trim().replace(/\s+/g, ' ')}`;
     return crypto.createHash('md5').update(clean).digest('hex');
   }
 
   public get(key: string): Buffer | undefined {
+    // 1. In-memory LRU hit (0ms)
     const val = this.cache.get(key);
     if (val) {
       this.hits++;
@@ -317,6 +347,21 @@ class MulawLruCache {
       this.logStats();
       return val;
     }
+
+    // 2. Persistent Disk Cache hit (0ms API calls, 0 credits spent!)
+    const diskPath = path.join(DISK_CACHE_DIR, `${key}.mulaw`);
+    if (fs.existsSync(diskPath)) {
+      try {
+        const diskBuf = fs.readFileSync(diskPath);
+        if (diskBuf && diskBuf.length > 0) {
+          this.cache.set(key, diskBuf);
+          this.hits++;
+          this.logStats();
+          return diskBuf;
+        }
+      } catch {}
+    }
+
     this.misses++;
     this.logStats();
     return undefined;
@@ -330,10 +375,18 @@ class MulawLruCache {
       if (oldestKey) this.cache.delete(oldestKey);
     }
     this.cache.set(key, buffer);
+
+    // Persist to disk so future server boots and repeat questions cost ₹0.00
+    if (buffer && buffer.length > 0) {
+      const diskPath = path.join(DISK_CACHE_DIR, `${key}.mulaw`);
+      fs.promises.writeFile(diskPath, buffer).catch(() => {});
+    }
   }
 
   public has(key: string): boolean {
-    return this.cache.has(key);
+    if (this.cache.has(key)) return true;
+    const diskPath = path.join(DISK_CACHE_DIR, `${key}.mulaw`);
+    return fs.existsSync(diskPath);
   }
 
   private logStats(): void {
@@ -346,52 +399,53 @@ class MulawLruCache {
 export const telephonyLruCache = new MulawLruCache(500);
 
 export const TOP_25_PHRASES = [
-  "Welcome to Mittal Palms",
-  "Pricing starts at one point seven crore rupees all inclusive",
-  "Three BHK at Mittal Palms",
-  "Jakkur Bangalore",
-  "Site walkthrough this Saturday at eleven AM with Raghavendra",
-  "Would you like to confirm your site visit",
-  "Hello! This is Priya from Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?",
+  "Hello! This is Priya from Trishul Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?",
   "Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?",
-  "Hello! Welcome back to Mittal Palms. Wonderful to connect with you again!",
+  "Sure, let me connect your call to our on-site property advisor team right away. Please stay on the line.",
+  "Pricing starts at one point two five crore rupees for 2 BHK, and one point seven crore rupees for 3 BHK.",
   "Two BHK pricing starts from one point two five crore rupees all inclusive.",
   "Three BHK pricing starts from one point seven crore rupees all inclusive.",
-  "Mittal Palms is located in Jakkur, North Bangalore, very close to Manyata Tech Park and Hebbal.",
+  "Trishul Mittal Palms is located in Jakkur, North Bangalore, right beside Jakkur Lake.",
   "Full Occupancy Certificate is received, so zero GST and immediate possession.",
-  "Our project head Raghavendra at 9945577935 can coordinate directly.",
-  "Would Saturday or Sunday suit you best for a site visit?",
-  "Thank you for your time. Have an amazing day. Goodbye!",
-  "Yes, we have amenities like swimming pool, clubhouse, gymnasium, and landscaped gardens.",
-  "The carpet area for two BHK is around twelve hundred square feet.",
-  "The carpet area for three BHK is around sixteen hundred square feet.",
-  "Raghavendra will call you back with all details.",
-  "Sure, what is your preferred time for the walkthrough?",
-  "Is Saturday eleven AM good for you?",
-  "Is Sunday eleven AM good for you?",
-  "May I know your good name please?",
-  "Thank you. I have noted your details.",
-  "Have a great day ahead!"
+  "Yes, we have amenities like a 15,000 square foot clubhouse, swimming pool, gym, and landscaped gardens.",
+  "Yes, our on-site property advisor team is available for site visits tomorrow. Would morning or afternoon suit you better?",
+  "Thank you for your time. Have a wonderful day ahead. Goodbye!",
+  "I completely understand. Thank you for your time, have a wonderful day ahead. Goodbye!"
 ];
 
 export async function prewarmTtsCache(): Promise<void> {
-  console.log(`[TTS] Pre-warming streaming WebSocket and cache with ${TOP_25_PHRASES.length} top Mittal Palms phrases in background...`);
-  if (!sarvamCircuitBreaker.isExhausted) {
-    try {
-      await globalStreamingTTS.connect();
-    } catch (err: any) {
-      console.warn('[TTS Prewarm] Streaming WebSocket connect notice:', err.message);
-    }
-  }
+  const voicesToPrewarm = ['ishita'];
+  console.log(`[TTS] Checking persistent cache for ${TOP_25_PHRASES.length} core Priya phrases with Sarvam Bulbul Female Voice...`);
+  let diskHits = 0;
+  let neededSynthesis = 0;
 
-  for (const phrase of TOP_25_PHRASES) {
-    try {
-      await synthesizeTelephonyMulaw(phrase, 'kavya');
-    } catch (e: any) {
-      console.warn(`[TTS Prewarm] Failed for "${phrase.slice(0, 30)}":`, e.message);
+  for (const voiceId of voicesToPrewarm) {
+    for (const phrase of TOP_25_PHRASES) {
+      const key = telephonyLruCache.normalizeKey(normalizeRealEstateText(phrase), voiceId);
+      const diskPath = path.join(DISK_CACHE_DIR, `${key}.mulaw`);
+      if (fs.existsSync(diskPath)) {
+        try {
+          const diskBuf = fs.readFileSync(diskPath);
+          if (diskBuf && diskBuf.length > 5000) {
+            telephonyLruCache.set(key, diskBuf);
+            diskHits++;
+            continue;
+          }
+        } catch {}
+      }
+
+      // Only synthesize if not found on disk and circuit breaker is not tripped
+      neededSynthesis++;
+      if (!sarvamCircuitBreaker.isExhausted) {
+        try {
+          await synthesizeTelephonyMulaw(phrase, voiceId);
+        } catch (e: any) {
+          console.warn(`[TTS Prewarm] Failed for [${voiceId}] "${phrase.slice(0, 30)}":`, e.message);
+        }
+      }
     }
   }
-  console.log(`[TTS] Cache pre-warming complete. Telephony phrases primed.`);
+  console.log(`[TTS] Cache primed: ${diskHits} from persistent disk (0 credits), ${neededSynthesis} synthesized.`);
 }
 
 /**
@@ -401,16 +455,32 @@ export async function prewarmTtsCache(): Promise<void> {
  */
 export async function synthesizeTelephonyMulaw(
   rawText: string,
-  voiceId: string = 'kavya'
+  voiceId: string = 'ishita',
+  onAudioChunk?: (chunk: Buffer) => void
 ): Promise<Buffer> {
   const normalizedText = normalizeRealEstateText(rawText);
   if (!normalizedText.trim()) return Buffer.alloc(0);
 
-  const cacheKey = telephonyLruCache.normalizeKey(normalizedText);
+  const cacheKey = telephonyLruCache.normalizeKey(normalizedText, voiceId);
   const cached = telephonyLruCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    if (onAudioChunk) {
+      try { onAudioChunk(cached); } catch {}
+    }
+    return cached;
+  }
 
-  const speaker = (voiceId === 'roopa') ? 'roopa_en_conversational' : ((voiceId === 'shubh') ? 'shubh_en_narration' : 'kavya_hi_conversational');
+  const speaker = (voiceId === 'shubh')
+    ? 'shubh_en_narration'
+    : (voiceId === 'shalini')
+    ? 'shalini_enhi_customer'
+    : (voiceId === 'kavya')
+    ? 'kavya_hi_conversational'
+    : (voiceId === 'simran')
+    ? 'simran_enhi_customer'
+    : (voiceId === 'roopa')
+    ? 'roopa_en_conversational'
+    : 'ishita_enhi_customer_expressive';
 
   // 1. PRIMARY: Persistent Sarvam AI Bulbul v4-flash WebSocket Streaming TTS (~250-450ms)
   // Only executed if Sarvam circuit breaker is not tripped
@@ -418,7 +488,7 @@ export async function synthesizeTelephonyMulaw(
   if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
     try {
       const t0 = Date.now();
-      const mulawBuf = await globalStreamingTTS.synthesizeMulaw(normalizedText, speaker);
+      const mulawBuf = await globalStreamingTTS.synthesizeMulaw(normalizedText, speaker, onAudioChunk);
       if (mulawBuf && mulawBuf.length > 0) {
         console.log(`[TTS WebSocket Bulbul v4-flash] Synthesized ${mulawBuf.length} bytes in ${Date.now() - t0}ms for "${normalizedText.slice(0, 35)}..."`);
         telephonyLruCache.set(cacheKey, mulawBuf);
@@ -431,6 +501,9 @@ export async function synthesizeTelephonyMulaw(
     // 2. SECONDARY: Sarvam REST API Fallback
     try {
       console.log(`[TTS REST Fallback] model=v4-flash chars=${normalizedText.length}`);
+      const isHindiText = /[\u0900-\u097F]/.test(normalizedText) || /\b(ji|aap|hain|hai|kaunsa|bhk|dekh|rahe|kya|bataiye|bilkul|namaste|theek|dhanyawad|shukriya|hanji|haanji|haan)\b/i.test(normalizedText);
+      const targetLang = isHindiText ? 'hi-IN' : 'en-IN';
+
       const res = await fetch('https://api.sarvam.ai/text-to-speech', {
         method: 'POST',
         headers: {
@@ -439,7 +512,7 @@ export async function synthesizeTelephonyMulaw(
         },
         body: JSON.stringify({
           text: normalizedText,
-          language_code: 'en-IN',
+          language_code: targetLang,
           speaker,
           model: 'bulbul:v4-flash',
           speech_sample_rate: 8000,
@@ -468,9 +541,10 @@ export async function synthesizeTelephonyMulaw(
   }
 
   // 3. Fallback: Direct native macOS Indian English Voice at exact 8000 Hz LEI16
-  // Produces undistorted 1x natural conversational speech in 8kHz G.711 mulaw
+  // Only used in extreme emergencies when Sarvam is completely down. NEVER write to persistent cache!
   if (process.platform === 'darwin') {
     try {
+      console.error(`[CRITICAL TTS ALERT] Sarvam Bulbul unreachable! Falling back to macOS speech (${voiceId}). DO NOT CACHE.`);
       const isMale = voiceId === 'shubh' || voiceId === 'aditya' || voiceId === 'dev';
       const macVoice = isMale ? 'Rishi' : 'Tara';
       const wavBuf = await synthesizeMacSpeech(normalizedText, macVoice, 8000);
@@ -479,7 +553,7 @@ export async function synthesizeTelephonyMulaw(
         if (wavBuf.length > dataOffset) {
           const pcmBytes = wavBuf.subarray(dataOffset);
           const mulawBuf = pcmToMulaw(pcmBytes);
-          telephonyLruCache.set(cacheKey, mulawBuf);
+          // CRITICAL: Do NOT call telephonyLruCache.set(cacheKey, mulawBuf)! Fallback speech must never pollute persistent disk cache!
           return mulawBuf;
         }
       }
@@ -513,6 +587,7 @@ export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> 
     const form = new FormData();
     form.append('file', new Blob([new Uint8Array(wavBuffer)], { type: 'audio/wav' }), 'telephony.wav');
     form.append('model', 'saaras:v3');
+    form.append('language_code', 'unknown');
 
     const res = await fetch('https://api.sarvam.ai/speech-to-text', {
       method: 'POST',
@@ -525,7 +600,17 @@ export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> 
 
     if (res.ok) {
       const data: any = await res.json();
-      return (data.transcript || '').trim();
+      const rawText = (data.transcript || '').trim();
+      // Filter out line-static hallucinations (distant regional scripts or isolated noise glyphs)
+      // Allow genuine Devanagari Hindi (including short words like जी, हाँ, ना) and Latin Hinglish/English
+      const isDevanagari = /^[\u0900-\u097F\s.,!?]+$/.test(rawText);
+      const isShortNoise = !isDevanagari && rawText.length < 2;
+      const isDistantScript = /[\u0980-\u0D7F]/.test(rawText); // Bengali, Tamil, Telugu, Kannada, Malayalam, Oriya, etc.
+      if (isShortNoise || isDistantScript) {
+        console.log(`[Sarvam STT] Filtered line-noise hallucination: "${rawText}"`);
+        return '';
+      }
+      return rawText;
     } else if (res.status === 402) {
       sarvamCircuitBreaker.markExhausted();
     }
@@ -547,48 +632,39 @@ const WHISPER_ARTIFACTS = new Set([
   'you',
   '.',
   'subtitles by the amara.org community',
+  "i'm going to say,",
+  "i'm going to say",
+  "i'm gonna say,",
+  "i'm gonna say",
+  "i'm going to",
+  "i am going to say",
+  "i am going to",
 ]);
 
 /**
- * Ultra-low latency Telephony STT:
- * 1. Primary: Sarvam Saaras v3 STT (~450ms, India's premier Speech-to-Text model) if credits active
- * 2. Fallback: Groq whisper-large-v3-turbo (~280ms) instant routing via Circuit Breaker
+ * Telephony Inbound STT:
+ * PRIORITY 1: Sarvam AI Saaras v3 STT (India's premier real-estate voice recognition).
+ * PRIORITY 2: Groq whisper-large-v3-turbo (only used if Sarvam throws connection error or is exhausted).
  */
 export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<string> {
+  // 1. PRIMARY: Sarvam AI Saaras v3
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
     try {
       const t0 = Date.now();
-      const form = new FormData();
-      form.append('file', new Blob([new Uint8Array(wavBuffer)], { type: 'audio/wav' }), 'telephony.wav');
-      form.append('model', 'saaras:v3');
-      form.append('language_code', 'en-IN');
-
-      const res = await fetch('https://api.sarvam.ai/speech-to-text', {
-        method: 'POST',
-        headers: {
-          'api-subscription-key': sarvamKey,
-        },
-        body: form,
-        signal: AbortSignal.timeout(2500),
-      });
-
-      if (res.ok) {
-        const data: any = await res.json();
-        const transcript = (data.transcript || '').trim();
-        if (transcript.length > 0) {
-          console.log(`[Sarvam STT Saaras v3] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
-          return transcript;
-        }
-      } else if (res.status === 402) {
-        sarvamCircuitBreaker.markExhausted();
+      const transcript = await transcribeAudioSarvam(wavBuffer);
+      if (transcript && transcript.trim().length > 0 && !WHISPER_ARTIFACTS.has(transcript.toLowerCase())) {
+        console.log(`[Sarvam Saaras v3 STT Priority] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
+        return transcript.trim();
       }
+      // If Sarvam STT succeeded and returned empty (line static or silence filtered), do NOT pass silence to Groq!
+      return '';
     } catch (err: any) {
-      console.warn('[Sarvam STT] Notice, falling back to Groq Whisper:', err.message);
+      console.warn('[Sarvam Saaras STT] Notice, falling back to Groq:', err.message);
     }
   }
 
-  // Fallback: Groq Whisper Large V3 Turbo (~280ms)
+  // 2. SECONDARY: Groq Whisper Fallback (only on Sarvam network failure)
   const groqKey = process.env.GROQ_API_KEY;
   if (groqKey && groqKey !== 'your_groq_api_key_here') {
     try {
@@ -604,7 +680,7 @@ export async function transcribeAudioTelephony(wavBuffer: Buffer): Promise<strin
       });
       const transcript = (res.text || '').trim();
       if (transcript.length > 0 && !WHISPER_ARTIFACTS.has(transcript.toLowerCase())) {
-        console.log(`[Groq Whisper STT] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
+        console.log(`[Groq Whisper STT Fallback] Transcribed in ${Date.now() - t0}ms: "${transcript}"`);
         return transcript;
       }
     } catch (err: any) {

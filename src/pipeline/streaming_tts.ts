@@ -18,13 +18,14 @@ export class SarvamStreamingTTS {
   private isConnected: boolean = false;
   private isConfigured: boolean = false;
   private apiKey: string;
-  private speaker: string = 'kavya_hi_conversational';
+  private speaker: string = 'ishita_enhi_customer_expressive';
   private languageCode: string = 'en-IN';
   private sampleRate: number = 8000;
   private pendingResolvers: Array<{
     resolve: (buffer: Buffer) => void;
     reject: (err: any) => void;
     chunks: Buffer[];
+    onAudioChunk?: (chunk: Buffer) => void;
   }> = [];
 
   constructor(apiKey?: string, options?: StreamingTTSOptions) {
@@ -57,7 +58,7 @@ export class SarvamStreamingTTS {
       this.pingInterval = null;
     }
 
-    const url = 'wss://api.sarvam.ai/text-to-speech/ws?model=bulbul:v4-flash';
+    const url = 'wss://api.sarvam.ai/text-to-speech/ws?model=bulbul:v4-flash&send_completion_event=true';
 
     return new Promise((resolve) => {
       try {
@@ -152,7 +153,14 @@ export class SarvamStreamingTTS {
       if (current) {
         current.chunks.push(mulawBuf);
 
-        // Reset debounce timer on every received chunk
+        // Immediate real-time chunk streaming callback (~250ms TTFA)
+        if (current.onAudioChunk) {
+          try {
+            current.onAudioChunk(mulawBuf);
+          } catch (e) {}
+        }
+
+        // Fallback safety: only in case the server omits the 'final' event, resolve after 600ms of silence
         if (this.chunkDebounceTimer) {
           clearTimeout(this.chunkDebounceTimer);
         }
@@ -162,13 +170,28 @@ export class SarvamStreamingTTS {
             const fullMulaw = Buffer.concat(completed.chunks);
             completed.resolve(fullMulaw);
           }
-        }, 160);
+        }, 600);
+      }
+    } else if (msg.type === 'event' && msg.data?.event_type === 'final') {
+      // Official Sarvam AI Bulbul completion event: Utterance finished streaming!
+      if (this.chunkDebounceTimer) {
+        clearTimeout(this.chunkDebounceTimer);
+        this.chunkDebounceTimer = null;
+      }
+      const completed = this.pendingResolvers.shift();
+      if (completed) {
+        const fullMulaw = Buffer.concat(completed.chunks);
+        completed.resolve(fullMulaw);
       }
     } else if (msg.type === 'error') {
       const errMsg = msg.data?.message || msg.message || '';
       console.warn('[StreamingTTS] Server error:', errMsg);
       if (errMsg.toLowerCase().includes('credit') || errMsg.toLowerCase().includes('quota')) {
         sarvamCircuitBreaker.markExhausted();
+      }
+      if (this.chunkDebounceTimer) {
+        clearTimeout(this.chunkDebounceTimer);
+        this.chunkDebounceTimer = null;
       }
       const current = this.pendingResolvers.shift();
       if (current) {
@@ -182,7 +205,11 @@ export class SarvamStreamingTTS {
    * Synthesizes text directly into 8kHz G.711 mulaw using the persistent WebSocket.
    * Resolves in ~250-400ms for conversational sentences.
    */
-  public async synthesizeMulaw(rawText: string, speaker?: string): Promise<Buffer> {
+  public async synthesizeMulaw(
+    rawText: string,
+    speaker?: string,
+    onAudioChunk?: (chunk: Buffer) => void
+  ): Promise<Buffer> {
     if (sarvamCircuitBreaker.isExhausted) {
       return Buffer.alloc(0);
     }
@@ -198,8 +225,19 @@ export class SarvamStreamingTTS {
       }
     }
 
+    const isHindiText = /[\u0900-\u097F]/.test(text) || /\b(ji|aap|hain|hai|kaunsa|bhk|dekh|rahe|kya|bataiye|bilkul|namaste|theek|dhanyawad|shukriya|hanji|haanji|haan)\b/i.test(text);
+    const targetLang = isHindiText ? 'hi-IN' : 'en-IN';
+
+    let reconfigure = false;
     if (speaker && speaker !== this.speaker) {
       this.speaker = speaker;
+      reconfigure = true;
+    }
+    if (targetLang !== this.languageCode) {
+      this.languageCode = targetLang;
+      reconfigure = true;
+    }
+    if (reconfigure && this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.sendConfig();
     }
 
@@ -208,10 +246,11 @@ export class SarvamStreamingTTS {
         resolve,
         reject,
         chunks: [] as Buffer[],
+        onAudioChunk,
       };
       this.pendingResolvers.push(resolverItem);
 
-      // Safety fallback timeout (5s)
+      // Safety fallback timeout (8s)
       const timeout = setTimeout(() => {
         const idx = this.pendingResolvers.indexOf(resolverItem);
         if (idx !== -1) {
@@ -222,7 +261,7 @@ export class SarvamStreamingTTS {
             reject(new Error('StreamingTTS timeout'));
           }
         }
-      }, 2500);
+      }, 8000);
 
       // Wrap resolve to clear timeout
       const origResolve = resolverItem.resolve;

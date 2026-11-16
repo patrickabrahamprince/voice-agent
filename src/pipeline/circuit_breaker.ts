@@ -5,7 +5,7 @@
  * STT to Groq Whisper and LLM to Groq Qwen with 0ms wasted delay.
  */
 class SarvamCircuitBreaker {
-  private _isExhausted: boolean = true; // Initialized to true since Sarvam 402 was verified
+  private _isExhausted: boolean = false; // Initialized to false so Sarvam Bulbul TTS runs by default
   private _lastChecked: number = Date.now();
   private readonly PROBE_INTERVAL_MS = 60 * 1000; // Auto-probe every 60s to detect recharged credits
 
@@ -26,7 +26,9 @@ class SarvamCircuitBreaker {
   }
 
   reset(): void {
-    console.log('🔄 [SarvamCircuitBreaker] Circuit breaker reset. Sarvam AI re-enabled.');
+    if (this._isExhausted) {
+      console.log('🔄 [SarvamCircuitBreaker] Circuit breaker reset. Sarvam AI re-enabled.');
+    }
     this._isExhausted = false;
     this._lastChecked = Date.now();
   }

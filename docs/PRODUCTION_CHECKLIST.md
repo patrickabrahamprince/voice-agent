@@ -73,7 +73,7 @@ Register your automated post-call lead confirmations and walkthrough invites:
 * **Template Type**: `Service Implicit`
 * **Template Text**:
   ```
-  Namaste {#var#}, thank you for speaking with Priya at Mittal Palms, Jakkur. Your walkthrough with Raghavendra is confirmed for {#var#}. Location: https://maps.app.goo.gl/... - MITTAL
+  Namaste {#var#}, thank you for speaking with Priya at Mittal Palms, Jakkur. Your walkthrough with Dylan Dsouza is confirmed for {#var#}. Location: https://maps.app.goo.gl/... - MITTAL
   ```
 
 ### Step 2.4: Link DLT Entity ID to Plivo
@@ -96,13 +96,20 @@ PORT=3001
 NODE_ENV=production
 PUBLIC_DOMAIN=getmoreos-production.up.railway.app
 
+# Admin Security & Auth
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your_secure_password_here
+ADMIN_SECRET_TOKEN=your_strong_random_admin_token_here
+
 # Telephony Provider (Plivo)
 TELEPHONY_PROVIDER=plivo
-PLIVO_AUTH_ID=MAMXXXXXXXXXXXXXXXXX
+PLIVO_AUTH_ID=MANXXXXXXXXXXXXXXXXX
 PLIVO_AUTH_TOKEN=your_plivo_auth_token_here
 PLIVO_PHONE_NUMBER=+9180XXXXXXXX
+PLIVO_APP_ID=your_plivo_app_id_here
 
-# Voice AI Stack
+# Voice AI & Multilingual Stack
+GROQ_API_KEY=your_groq_api_key_here
 SARVAM_API_KEY=your_sarvam_api_key_here
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 LEAD_EMAIL=niraj@mittal.com
@@ -155,5 +162,5 @@ curl -i -X POST https://getmoreos-production.up.railway.app/incoming-call
 2. Verify:
    - Greeting plays within 1.5s in authentic Indian English via Sarvam Bulbul (`kavya`).
    - Voice questions regarding 2 BHK vs 3 BHK are answered by Sarvam 105B.
-   - Walkthrough confirmation with Raghavendra (`9945577935`) is recorded.
+   - Walkthrough confirmation with Dylan Dsouza(`8064348409`) is recorded.
    - Call record appears on live `/admin` dashboard and syncs to Google Sheets.

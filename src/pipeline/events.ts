@@ -6,6 +6,7 @@ export type CallEventType =
   | 'caller_speech'
   | 'barge_in'
   | 'lead_update'
+  | 'call_transferred'
   | 'call_ended';
 
 export interface LiveCallEvent {
@@ -114,9 +115,27 @@ class CallEventsBroadcaster extends EventEmitter {
   }
 
   /**
+   * Prunes stale or disconnected zombie calls from in-memory cache.
+   */
+  public pruneStaleCalls(): void {
+    const now = Date.now();
+    for (const [streamSid, call] of this.activeCalls.entries()) {
+      // If an active call has had no activity for > 90s with only connecting banner, prune it
+      if (call.status === 'active' && now - call.startTime > 90000 && call.transcript.length <= 1) {
+        this.activeCalls.delete(streamSid);
+      }
+    }
+  }
+
+  public clearAllActive(): void {
+    this.activeCalls.clear();
+  }
+
+  /**
    * Returns current active calls for clients connecting mid-call.
    */
   public getActiveCalls(): ActiveCallState[] {
+    this.pruneStaleCalls();
     return Array.from(this.activeCalls.values());
   }
 
@@ -124,6 +143,7 @@ class CallEventsBroadcaster extends EventEmitter {
    * Returns the latest active call (if any) or most recent completed call.
    */
   public getLatestCall(): ActiveCallState | null {
+    this.pruneStaleCalls();
     const all = Array.from(this.activeCalls.values());
     if (all.length === 0) return null;
     return all[all.length - 1];

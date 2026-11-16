@@ -44,6 +44,21 @@ export const STANDALONE_VALID_ANSWERS = new Set([
   'yep',
   'nope',
   'sure',
+  'hello',
+  'hi',
+  'hey',
+  'yeah',
+  'yup',
+  'ok',
+  'okay',
+  'tell',
+  'speak',
+  'listen',
+  'continue',
+  'details',
+  'info',
+  'cost',
+  'rate',
   '2bhk',
   '3bhk',
   'two',
@@ -63,6 +78,29 @@ export const STANDALONE_VALID_ANSWERS = new Set([
   'jakkur',
   'ready',
   'oc',
+  'priya',
+  // Common language switch triggers
+  'hindi',
+  'english',
+  // Common Hindi & Hinglish conversational completions
+  'hanji',
+  'haanji',
+  'haan',
+  'ha',
+  'nahi',
+  'nahin',
+  'na',
+  'theek',
+  'thik',
+  'sahi',
+  'bilkul',
+  'shukriya',
+  'dhanyawad',
+  'namaste',
+  'namaskar',
+  'bataiye',
+  'batao',
+  'sunie',
 ]);
 
 // Linguistic indicators that a speaker is still thinking / hesitating mid-sentence
@@ -174,10 +212,10 @@ export class SemanticTurnDetector {
       }
       return {
         isLikelyComplete: false,
-        shouldIgnore: true, // Discard isolated noise/hallucination!
+        shouldIgnore: false, // Stage and allow 550ms safety timer to process
         recommendedSilenceMs: this.hesitationSilenceMs,
         hesitationDetected: true,
-        reason: `Ignored isolated 1-word noise/hallucination ("${singleWord}")`,
+        reason: `Single word fragment ("${singleWord}") — waiting for continuation or timer`,
       };
     }
 

@@ -6,7 +6,7 @@ This directory contains the Python [LiveKit Agents](https://github.com/livekit/a
 - **Semantic Turn Detection**: Uses LiveKit's Transformer-based `TurnDetector()` to prevent interrupting callers mid-sentence.
 - **Sarvam AI First-Party Voice**: Hindi and Indian English STT (Saaras), TTS (Bulbul - Kavya voice), and Sarvam 105B LLM.
 - **WebRTC & Telephony SIP Bridge**: Compatible with LiveKit SIP to receive carrier phone calls directly into high-fidelity WebRTC rooms.
-- **Direct Tool Calling**: Integrated `book_site_visit` tool to schedule walkthroughs with Raghavendra (9945577935).
+- **Direct Tool Calling**: Integrated `book_site_visit` tool to schedule walkthroughs with Dylan Dsouza.
 
 ## Running Locally
 

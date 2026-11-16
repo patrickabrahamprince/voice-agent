@@ -159,7 +159,7 @@ function runMockCall(params: {
             : failureReasons.join('; '),
         });
       }, 400);
-    }, 2200);
+    }, 3500);
 
     ws.on('error', (err) => {
       if (!timedOut) {
@@ -191,9 +191,9 @@ export async function runAllScenarios(): Promise<{
 
   const scenarios = [
     {
-      scenarioName: 'Scenario A: High-Intent Buyer (3 BHK Mittal Palms Jakkur ₹1.9 Cr, Visit with Raghavendra Sat 11 AM)',
+      scenarioName: 'Scenario A: High-Intent Buyer (3 BHK Mittal Palms Jakkur ₹1.9 Cr, Visit with Dylan DsouzaSat 11 AM)',
       callerPhone: '+91-9880199221',
-      utteranceText: 'Hi Priya, I am looking for a 3 BHK at Mittal Palms in Jakkur with 1.9 Crore budget. Can we schedule a site walkthrough with Raghavendra for Saturday 11 AM?',
+      utteranceText: 'Hi Priya, I am looking for a 3 BHK at Mittal Palms in Jakkur with 1.9 Crore budget. Can we schedule a site walkthrough with Dylan Dsouzafor Saturday 11 AM?',
       expectQualification: true,
       expectedKeyword: 'Mittal Palms',
     },

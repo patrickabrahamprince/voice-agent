@@ -30,7 +30,7 @@
 ## 🧪 Synthetic Scenario Test Matrix (Passed Autonomous Stress-Testing)
 
 1. **Scenario A (High-Intent Buyer)**:
-   - *Utterance*: "Looking for a ready 3 BHK at Mittal Palms in Jakkur around 1.8 Cr for self-use. Can we visit this Saturday 11 AM with Raghavendra?"
+   - *Utterance*: "Looking for a ready 3 BHK at Mittal Palms in Jakkur around 1.8 Cr for self-use. Can we visit this Saturday 11 AM with Dylan Dsouza?"
    - *Agent Action*: Qualifies lead, calls `qualify_and_sync_lead`, commits row to SQLite & Google Sheets, registers lead to niraj@mittal.com.
    - *Status*: ✅ **PASSED** (Latency: ~18ms)
 

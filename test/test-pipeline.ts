@@ -17,7 +17,7 @@ const testCases = [
     expectedContains: ['3 B H K', 'one point nine five crore rupees'],
   },
   {
-    input: 'Visit scheduled for 11 AM this Saturday with Raghavendra.',
+    input: 'Visit scheduled for 11 AM this Saturday with Dylan Dsouza.',
     expectedContains: ['11 A M', 'Saturday'],
   },
 ];
@@ -49,7 +49,7 @@ insertLead({
   location: 'Jakkur, North Bangalore',
   budget: '1.7 - 1.95 Cr',
   timeline: 'Ready to move',
-  visit_day: 'Saturday 11 AM with Raghavendra',
+  visit_day: 'Saturday 11 AM with Dylan Dsouza',
   status: 'Hot - Visit Booked',
   summary: 'Client interested in ready 3 BHK at Mittal Palms in Jakkur.',
   lead_email: 'niraj@mittal.com',
