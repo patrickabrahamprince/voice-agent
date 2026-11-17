@@ -613,11 +613,14 @@ export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> 
       return rawText;
     } else if (res.status === 402) {
       sarvamCircuitBreaker.markExhausted();
+      throw new Error('Sarvam credits exhausted (HTTP 402)');
+    } else {
+      throw new Error(`Sarvam STT HTTP error: ${res.status} ${res.statusText}`);
     }
   } catch (err: any) {
     console.warn('[Sarvam STT] Transcription error:', err.message);
+    throw err;
   }
-  return '';
 }
 
 let groqSTTClient: Groq | null = null;
