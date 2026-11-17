@@ -399,7 +399,7 @@ class MulawLruCache {
 export const telephonyLruCache = new MulawLruCache(500);
 
 export const TOP_25_PHRASES = [
-  "Hello! This is Priya from Trishul Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?",
+  "Hello! This is Priya from Trishul Mittal Palms in Jakkur. Are you looking for a 2 BHK or a 3 BHK for your family?",
   "Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?",
   "Sure, let me connect your call to our on-site property advisor team right away. Please stay on the line.",
   "Pricing starts at one point two five crore rupees for 2 BHK, and one point seven crore rupees for 3 BHK.",

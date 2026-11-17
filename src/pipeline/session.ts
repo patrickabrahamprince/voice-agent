@@ -517,22 +517,58 @@ export class VoiceSession {
     const now = Date.now();
     const rms = this.getMulawRms(chunk);
 
-    // 1. Acoustic Echo Suppression:
-    // When the agent is speaking or during the post-speech reverberation cooldown, completely
-    // suppress inbound telephony audio. On cellular carrier lines without hardware AEC,
-    // the caller phone's speakerphone/earpiece leaks the agent's voice back into the mic
-    // at RMS 2000-3500. Allowing energy-based barge-in while speaking causes the agent to
-    // self-interrupt mid-sentence, sends chopped echo to STT, and causes audio breaking.
-    if (this.isAgentSpeaking || now < this.postSpeechCooldownUntil) {
-      this.interruptFramesCount = 0;
-      this.interruptChunks = [];
-      this.inboundMulawChunks = [];
-      this.pendingSpeechChunks = [];
-      this.speechFramesCount = 0;
+    // 1. Vocal Barge-In: Allows the caller to interrupt Priya when they speak into their phone
+    if (this.isAgentSpeaking) {
+      // Echo onset guard: First 600ms of agent speech is protected against transmission echo bursts
+      if (now - this.agentSpeakingStartedAt < 600) {
+        this.interruptFramesCount = 0;
+        this.interruptChunks = [];
+        return;
+      }
+
+      // Sustained caller speech into the phone microphone (RMS > 1400 for 140ms = 7 consecutive frames)
+      if (rms > 1400) {
+        this.interruptFramesCount++;
+        this.interruptChunks.push(chunk);
+
+        if (this.interruptFramesCount >= 7) {
+          console.log(
+            `[Barge-In] Caller interrupted Priya (RMS: ${Math.round(rms)}, sustained: ${this.interruptFramesCount} frames). Halting speech immediately.`
+          );
+
+          // Stop PBX playback immediately and cancel active synthesis so Priya is silent
+          this.handleBargeIn(true, true);
+          this.clearDeadAirTimer();
+          this.deadAirPromptCount = 0;
+
+          // Seed the inbound speech buffer with the interrupt chunks so opening words are preserved
+          this.inboundMulawChunks = [...this.interruptChunks];
+          this.speechFramesCount = this.interruptFramesCount;
+          this.interruptChunks = [];
+          this.interruptFramesCount = 0;
+
+          if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+          }
+          this.silenceTimer = setTimeout(async () => {
+            await this.finalizeCallerSpeech();
+          }, 450);
+        }
+      } else {
+        // Drop brief noise transient or unvoiced gap
+        if (this.interruptFramesCount > 0) {
+          this.interruptFramesCount = Math.max(0, this.interruptFramesCount - 1);
+        }
+      }
       return;
     }
 
-    // 2. Normal Speech Accumulation when agent is NOT speaking
+    // 2. Post-speech cooldown: Agent finished speaking, suppress 250ms residual echo tail
+    if (now < this.postSpeechCooldownUntil && this.speechFramesCount === 0) {
+      return;
+    }
+
+    // 3. Normal Speech Accumulation when agent is NOT speaking
     const isSpeech = rms > 750;
 
     if (isSpeech) {
@@ -1134,6 +1170,6 @@ export class VoiceSession {
     const memory = getCallerMemory(this.callerNumber);
     return (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there')
       ? `Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?`
-      : `Hello! This is Priya from Trishul Mittal Palms in Jakkur. Thanks for calling! We have ready-to-move 2 and 3 BHK homes here with Occupancy Certificate received. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+      : `Hello! This is Priya from Trishul Mittal Palms in Jakkur. Are you looking for a 2 BHK or a 3 BHK for your family?`;
   }
 }

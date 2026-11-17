@@ -8,26 +8,6 @@
   },
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://mittal-palms-voice-agent.onrender.com/api/:path*"
-    },
-    {
-      "source": "/incoming-call",
-      "destination": "https://mittal-palms-voice-agent.onrender.com/incoming-call"
-    },
-    {
-      "source": "/media-stream",
-      "destination": "https://mittal-palms-voice-agent.onrender.com/media-stream"
-    },
-    {
-      "source": "/transfer-to-human",
-      "destination": "https://mittal-palms-voice-agent.onrender.com/transfer-to-human"
-    },
-    {
-      "source": "/transfer-fallback",
-      "destination": "https://mittal-palms-voice-agent.onrender.com/transfer-fallback"
-    },
-    {
       "source": "/(.*)",
       "destination": "/api"
     }
