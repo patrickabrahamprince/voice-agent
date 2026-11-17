@@ -274,10 +274,13 @@ export class VoiceSession {
 
     console.log(`[Barge-In] Clearing PBX buffer on StreamSid: ${this.streamSid} (preserveSpeech=${preserveSpeech})`);
 
+    this.agentSpeakingStartedAt = 0;
     this.agentSpeakingUntil = 0;
     this.postSpeechCooldownUntil = 0;
     this.isSynthesizingSpeech = false;
     this.isProcessingUtterance = false;
+    this.interruptFramesCount = 0;
+    this.interruptChunks = [];
 
     if (broadcastEvent) {
       this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ⚡ [Barge-In] Customer interrupted agent speech`);
@@ -364,22 +367,37 @@ export class VoiceSession {
       return;
     }
 
+    // Explicit request to speak Hindi
+    if (
+      lower.includes('hindi mein') ||
+      lower.includes('in hindi') ||
+      lower.includes('speak in hindi') ||
+      lower.includes('talk in hindi') ||
+      lower.includes('hindi please') ||
+      lower === 'hindi'
+    ) {
+      this.currentLanguage = 'hi';
+      return;
+    }
+
+    // Explicit Devanagari script
     if (/[\u0900-\u097F]/.test(text)) {
       this.currentLanguage = 'hi';
       return;
     }
 
-    const hindiTriggers = [
-      'hindi', 'kya', 'hai', 'hain', 'ho', 'batao', 'bataiye', 'bataie', 'boliye',
-      'bolo', 'sunie', 'suno', 'kaunsa', 'kitna', 'kitne', 'chahiye', 'namaste',
-      'namaskar', 'dhanyawad', 'shukriya', 'hanji', 'haanji', 'haan', 'theek', 'thik',
-      'sahi', 'bilkul', 'kahan', 'kidhar', 'accha', 'achha', 'acha', 'mujhe', 'humko',
-      'humein', 'aap', 'aapka', 'mera', 'dono', 'kuch', 'bhi', 'paas', 'mein', 'me'
+    // Unambiguous conversational Hindi words (NO ambiguous words like 'me', 'ho', 'bhi', 'kuch', 'dono', 'sahi')
+    const unambiguousHindi = [
+      'bataiye', 'batao', 'boliye', 'bolo', 'kaunsa', 'kitna', 'kitne',
+      'chahiye', 'namaste', 'namaskar', 'dhanyawad', 'shukriya', 'hanji',
+      'haanji', 'accha', 'achha', 'acha', 'mujhe', 'humko', 'humein', 'aapka',
+      'kahan', 'kidhar', 'nahin', 'nahi'
     ];
 
     const words = lower.split(/[^a-z0-9]+/);
-    const hasHindi = words.some((w) => hindiTriggers.includes(w));
-    if (hasHindi) {
+    const matchedCount = words.filter((w) => unambiguousHindi.includes(w)).length;
+    // Require at least 2 distinct unambiguous Hindi words before switching
+    if (matchedCount >= 2) {
       this.currentLanguage = 'hi';
     }
   }
@@ -388,7 +406,7 @@ export class VoiceSession {
    * Finalizes accumulated caller speech frames into an audio utterance, runs STT and semantic turn evaluation.
    */
   private async finalizeCallerSpeech(): Promise<void> {
-    if (this.isProcessingSTT || this.inboundMulawChunks.length === 0 || this.isAgentSpeaking || Date.now() < this.postSpeechCooldownUntil) {
+    if (this.isProcessingSTT || this.inboundMulawChunks.length === 0) {
       return;
     }
 
@@ -468,17 +486,26 @@ export class VoiceSession {
     const now = Date.now();
     const rms = this.getMulawRms(chunk);
 
-    // 1. Vocal Barge-In: Detect human voice interruption while agent is speaking or in cooldown
-    if (this.isAgentSpeaking || this.isSynthesizingSpeech || now < this.postSpeechCooldownUntil) {
-      // Vocal energy threshold: Phone acoustic echo is typically < 650 RMS; caller speaking directly is 850-2500+ RMS.
-      if (rms > 800) {
+    // 1. Vocal Barge-In: Detect intentional human voice interruption while agent is actively speaking
+    if (this.isAgentSpeaking) {
+      // Echo guard: For the first 750ms after agent starts speaking, suppress barge-in
+      // to eliminate acoustic echo / speakerphone leakage transients
+      if (now - this.agentSpeakingStartedAt < 750) {
+        this.interruptFramesCount = 0;
+        this.interruptChunks = [];
+        return;
+      }
+
+      // True vocal barge-in: Must exceed loud speech threshold (RMS > 1500)
+      // Normal phone line noise/echo is 600-1100 RMS; intentional speech into phone is 1600-4500 RMS.
+      if (rms > 1500) {
         this.interruptFramesCount++;
         this.interruptChunks.push(chunk);
 
-        // Require 3 consecutive frames (60ms) of sustained vocal energy to confirm intentional human speech
-        if (this.interruptFramesCount >= 3) {
+        // Require 7 consecutive frames (140ms) of sustained loud vocal energy to confirm intentional human speech
+        if (this.interruptFramesCount >= 7) {
           console.log(
-            `[Barge-In] Caller interrupting Priya (RMS: ${Math.round(rms)}, frames: ${this.interruptFramesCount}). Halting agent speech immediately.`
+            `[Barge-In] Confirmed caller interruption (RMS: ${Math.round(rms)}, sustained: ${this.interruptFramesCount} frames). Halting Priya speech.`
           );
 
           // Stop PBX playback immediately and cancel active synthesis, preserving speech frames
@@ -508,7 +535,13 @@ export class VoiceSession {
       return;
     }
 
-    // 2. Normal Speech Accumulation when agent is NOT speaking
+    // 2. Post-speech cooldown: Agent finished speaking, but residual echo reverberates for 250ms
+    if (now < this.postSpeechCooldownUntil && this.speechFramesCount === 0) {
+      // Drop residual acoustic reverberation / echo tail so it doesn't pollute caller audio
+      return;
+    }
+
+    // 3. Normal Speech Accumulation when agent is NOT speaking
     const isSpeech = rms > 750;
 
     if (isSpeech) {
@@ -536,11 +569,15 @@ export class VoiceSession {
       const debounceMs = currentSpeechDuration > 1.0 ? 380 : 450;
 
       this.silenceTimer = setTimeout(async () => {
-        if (this.isAgentSpeaking || this.isSynthesizingSpeech || Date.now() < this.postSpeechCooldownUntil) {
-          this.inboundMulawChunks = [];
-          this.pendingSpeechChunks = [];
-          this.speechFramesCount = 0;
-          return;
+        if (this.isAgentSpeaking || this.isSynthesizingSpeech) {
+          // If agent is still actively speaking on PBX, wait until playback finishes
+          const remainingMs = Math.max(0, this.agentSpeakingUntil - Date.now());
+          if (remainingMs > 50) {
+            this.silenceTimer = setTimeout(async () => {
+              await this.finalizeCallerSpeech();
+            }, remainingMs + 50);
+            return;
+          }
         }
         await this.finalizeCallerSpeech();
       }, debounceMs);
@@ -563,6 +600,9 @@ export class VoiceSession {
 
     this.currentContextId = crypto.randomUUID();
     this.isSynthesizingSpeech = true;
+    this.agentSpeakingStartedAt = Date.now();
+    this.agentSpeakingUntil = Math.max(this.agentSpeakingUntil, Date.now() + 600);
+    this.postSpeechCooldownUntil = this.agentSpeakingUntil + 250;
 
     // Flush any pending audio chunks
     this.inboundMulawChunks = [];

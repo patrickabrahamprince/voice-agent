@@ -23,7 +23,7 @@ export function isTransferIntent(text: string): boolean {
   const lower = text.toLowerCase().trim();
   return (
     lower.includes('[transfer_to_human]') ||
-    /\b(talk to (a |the )?(human|person|agent|real person|manager|executive|sales)|speak (to|with) (a |the )?(human|person|agent|executive)|connect me (to|with) (dylan|a human|a person|an agent|someone|sales)|transfer (me|the call|this call)|put me through|human se|real human|executive se|dylan se baat)\b/i.test(lower)
+    /\b(talk to (a |the )?(human|real human|person|real person|manager|executive)|speak (to|with) (a |the )?(human|real human|person|real person|manager|executive)|connect me (to|with) (a |the )?(human|person|manager|executive)|transfer (the call|this call|to human|to person)|put me through to (a |the )?(human|executive|manager)|human se baat|executive se baat)\b/i.test(lower)
   );
 }
 
