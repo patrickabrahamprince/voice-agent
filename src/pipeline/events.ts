@@ -7,6 +7,7 @@ export type CallEventType =
   | 'barge_in'
   | 'lead_update'
   | 'call_transferred'
+  | 'call_hangup'
   | 'call_ended';
 
 export interface LiveCallEvent {

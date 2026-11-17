@@ -11,6 +11,9 @@ export interface CallRecord {
   full_transcript: string;
   summary: string;
   recording_url?: string;
+  hangup_source?: string;
+  hangup_cause?: string;
+  hangup_cause_code?: string;
   created_at: string;
 }
 
@@ -155,6 +158,15 @@ export function initDatabase(): void {
     try {
       sqliteDb.exec("ALTER TABLE leads ADD COLUMN recording_url TEXT DEFAULT ''");
     } catch { }
+    try {
+      sqliteDb.exec("ALTER TABLE calls ADD COLUMN hangup_source TEXT DEFAULT 'Caller'");
+    } catch { }
+    try {
+      sqliteDb.exec("ALTER TABLE calls ADD COLUMN hangup_cause TEXT DEFAULT 'Normal Hangup'");
+    } catch { }
+    try {
+      sqliteDb.exec("ALTER TABLE calls ADD COLUMN hangup_cause_code TEXT DEFAULT '4000'");
+    } catch { }
   } catch (err) {
     console.warn('initDatabase exec error:', err);
   }
@@ -179,23 +191,55 @@ export function updateCall(
   durationSeconds: number,
   fullTranscript: string,
   summary: string,
-  recordingUrl?: string
+  recordingUrl?: string,
+  hangupSource?: string,
+  hangupCause?: string,
+  hangupCauseCode?: string
 ): void {
   const db = requireDb();
-  if (recordingUrl) {
-    const stmt = db.prepare(`
+  const stmt = db.prepare(`
+    UPDATE calls
+    SET duration_seconds = ?, full_transcript = ?, summary = ?,
+        recording_url = COALESCE(?, recording_url),
+        hangup_source = COALESCE(?, hangup_source, 'Caller'),
+        hangup_cause = COALESCE(?, hangup_cause, 'Normal Hangup'),
+        hangup_cause_code = COALESCE(?, hangup_cause_code, '4000')
+    WHERE id = ?
+  `);
+  stmt.run(
+    durationSeconds,
+    fullTranscript,
+    summary,
+    recordingUrl || null,
+    hangupSource || null,
+    hangupCause || null,
+    hangupCauseCode || null,
+    callId
+  );
+}
+
+export function updateCallHangup(
+  callIdOrStreamSid: number | string,
+  hangupSource: string,
+  hangupCause: string,
+  hangupCauseCode: string = '4000',
+  durationSeconds?: number
+): void {
+  const db = requireDb();
+  if (typeof callIdOrStreamSid === 'number') {
+    db.prepare(`
       UPDATE calls
-      SET duration_seconds = ?, full_transcript = ?, summary = ?, recording_url = ?
+      SET hangup_source = ?, hangup_cause = ?, hangup_cause_code = ?,
+          duration_seconds = COALESCE(?, duration_seconds)
       WHERE id = ?
-    `);
-    stmt.run(durationSeconds, fullTranscript, summary, recordingUrl, callId);
+    `).run(hangupSource, hangupCause, hangupCauseCode, durationSeconds || null, callIdOrStreamSid);
   } else {
-    const stmt = db.prepare(`
+    db.prepare(`
       UPDATE calls
-      SET duration_seconds = ?, full_transcript = ?, summary = ?
-      WHERE id = ?
-    `);
-    stmt.run(durationSeconds, fullTranscript, summary, callId);
+      SET hangup_source = ?, hangup_cause = ?, hangup_cause_code = ?,
+          duration_seconds = COALESCE(?, duration_seconds)
+      WHERE stream_sid = ?
+    `).run(hangupSource, hangupCause, hangupCauseCode, durationSeconds || null, callIdOrStreamSid);
   }
 }
 

@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws';
 import crypto from 'crypto';
-import { normalizeRealEstateText } from './normalizer.js';
+import { normalizeRealEstateText, isNaturalSentenceBoundary } from './normalizer.js';
 import { llmPipeline, ChatMessage, activeQualifiers } from './llm.js';
 import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcribeAudioTelephony } from './tts.js';
 import { createCall, updateCall, getCallerMemory, updateLeadRecording } from '../tools/db.js';
@@ -17,6 +17,18 @@ export class VoiceSession {
   private callerNumber: string = '+91-XXXXXXXXXX';
   private callId: number | null = null;
   private startTime: number = Date.now();
+
+  private hangupSource: string = 'Caller';
+  private hangupCause: string = 'Normal Hangup';
+  private hangupCauseCode: string = '4000';
+
+  private getElapsedSeconds(): number {
+    return Math.max(0, Math.round((Date.now() - this.startTime) / 100) / 10);
+  }
+
+  private getElapsedSecStr(): string {
+    return `+${this.getElapsedSeconds().toFixed(1)}s`;
+  }
 
   private agentSpeakingStartedAt: number = 0;
   private agentSpeakingUntil: number = 0;
@@ -75,12 +87,12 @@ export class VoiceSession {
 
     this.telephonyWs.on('close', (code: number, reason: Buffer) => {
       console.log(`[Session] Telephony WebSocket closed. Code: ${code}, Reason: "${reason?.toString() || 'none'}"`);
-      this.closeSession();
+      this.closeSession('Caller Pressed End Call / WebSocket Closed', 'Caller', String(code || '4000'));
     });
 
     this.telephonyWs.on('error', (err: any) => {
       console.error('[Session] Telephony WebSocket error:', err);
-      this.closeSession();
+      this.closeSession('WebSocket Network Error', 'Carrier', '500');
     });
   }
 
@@ -121,7 +133,7 @@ export class VoiceSession {
         const greeting = this.getInitialGreeting();
 
         this.conversationHistory.push({ role: 'assistant', content: greeting });
-        this.fullTranscriptLines.push(`${this.agentName}: ${greeting}`);
+        this.fullTranscriptLines.push(`[+0.0s] ${this.agentName}: ${greeting}`);
 
         callEventsBroadcaster.broadcast({
           type: 'call_started',
@@ -132,6 +144,8 @@ export class VoiceSession {
             agentName: this.agentName,
             greeting,
             callSid: this.callSid,
+            elapsedSeconds: 0.0,
+            elapsedSecStr: '+0.0s',
           },
         });
 
@@ -266,6 +280,7 @@ export class VoiceSession {
     this.isProcessingUtterance = false;
 
     if (broadcastEvent) {
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ⚡ [Barge-In] Customer interrupted agent speech`);
       callEventsBroadcaster.broadcast({
         type: 'barge_in',
         streamSid: this.streamSid,
@@ -273,6 +288,8 @@ export class VoiceSession {
         timestamp: new Date().toISOString(),
         data: {
           agentName: this.agentName,
+          elapsedSeconds: this.getElapsedSeconds(),
+          elapsedSecStr: this.getElapsedSecStr(),
         },
       });
     }
@@ -571,6 +588,8 @@ export class VoiceSession {
       data: {
         text: normalized,
         agentName: this.agentName,
+        elapsedSeconds: this.getElapsedSeconds(),
+        elapsedSecStr: this.getElapsedSecStr(),
       },
     });
 
@@ -670,6 +689,8 @@ export class VoiceSession {
       data: {
         transcript: callerText,
         callerNumber: this.callerNumber,
+        elapsedSeconds: this.getElapsedSeconds(),
+        elapsedSecStr: this.getElapsedSecStr(),
       },
     });
 
@@ -693,12 +714,12 @@ export class VoiceSession {
       console.log(`[Session] Early exit trigger within ${callDuration}s: "${callerText}". Ending call immediately.`);
       const politeExit = "I completely understand. Thank you for your time, have a wonderful day ahead. Goodbye!";
       this.conversationHistory.push({ role: 'user', content: callerText });
-      this.fullTranscriptLines.push(`Caller: ${callerText}`);
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${callerText}`);
       await this.speakText(politeExit);
       this.conversationHistory.push({ role: 'assistant', content: politeExit });
-      this.fullTranscriptLines.push(`${this.agentName}: ${politeExit}`);
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${politeExit}`);
       this.isProcessingUtterance = false;
-      await this.closeSession();
+      await this.closeSession('Early Rejection (Caller Not Interested)', 'Agent', 'EARLY_EXIT');
       return politeExit;
     }
 
@@ -707,7 +728,7 @@ export class VoiceSession {
       console.log(`[Session] Caller requested human escalation: "${callerText}". Initiating transfer...`);
       const transferMsg = "Sure, let me connect your call to our on-site property advisor team right away. Please stay on the line.";
       this.conversationHistory.push({ role: 'assistant', content: transferMsg });
-      this.fullTranscriptLines.push(`${this.agentName}: ${transferMsg}`);
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${transferMsg}`);
       await this.speakText(transferMsg);
       await transferCallToHuman({
         callUuid: this.callUuid || this.callSid,
@@ -716,12 +737,12 @@ export class VoiceSession {
         reason: callerText,
       });
       this.isProcessingUtterance = false;
-      await this.closeSession();
+      await this.closeSession('Transferred to Human Property Advisor', 'Agent', 'TRANSFER');
       return transferMsg;
     }
 
     this.conversationHistory.push({ role: 'user', content: callerText });
-    this.fullTranscriptLines.push(`Caller: ${callerText}`);
+    this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${callerText}`);
 
     // Create AbortController for interruption support
     this.activeAbortController = new AbortController();
@@ -745,8 +766,8 @@ export class VoiceSession {
         sentenceBuffer += token;
         fullResponse += token;
 
-        // Check for natural sentence boundaries (. ? ! or newline)
-        if (/[.!?\n]\s*$/.test(sentenceBuffer) && sentenceBuffer.trim().length > 10) {
+        // Check for natural sentence boundaries (. ? ! or newline) protecting decimals like 1.25
+        if (isNaturalSentenceBoundary(sentenceBuffer)) {
           await this.speakText(sentenceBuffer.trim());
           sentenceBuffer = '';
         }
@@ -759,7 +780,7 @@ export class VoiceSession {
 
       if (fullResponse.trim()) {
         this.conversationHistory.push({ role: 'assistant', content: fullResponse.trim() });
-        this.fullTranscriptLines.push(`${this.agentName}: ${fullResponse.trim()}`);
+        this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${fullResponse.trim()}`);
       }
 
       // Broadcast dynamic lead updates extracted so far from QualificationEngine
@@ -849,7 +870,7 @@ export class VoiceSession {
 
         const waitMs = Math.max(1200, this.agentSpeakingUntil - Date.now() + 500);
         setTimeout(async () => {
-          await this.closeSession();
+          await this.closeSession('Dead Air (Caller silent for >15s)', 'Timeout', 'TIMEOUT');
         }, waitMs);
       }
     }, silenceTimeoutMs);
@@ -869,14 +890,27 @@ export class VoiceSession {
    * Concludes the call, generates post-call summary, updates SQLite audit record,
    * inserts finalized lead via qualifier, and cleanly closes all sockets.
    */
-  public async closeSession(): Promise<void> {
+  public async closeSession(
+    reason: string = 'Normal Hangup',
+    source: string = 'Caller',
+    causeCode: string = '4000'
+  ): Promise<void> {
     if (this.isClosed) return;
     this.isClosed = true;
 
+    this.hangupSource = source;
+    this.hangupCause = reason;
+    this.hangupCauseCode = causeCode;
+
     const durationSeconds = Math.round((Date.now() - this.startTime) / 1000);
+    this.fullTranscriptLines.push(
+      `[${this.getElapsedSecStr()}] 🏁 Call Concluded • Duration: ${durationSeconds}s • Dropped by: ${this.hangupSource} (${this.hangupCause})`
+    );
     const fullTranscript = this.fullTranscriptLines.join('\n');
 
-    console.log(`[Session] Call finished. Duration: ${durationSeconds}s. Finalizing audit record...`);
+    console.log(
+      `[Session] Call finished. Duration: ${durationSeconds}s. Dropped by: ${this.hangupSource} (${this.hangupCause}). Finalizing audit record...`
+    );
 
     this.handleBargeIn(false);
     this.clearDeadAirTimer();
@@ -923,7 +957,16 @@ export class VoiceSession {
     if (this.callId) {
       try {
         finalSummary = await llmPipeline.generateSummary(fullTranscript);
-        updateCall(this.callId, durationSeconds, fullTranscript, finalSummary, recordingUrl);
+        updateCall(
+          this.callId,
+          durationSeconds,
+          fullTranscript,
+          finalSummary,
+          recordingUrl,
+          this.hangupSource,
+          this.hangupCause,
+          this.hangupCauseCode
+        );
         console.log(`[Database] Call record #${this.callId} updated with summary: "${finalSummary}"`);
         await llmPipeline.extractAndStoreLearnings(this.callId, fullTranscript);
       } catch (err) {
@@ -942,6 +985,12 @@ export class VoiceSession {
         recordingUrl,
         callId: this.callId,
         agentName: this.agentName,
+        hangupSource: this.hangupSource,
+        hangupCause: this.hangupCause,
+        hangupCauseCode: this.hangupCauseCode,
+        droppedBy: this.hangupSource,
+        elapsedSeconds: durationSeconds,
+        elapsedSecStr: `+${durationSeconds}s`,
       },
     });
   }

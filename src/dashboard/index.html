@@ -2319,6 +2319,21 @@
         }
       });
 
+      liveEventSource.addEventListener('call_hangup', (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          const data = payload.data || {};
+          const duration = data.durationSeconds ? `${data.durationSeconds}s` : '';
+          const droppedBy = data.droppedBy || data.hangupSource || 'Caller';
+          const cause = data.hangupCause || 'Normal Hangup';
+          const code = data.hangupCauseCode ? `(#${data.hangupCauseCode})` : '';
+          appendLiveEventChip('call-end', `📞 Carrier Hangup: Dropped by ${droppedBy} at +${duration} • Reason: ${cause} ${code}`);
+          loadData();
+        } catch (err) {
+          console.error('[LiveFeed] call_hangup parse error:', err);
+        }
+      });
+
       liveEventSource.onerror = (err) => {
         console.warn('[LiveFeed SSE] Notice (reconnecting in 3s)...');
         setTimeout(() => {
@@ -2459,21 +2474,24 @@
       const text = event.data?.text;
       if (!text) return;
       const cleanName = event.data?.agentName || 'Priya';
+      const elapsed = event.data?.elapsedSecStr || (liveCallStartTime ? `+${((Date.now() - liveCallStartTime) / 1000).toFixed(1)}s` : '');
 
-      appendLiveBubble('agent', cleanName, text);
+      appendLiveBubble('agent', cleanName, text, elapsed);
       updateLiveAcousticStatus('speaking', cleanName + ' Speaking: "' + text.slice(0, 50) + (text.length > 50 ? '...' : '') + '"');
     }
 
     function handleLiveCallerSpeech(event) {
       const transcript = event.data?.transcript;
       if (!transcript) return;
+      const elapsed = event.data?.elapsedSecStr || (liveCallStartTime ? `+${((Date.now() - liveCallStartTime) / 1000).toFixed(1)}s` : '');
 
-      appendLiveBubble('caller', 'Customer', transcript);
+      appendLiveBubble('caller', 'Customer', transcript, elapsed);
       updateLiveAcousticStatus('listening', 'Customer: "' + transcript.slice(0, 50) + (transcript.length > 50 ? '...' : '') + '"');
     }
 
     function handleLiveBargeIn(event) {
-      appendLiveEventChip('barge-in', '⚡ Barge-in: Customer spoke • Agent speech halted');
+      const elapsed = event.data?.elapsedSecStr || (liveCallStartTime ? `+${((Date.now() - liveCallStartTime) / 1000).toFixed(1)}s` : '');
+      appendLiveEventChip('barge-in', `⚡ Barge-in ${elapsed ? `(${elapsed})` : ''}: Customer spoke • Agent speech halted`);
       updateLiveAcousticStatus('listening', '⚡ Interruption detected! Priya paused. Listening to customer...');
     }
 
@@ -2577,7 +2595,10 @@
       if (tabBadge) tabBadge.style.display = 'none';
 
       const duration = event?.data?.durationSeconds ? event.data.durationSeconds + 's' : 'concluded';
-      appendLiveEventChip('call-end', '🏁 Call Concluded • Duration: ' + duration);
+      const droppedBy = event?.data?.droppedBy || event?.data?.hangupSource || 'Caller';
+      const hangupCause = event?.data?.hangupCause || 'Normal Hangup';
+      const causeCode = event?.data?.hangupCauseCode ? `(#${event.data.hangupCauseCode})` : '';
+      appendLiveEventChip('call-end', `🏁 Call Concluded • Duration: ${duration} • Dropped by: ${droppedBy} (${hangupCause} ${causeCode})`);
 
       if (event?.data?.recordingUrl) {
         appendLiveRecordingCard(event.data.recordingUrl, duration);
@@ -2734,7 +2755,7 @@
 
     const renderedLiveBubbleKeys = new Set();
 
-    function appendLiveBubble(role, author, text) {
+    function appendLiveBubble(role, author, text, elapsedSecStr) {
       const feed = document.getElementById('live-dialogue-feed');
       if (!feed || !text || !text.trim()) return;
 
@@ -2773,6 +2794,7 @@
       renderedLiveBubbleKeys.add(key);
 
       const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const elapsed = elapsedSecStr || (liveCallStartTime ? `+${((Date.now() - liveCallStartTime) / 1000).toFixed(1)}s` : '');
 
       const bubble = document.createElement('div');
       bubble.className = 'live-bubble ' + role;
@@ -2787,6 +2809,7 @@
         <div class="live-bubble-content">
           <div class="live-bubble-header">
             <span class="live-bubble-author">${escapeHtml(displayAuthor)}</span>
+            ${elapsed ? `<span class="live-sec-pill" style="background:#E0E7FF;color:#3730A3;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;font-family:var(--font-mono);">${elapsed}</span>` : ''}
             <span>${time}</span>
             <span style="font-size:10px;color:var(--text-subtle);">${engineLabel}</span>
           </div>
@@ -3706,7 +3729,13 @@
                   </div>
                 ` : `<span class="badge-subtle" style="font-size: 11px;">In Progress</span>`}
               </td>
-              <td style="font-family: var(--font-mono); color: var(--accent-blue);">${c.duration_seconds || 0}s</td>
+              <td>
+                <div style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-blue);">${c.duration_seconds || 0}s</div>
+                <div style="font-size: 11px; margin-top: 2px; color: ${c.hangup_source === 'Timeout' ? '#DC2626' : 'var(--text-muted)'};">
+                  Dropped: <strong>${escapeHtml(c.hangup_source || 'Caller')}</strong>
+                  ${c.hangup_cause ? `<span style="font-size: 10px; opacity: 0.85;">(${escapeHtml(c.hangup_cause)})</span>` : ''}
+                </div>
+              </td>
               <td style="color: var(--text-secondary); font-size: 13px;">${escapeHtml(c.summary || 'In progress')}</td>
             </tr>
           `).join('');

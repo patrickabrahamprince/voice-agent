@@ -611,9 +611,9 @@ export async function transcribeAudioSarvam(wavBuffer: Buffer): Promise<string> 
         return '';
       }
       return rawText;
-    } else if (res.status === 402) {
+    } else if (res.status === 402 || res.status === 429) {
       sarvamCircuitBreaker.markExhausted();
-      throw new Error('Sarvam credits exhausted (HTTP 402)');
+      throw new Error(`Sarvam STT rate-limited or exhausted (HTTP ${res.status})`);
     } else {
       throw new Error(`Sarvam STT HTTP error: ${res.status} ${res.statusText}`);
     }

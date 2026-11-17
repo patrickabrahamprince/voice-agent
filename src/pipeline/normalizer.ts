@@ -140,3 +140,33 @@ export function normalizeRealEstateText(text: string): string {
 
   return normalized;
 }
+
+/**
+ * Detects legitimate sentence completions while strictly protecting decimal numbers
+ * (e.g., "1.25", "2.5") and real-estate abbreviations ("sq.ft.", "cr.", "approx.")
+ * from premature sentence boundary splitting.
+ */
+export function isNaturalSentenceBoundary(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 12) return false;
+
+  // Newlines are always natural boundaries
+  if (/\n\s*$/.test(text)) return true;
+
+  // Question marks and exclamation marks are always natural boundaries
+  if (/[?!]\s*$/.test(text)) return true;
+
+  // Period boundary evaluation
+  if (/\.\s*$/.test(text)) {
+    // 1. DO NOT split on decimal numbers e.g. "1.", "2."
+    if (/\b\d+\.\s*$/.test(trimmed)) return false;
+    // 2. DO NOT split on real-estate / common abbreviations
+    if (/\b(sq\.ft|sqft|ft|approx|cr|lakh|bhk|mr|mrs|ms|dr|vs|i\.e|e\.g|etc|no|apt)\.\s*$/i.test(trimmed)) return false;
+    // 3. DO NOT split on single letter initials e.g. "A."
+    if (/\b[a-zA-Z]\.\s*$/.test(trimmed)) return false;
+
+    return true;
+  }
+
+  return false;
+}

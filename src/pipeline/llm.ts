@@ -5,6 +5,7 @@ import { QualificationEngine } from './qualifier.js';
 import { saveAgentLearning, getRecentLearnings, getCallerMemory, CallerMemoryContext } from '../tools/db.js';
 import { getObjectionPlaybookPrompt, detectObjectionHint, seedObjectionLearnings } from './objections.js';
 import { sarvamCircuitBreaker } from './circuit_breaker.js';
+import { isNaturalSentenceBoundary } from './normalizer.js';
 
 export const activeQualifiers = new Map<string, QualificationEngine>();
 
@@ -44,11 +45,18 @@ CORE RULES:
 7. OBJECTIONS: Reframe price with 100% OC + 0% GST savings. If far, highlight Manyata (6.5 km) & Airport road. If low budget, share floor plans for loan review.
 8. HUMAN AGENT ESCALATION: If caller explicitly asks to speak to a real person, human, executive, manager, or team (e.g. "talk to a human", "connect to real person", "transfer call", "executive se baat"):
 Reply: "[TRANSFER_TO_HUMAN] Of course! Connecting you directly to our on-site team. Please stay on the line." (In Hindi: "[TRANSFER_TO_HUMAN] Ji bilkul! Main aapki call hamari team se connect kar rahi hoon. Kripya line par bane rahein.")
-9. INBOUND CALLER NUMBER & SITE VISIT CONFIRMATION:
+9. INBOUND CALLER NUMBER & STRICT SITE VISIT CONFIRMATION:
 - This is an INBOUND phone call. You ALREADY have the caller's phone number from caller ID.
 - NEVER ask the caller "What is your phone number?" or "May I have your number?".
-- When the caller provides their name or agrees to a visit time, warmly confirm:
-"Thank you [Name]! Your visit is confirmed for [Day/Time]. We'll send the location and brochure to this number on WhatsApp. Looking forward to meeting you!"`;
+- STRICT BOOKING RULE: NEVER confirm a site visit unless the caller EXPLICITLY asks to book a visit or explicitly specifies an appointment day or time (e.g. "Can I visit Saturday?", "11:30 AM works", "Book my visit").
+- Do NOT treat saying "okay", "sure", "tell me more", or interest in floor plans as agreeing to a site visit! If they say "okay" to floor plans, share floor plan details and pricing!
+- ONLY when caller explicitly requests a visit or gives an appointment time: confirm warmly:
+"Thank you [Name]! Your visit is confirmed for [Day/Time]. We'll send the location and brochure to this number on WhatsApp. Looking forward to meeting you!"
+10. GLITCH & CONTINUATION RECOVERY (NO REPETITIVE APOLOGIES):
+- If the caller says you broke up, got cut off, there was a glitch, or tells you to "continue talking", "tell me", "continue", or asks why:
+  NEVER repeat apologies or get stuck saying "I apologize for the glitch" or "Apologies for the interruption"!
+  Give a 3-word apology at most and IMMEDIATELY continue with property details:
+  "My apologies! We have ready 2 and 3 BHK homes beside Jakkur Lake starting at 1.25 crore with Occupancy Certificate received. Which size would you like to explore?"`;
 
 /**
  * NOTE: qualify_and_sync_lead is handled by QualificationEngine.syncLeadRecord(),
@@ -154,8 +162,8 @@ export class LLMPipeline {
             sentenceBuffer += token;
             fullReply += token;
 
-            // Yield at natural sentence boundaries
-            if (/[.!?\n]\s*$/.test(sentenceBuffer) && sentenceBuffer.trim().length > 8) {
+            // Yield at natural sentence boundaries (protecting decimals like 1.25 and abbreviations)
+            if (isNaturalSentenceBoundary(sentenceBuffer)) {
               yield sentenceBuffer.trim();
               sentenceBuffer = '';
             }
@@ -304,8 +312,8 @@ export class LLMPipeline {
     if (callerPhone) {
       const memory = getCallerMemory(callerPhone);
       const callerNameLine = memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there'
-        ? `- Known Contact Name: ${memory.existingLead.callerName}\n- STRICT RULE: Do NOT state or assume the caller's budget or configuration. Always ask the caller what they are looking for today.`
-        : `- Known Contact Name: None yet. If caller agrees to site visit, ask their name.`;
+        ? `- Known Contact Name: ${memory.existingLead.callerName}\n- STRICT RULE: Do NOT assume a site visit is booked or confirmed until the caller explicitly asks to book one in THIS call. Do NOT assume budget or configuration.`
+        : `- Known Contact Name: None yet. Only ask for their name if they explicitly ask to book a site visit.`;
 
       memoryContextBlock = `
 ========================================================================

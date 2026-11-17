@@ -7,8 +7,9 @@ async function updatePlivo() {
   const appId = process.env.PLIVO_APP_ID || '17370092272385353';
   const publicDomain = process.env.PUBLIC_DOMAIN || 'someone-argued-buy-protect.trycloudflare.com';
   const answerUrl = `https://${publicDomain}/incoming-call`;
+  const hangupUrl = `https://${publicDomain}/hangup`;
 
-  console.log(`Updating Plivo App ID ${appId} answer_url to: ${answerUrl}`);
+  console.log(`Updating Plivo App ID ${appId}:\n  answer_url: ${answerUrl}\n  hangup_url: ${hangupUrl}`);
   const client = new plivo.Client(authId, authToken);
 
   try {
@@ -17,7 +18,7 @@ async function updatePlivo() {
       answer_method: 'POST',
       fallback_answer_url: answerUrl,
       fallback_method: 'POST',
-      hangup_url: answerUrl,
+      hangup_url: hangupUrl,
       hangup_method: 'POST',
     });
     console.log('✓ Successfully updated Plivo Application:', res);

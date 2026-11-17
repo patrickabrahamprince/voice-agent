@@ -6,7 +6,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import fastifyFormbody from '@fastify/formbody';
 import { WebSocket } from 'ws';
 import { VoiceSession } from './pipeline/session.js';
-import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory, deleteAllCalls, deleteAllLeads, deleteAllData } from './tools/db.js';
+import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory, deleteAllCalls, deleteAllLeads, deleteAllData, updateCallHangup } from './tools/db.js';
 import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech, prewarmTtsCache } from './pipeline/tts.js';
 import { clearQualifier, llmPipeline } from './pipeline/llm.js';
@@ -98,6 +98,7 @@ app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) =>
   // 1. Allow carrier webhooks, health checks, media stream, audio assets, live feed stream, proposal, and UI/auth routes unconditionally
   if (
     url.startsWith('/incoming-call') ||
+    url.startsWith('/hangup') ||
     url.startsWith('/health') ||
     url.startsWith('/media-stream') ||
     url.startsWith('/audio/') ||
@@ -283,6 +284,55 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
   const xml = buildStreamResponse(streamUrlWithCaller);
   reply.header('Content-Type', 'text/xml');
   return reply.code(200).send(xml);
+});
+
+/**
+ * 1b. Carrier Hangup Webhook: ALL /hangup
+ * Plivo invokes this webhook immediately when a call disconnects, providing
+ * authoritative carrier metrics: HangupSource, HangupCause, HangupCauseCode, Duration.
+ */
+app.all('/hangup', async (request: FastifyRequest, reply: FastifyReply) => {
+  const body = (request.body || {}) as any;
+  const query = (request.query || {}) as any;
+
+  const callUuid = body.CallUUID || body.call_uuid || query.CallUUID || query.call_uuid || '';
+  const from = body.From || body.from || query.From || query.from || 'Unknown';
+  const hangupSource = body.HangupSource || body.hangup_source || query.HangupSource || query.hangup_source || 'Caller';
+  const hangupCause = body.HangupCause || body.hangup_cause || query.HangupCause || query.hangup_cause || 'Normal Hangup';
+  const hangupCauseCode = body.HangupCauseCode || body.hangup_cause_code || query.HangupCauseCode || query.hangup_cause_code || '4000';
+  const duration = parseInt(body.Duration || body.duration || query.Duration || query.duration || '0', 10);
+
+  const timestamp = new Date().toISOString();
+  console.log(`\n============================================================`);
+  console.log(`📞 [Plivo Carrier Hangup Event]`);
+  console.log(`   Time:        ${timestamp}`);
+  console.log(`   Call UUID:   ${callUuid}`);
+  console.log(`   From:        ${from}`);
+  console.log(`   Duration:    ${duration}s`);
+  console.log(`   Dropped By:  ${hangupSource} (${hangupSource === 'Caller' ? 'Caller Pressed End Call' : hangupSource})`);
+  console.log(`   Cause:       ${hangupCause} (Code: ${hangupCauseCode})`);
+  console.log(`============================================================\n`);
+
+  if (callUuid) {
+    updateCallHangup(callUuid, hangupSource, hangupCause, hangupCauseCode, duration);
+  }
+
+  callEventsBroadcaster.broadcast({
+    type: 'call_hangup',
+    streamSid: '',
+    callerNumber: from,
+    timestamp,
+    data: {
+      callUuid,
+      durationSeconds: duration,
+      hangupSource,
+      hangupCause,
+      hangupCauseCode,
+      droppedBy: hangupSource === 'Caller' ? 'Caller' : hangupSource,
+    },
+  });
+
+  return reply.code(200).send({ status: 'ok', callUuid, hangupSource, hangupCause });
 });
 
 /**
