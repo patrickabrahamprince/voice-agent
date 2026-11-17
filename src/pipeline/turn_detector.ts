@@ -169,8 +169,8 @@ export class SemanticTurnDetector {
     const cleanAlpha = raw.replace(/[^a-z0-9\s]/g, ' ').trim();
     const words = cleanAlpha.split(/\s+/).filter(Boolean);
 
-    // 1. Audio too brief or empty (<0.45s or no words)
-    if (audioDurationSec < 0.45 || words.length === 0) {
+    // 1. Audio too brief or empty (<0.25s or no words)
+    if (audioDurationSec < 0.25 || words.length === 0) {
       return {
         isLikelyComplete: false,
         shouldIgnore: true,

@@ -17,6 +17,8 @@ async function updatePlivo() {
       answer_method: 'POST',
       fallback_answer_url: answerUrl,
       fallback_method: 'POST',
+      hangup_url: answerUrl,
+      hangup_method: 'POST',
     });
     console.log('✓ Successfully updated Plivo Application:', res);
   } catch (err: any) {

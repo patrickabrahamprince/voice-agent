@@ -40,6 +40,8 @@ export class VoiceSession {
   private interruptFramesCount: number = 0;
   private interruptChunks: Buffer[] = [];
   private silenceTimer: NodeJS.Timeout | null = null;
+  private deadAirTimer: NodeJS.Timeout | null = null;
+  private deadAirPromptCount: number = 0;
   private stagedTranscript: string = '';
   private fallbackUtteranceTimer: NodeJS.Timeout | null = null;
   private isProcessingSTT: boolean = false;
@@ -134,6 +136,7 @@ export class VoiceSession {
         });
 
         await this.speakText(greeting);
+        this.armDeadAirTimer();
         break;
       }
 
@@ -146,18 +149,12 @@ export class VoiceSession {
           this.recorder.recordInboundChunk(audioBuffer);
         }
 
-        // Strict Acoustic Echo Gate: Drop audio while agent is speaking or during echo cooldown
-        if (this.isAgentSpeaking || this.isSynthesizingSpeech || Date.now() < this.postSpeechCooldownUntil) {
-          return;
-        }
-
         // 1. If Deepgram is connected, stream 8kHz G.711 mulaw directly
         if (this.deepgramWs && this.deepgramWs.readyState === WebSocket.OPEN) {
           this.deepgramWs.send(audioBuffer);
-          return;
         }
 
-        // 2. Fallback: Local STT with Voice Activity Detection
+        // 2. Vocal Activity Detection, Vocal Barge-In, and Local Telephony STT
         this.handleInboundTelephonyAudio(audioBuffer);
         break;
       }
@@ -255,11 +252,13 @@ export class VoiceSession {
 
   /**
    * Executes ultra-low latency barge-in interruption (<50ms).
+   * @param broadcastEvent whether to broadcast barge_in event to UI SSE listeners
+   * @param preserveSpeech whether to keep inbound caller speech chunks (true during vocal barge-in)
    */
-  public handleBargeIn(broadcastEvent: boolean = true): void {
+  public handleBargeIn(broadcastEvent: boolean = true, preserveSpeech: boolean = false): void {
     if (!this.isAgentSpeaking && !this.activeAbortController && !this.isProcessingUtterance) return;
 
-    console.log(`[Barge-In] Clearing PBX buffer on StreamSid: ${this.streamSid}`);
+    console.log(`[Barge-In] Clearing PBX buffer on StreamSid: ${this.streamSid} (preserveSpeech=${preserveSpeech})`);
 
     this.agentSpeakingUntil = 0;
     this.postSpeechCooldownUntil = 0;
@@ -278,18 +277,20 @@ export class VoiceSession {
       });
     }
 
-    this.inboundMulawChunks = [];
-    this.pendingSpeechChunks = [];
-    this.speechFramesCount = 0;
-    if (this.silenceTimer) {
-      clearTimeout(this.silenceTimer);
-      this.silenceTimer = null;
+    if (!preserveSpeech) {
+      this.inboundMulawChunks = [];
+      this.pendingSpeechChunks = [];
+      this.speechFramesCount = 0;
+      if (this.silenceTimer) {
+        clearTimeout(this.silenceTimer);
+        this.silenceTimer = null;
+      }
+      if (this.fallbackUtteranceTimer) {
+        clearTimeout(this.fallbackUtteranceTimer);
+        this.fallbackUtteranceTimer = null;
+      }
+      this.stagedTranscript = '';
     }
-    if (this.fallbackUtteranceTimer) {
-      clearTimeout(this.fallbackUtteranceTimer);
-      this.fallbackUtteranceTimer = null;
-    }
-    this.stagedTranscript = '';
 
     if (this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
       this.telephonyWs.send(JSON.stringify({ event: 'clearAudio' }));
@@ -379,9 +380,9 @@ export class VoiceSession {
     this.pendingSpeechChunks = [];
     this.speechFramesCount = 0;
 
-    // Discard noises under 0.4s
+    // Discard noises under 0.25s
     const durationSec = fullAudio.length / 8000;
-    if (durationSec < 0.4) {
+    if (durationSec < 0.25) {
       return;
     }
 
@@ -444,31 +445,63 @@ export class VoiceSession {
   }
 
   /**
-   * Handles inbound telephony audio frames with energy VAD and echo protection.
-   * Completely mutes/discards audio when agent is speaking to eliminate overlapping voice.
+   * Handles inbound telephony audio frames with energy VAD, vocal barge-in interruption, and echo protection.
    */
   private handleInboundTelephonyAudio(chunk: Buffer): void {
     const now = Date.now();
+    const rms = this.getMulawRms(chunk);
 
-    // Strict Acoustic Echo Protection: drop audio when agent is speaking or in cooldown
+    // 1. Vocal Barge-In: Detect human voice interruption while agent is speaking or in cooldown
     if (this.isAgentSpeaking || this.isSynthesizingSpeech || now < this.postSpeechCooldownUntil) {
-      this.interruptFramesCount = 0;
-      this.interruptChunks = [];
-      this.pendingSpeechChunks = [];
-      this.inboundMulawChunks = [];
-      this.speechFramesCount = 0;
+      // Vocal energy threshold: Phone acoustic echo is typically < 650 RMS; caller speaking directly is 850-2500+ RMS.
+      if (rms > 800) {
+        this.interruptFramesCount++;
+        this.interruptChunks.push(chunk);
+
+        // Require 3 consecutive frames (60ms) of sustained vocal energy to confirm intentional human speech
+        if (this.interruptFramesCount >= 3) {
+          console.log(
+            `[Barge-In] Caller interrupting Priya (RMS: ${Math.round(rms)}, frames: ${this.interruptFramesCount}). Halting agent speech immediately.`
+          );
+
+          // Stop PBX playback immediately and cancel active synthesis, preserving speech frames
+          this.handleBargeIn(true, true);
+          this.clearDeadAirTimer();
+          this.deadAirPromptCount = 0;
+
+          // Transition captured speech frames to inbound buffer so opening words are preserved
+          this.inboundMulawChunks = [...this.interruptChunks];
+          this.speechFramesCount = this.interruptFramesCount;
+          this.interruptChunks = [];
+          this.interruptFramesCount = 0;
+
+          // Arm fallback silence timer in case caller stops after short phrase
+          if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+          }
+          this.silenceTimer = setTimeout(async () => {
+            await this.finalizeCallerSpeech();
+          }, 450);
+        }
+      } else {
+        // Drop echo or quiet background line noise during agent speech
+        this.interruptFramesCount = 0;
+        this.interruptChunks = [];
+      }
       return;
     }
 
-    const rms = this.getMulawRms(chunk);
+    // 2. Normal Speech Accumulation when agent is NOT speaking
     const isSpeech = rms > 750;
 
     if (isSpeech) {
+      this.clearDeadAirTimer();
+      this.deadAirPromptCount = 0;
       this.speechFramesCount++;
       this.pendingSpeechChunks.push(chunk);
 
-      // Accumulate audio once real speech persists for >100ms (5 frames)
-      if (this.speechFramesCount >= 5) {
+      // Accumulate audio once real speech persists for >80ms (4 frames)
+      if (this.speechFramesCount >= 4) {
         if (this.pendingSpeechChunks.length > 0) {
           this.inboundMulawChunks.push(...this.pendingSpeechChunks);
           this.pendingSpeechChunks = [];
@@ -481,7 +514,7 @@ export class VoiceSession {
         this.silenceTimer = null;
       }
 
-      // Conversational silence debounce: 400ms
+      // Conversational silence debounce: 380-450ms
       const currentSpeechDuration = this.inboundMulawChunks.length / 8000;
       const debounceMs = currentSpeechDuration > 1.0 ? 380 : 450;
 
@@ -584,6 +617,8 @@ export class VoiceSession {
       };
 
       const mulawBuffer = await synthesizeTelephonyMulaw(normalized, this.agentVoice, onAudioChunk);
+
+      if (this.activeAbortController?.signal.aborted) return;
 
       if (!firstChunkDispatched && mulawBuffer && mulawBuffer.length > 0 && this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
         if (this.recorder) {
@@ -749,6 +784,10 @@ export class VoiceSession {
         });
       }
 
+      if (!abortSignal.aborted && fullResponse.trim()) {
+        this.armDeadAirTimer();
+      }
+
       return fullResponse.trim();
     } catch (err: any) {
       if (!abortSignal.aborted) {
@@ -758,6 +797,71 @@ export class VoiceSession {
     } finally {
       this.activeAbortController = null;
       this.isProcessingUtterance = false;
+    }
+  }
+
+  /**
+   * Arms a dead-air re-engagement timer to prevent awkward silence or abandoned calls.
+   * Prompts the caller if they remain silent for >7 seconds after agent finishes speaking.
+   */
+  private armDeadAirTimer(): void {
+    this.clearDeadAirTimer();
+    if (this.isClosed) return;
+
+    // Calculate when the agent will actually finish speaking on the PBX
+    const timeUntilAgentDone = Math.max(0, this.agentSpeakingUntil - Date.now());
+    const silenceTimeoutMs = timeUntilAgentDone + 7000; // 7 seconds after agent finishes speaking
+
+    this.deadAirTimer = setTimeout(async () => {
+      if (
+        this.isClosed ||
+        this.isAgentSpeaking ||
+        this.isProcessingUtterance ||
+        this.isProcessingSTT ||
+        this.inboundMulawChunks.length > 0 ||
+        this.speechFramesCount > 0
+      ) {
+        return;
+      }
+
+      this.deadAirPromptCount++;
+      console.log(`[DeadAir Timer] Silence detected. Triggering prompt #${this.deadAirPromptCount}...`);
+
+      if (this.deadAirPromptCount === 1) {
+        const prompt =
+          this.currentLanguage === 'hi'
+            ? 'नमस्ते, क्या आप सुन पा रहे हैं? अगर आप फ्लोर प्लान या प्राइसिंग जानना चाहते हैं तो बेझिझक पूछें।'
+            : "Hello, are you still with me? Feel free to ask if you'd like pricing details, floor plans, or site visit timings!";
+
+        this.conversationHistory.push({ role: 'assistant', content: prompt });
+        this.fullTranscriptLines.push(`${this.agentName}: ${prompt}`);
+        await this.speakText(prompt);
+        this.armDeadAirTimer();
+      } else if (this.deadAirPromptCount >= 2) {
+        const farewell =
+          this.currentLanguage === 'hi'
+            ? 'लगता है आपकी आवाज़ नहीं आ पा रही है। आप हमें कभी भी दोबारा कॉल कर सकते हैं या हमारी वेबसाइट mittalpalms.com देख सकते हैं। धन्यवाद!'
+            : 'I seem to be having trouble hearing you. Please feel free to call us back anytime or visit mittalpalms.com. Have a wonderful day!';
+
+        this.conversationHistory.push({ role: 'assistant', content: farewell });
+        this.fullTranscriptLines.push(`${this.agentName}: ${farewell}`);
+        await this.speakText(farewell);
+
+        const waitMs = Math.max(1200, this.agentSpeakingUntil - Date.now() + 500);
+        setTimeout(async () => {
+          await this.closeSession();
+        }, waitMs);
+      }
+    }, silenceTimeoutMs);
+  }
+
+  /**
+   * Cancels any pending dead-air re-engagement timer.
+   */
+  private clearDeadAirTimer(): void {
+    if (this.deadAirTimer) {
+      clearTimeout(this.deadAirTimer);
+      this.deadAirTimer = null;
     }
   }
 
@@ -775,6 +879,7 @@ export class VoiceSession {
     console.log(`[Session] Call finished. Duration: ${durationSeconds}s. Finalizing audit record...`);
 
     this.handleBargeIn(false);
+    this.clearDeadAirTimer();
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;

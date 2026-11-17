@@ -26,6 +26,13 @@ PROJECT FACTS (MITTAL PALMS, JAKKUR):
 - 3 BHK: 1,720–1,980 sq ft (Starts at 1.7 to 1.95 Crore rupees / twelve thousand rupees per sqft).
 - Amenities: Clubhouse, swimming pool, gym, kids play area, gardens, 24/7 security, 100% power backup.
 - Site visits: Our on-site property advisor team is available for visits.
+- Distances & Connectivity from Mittal Palms (Jakkur):
+  * Manyata Tech Park: 6.5 km (10-12 mins)
+  * Hebbal Flyover / Outer Ring Road: 5 km (8-10 mins)
+  * Kempegowda International Airport: 22 km (25-30 mins via Bellary Rd / NH 44)
+  * HSR Layout: ~26-28 km via Outer Ring Road (approx 35-45 mins)
+  * Whitefield / ITPL: ~24 km via ORR
+  * MG Road / CBD: 14 km (25 mins)
 
 CORE RULES:
 1. STRICT BREVITY: Maximum 1 to 2 short sentences (under 16 words total). Never give long speeches.
@@ -298,12 +305,12 @@ export class LLMPipeline {
       const memory = getCallerMemory(callerPhone);
       const callerNameLine = memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there'
         ? `- Known Contact Name: ${memory.existingLead.callerName}\n- STRICT RULE: Do NOT state or assume the caller's budget or configuration. Always ask the caller what they are looking for today.`
-        : `- Note: Inbound caller ID is already captured (${callerPhone}). NEVER ask the caller for their phone number.`;
+        : `- Known Contact Name: None yet. If caller agrees to site visit, ask their name.`;
 
       memoryContextBlock = `
 ========================================================================
 BACKGROUND REFERENCE CONTEXT (INTERNAL ADVISOR NOTES ONLY - NEVER ASSUME OR DECLARE TO CALLER):
-- Caller Phone: ${memory.phoneNumber || callerPhone}
+- Caller Phone: ${memory.phoneNumber || callerPhone} (Inbound caller ID ALREADY captured. NEVER ask the caller for their phone number.)
 ${callerNameLine}
 ========================================================================`;
     }
