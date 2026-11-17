@@ -6,7 +6,7 @@ import { synthesizeNeuralSpeech, synthesizeTelephonyMulaw, mulawToWav, transcrib
 import { createCall, updateCall, getCallerMemory, updateLeadRecording } from '../tools/db.js';
 import { callEventsBroadcaster } from './events.js';
 import { CallAudioRecorder } from './recorder.js';
-import { semanticTurnDetector } from './turn_detector.js';
+import { semanticTurnDetector, STANDALONE_VALID_ANSWERS } from './turn_detector.js';
 import { isTransferIntent, transferCallToHuman, plivoClient } from './transfer.js';
 
 function repairTelephonyTranscript(rawText: string): string {
@@ -207,6 +207,13 @@ export class VoiceSession {
       case 'barge_in':
       case 'clear': {
         this.handleBargeIn();
+        break;
+      }
+
+      case 'dtmf': {
+        const digit = msg.digit || msg.dtmf;
+        console.log(`[Session] DTMF digit received: ${digit}. Triggering clean keypad barge-in.`);
+        this.handleBargeIn(true, false);
         break;
       }
 
@@ -473,6 +480,14 @@ export class VoiceSession {
           if (this.stagedTranscript.trim() && !this.isProcessingUtterance && !this.isAgentSpeaking && Date.now() >= this.postSpeechCooldownUntil) {
             const utterance = this.stagedTranscript.trim();
             this.stagedTranscript = '';
+
+            // Drop isolated random single-word noise artifacts (e.g. "signal", "they've") that are not valid standalone responses
+            const words = utterance.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+            if (words.length <= 1 && !STANDALONE_VALID_ANSWERS.has(words[0]) && !words[0]?.includes('bhk') && !/^\d+$/.test(words[0])) {
+              console.log(`[TurnDetector Safety Timer] Dropping isolated noise artifact: "${utterance}"`);
+              return;
+            }
+
             console.log(`[TurnDetector Safety Timer] Processing stalled utterance: "${utterance}"`);
             await this.processCallerUtterance(utterance);
           }
@@ -502,62 +517,22 @@ export class VoiceSession {
     const now = Date.now();
     const rms = this.getMulawRms(chunk);
 
-    // 1. Vocal Barge-In: Detect intentional human voice interruption while agent is actively speaking
-    if (this.isAgentSpeaking) {
-      // Echo guard: For the first 750ms after agent starts speaking, suppress barge-in
-      // to eliminate acoustic echo / speakerphone leakage transients
-      if (now - this.agentSpeakingStartedAt < 750) {
-        this.interruptFramesCount = 0;
-        this.interruptChunks = [];
-        return;
-      }
-
-      // True vocal barge-in: Must exceed loud speech threshold (RMS > 1500)
-      // Normal phone line noise/echo is 600-1100 RMS; intentional speech into phone is 1600-4500 RMS.
-      if (rms > 1500) {
-        this.interruptFramesCount++;
-        this.interruptChunks.push(chunk);
-
-        // Require 7 consecutive frames (140ms) of sustained loud vocal energy to confirm intentional human speech
-        if (this.interruptFramesCount >= 7) {
-          console.log(
-            `[Barge-In] Confirmed caller interruption (RMS: ${Math.round(rms)}, sustained: ${this.interruptFramesCount} frames). Halting Priya speech.`
-          );
-
-          // Stop PBX playback immediately and cancel active synthesis, preserving speech frames
-          this.handleBargeIn(true, true);
-          this.clearDeadAirTimer();
-          this.deadAirPromptCount = 0;
-
-          // Transition captured speech frames to inbound buffer so opening words are preserved
-          this.inboundMulawChunks = [...this.interruptChunks];
-          this.speechFramesCount = this.interruptFramesCount;
-          this.interruptChunks = [];
-          this.interruptFramesCount = 0;
-
-          // Arm fallback silence timer in case caller stops after short phrase
-          if (this.silenceTimer) {
-            clearTimeout(this.silenceTimer);
-          }
-          this.silenceTimer = setTimeout(async () => {
-            await this.finalizeCallerSpeech();
-          }, 450);
-        }
-      } else {
-        // Drop echo or quiet background line noise during agent speech
-        this.interruptFramesCount = 0;
-        this.interruptChunks = [];
-      }
+    // 1. Acoustic Echo Suppression:
+    // When the agent is speaking or during the post-speech reverberation cooldown, completely
+    // suppress inbound telephony audio. On cellular carrier lines without hardware AEC,
+    // the caller phone's speakerphone/earpiece leaks the agent's voice back into the mic
+    // at RMS 2000-3500. Allowing energy-based barge-in while speaking causes the agent to
+    // self-interrupt mid-sentence, sends chopped echo to STT, and causes audio breaking.
+    if (this.isAgentSpeaking || now < this.postSpeechCooldownUntil) {
+      this.interruptFramesCount = 0;
+      this.interruptChunks = [];
+      this.inboundMulawChunks = [];
+      this.pendingSpeechChunks = [];
+      this.speechFramesCount = 0;
       return;
     }
 
-    // 2. Post-speech cooldown: Agent finished speaking, but residual echo reverberates for 250ms
-    if (now < this.postSpeechCooldownUntil && this.speechFramesCount === 0) {
-      // Drop residual acoustic reverberation / echo tail so it doesn't pollute caller audio
-      return;
-    }
-
-    // 3. Normal Speech Accumulation when agent is NOT speaking
+    // 2. Normal Speech Accumulation when agent is NOT speaking
     const isSpeech = rms > 750;
 
     if (isSpeech) {
@@ -618,7 +593,7 @@ export class VoiceSession {
     this.isSynthesizingSpeech = true;
     this.agentSpeakingStartedAt = Date.now();
     this.agentSpeakingUntil = Math.max(this.agentSpeakingUntil, Date.now() + 600);
-    this.postSpeechCooldownUntil = this.agentSpeakingUntil + 250;
+    this.postSpeechCooldownUntil = this.agentSpeakingUntil + 450;
 
     // Flush any pending audio chunks
     this.inboundMulawChunks = [];
@@ -665,7 +640,7 @@ export class VoiceSession {
         const now = Date.now();
         const currentEnd = Math.max(now, this.agentSpeakingUntil);
         this.agentSpeakingUntil = currentEnd + chunkDurationMs;
-        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 250; // 250ms echo cooldown allowing immediate caller responses
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 450; // 450ms echo cooldown allowing carrier buffer to flush cleanly
 
         this.inboundMulawChunks = [];
         this.pendingSpeechChunks = [];
@@ -704,7 +679,7 @@ export class VoiceSession {
         const currentEnd = Math.max(now, this.agentSpeakingUntil);
         this.agentSpeakingStartedAt = now;
         this.agentSpeakingUntil = currentEnd + durationMs;
-        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 250; // 250ms echo cooldown allowing immediate caller responses
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 450; // 450ms echo cooldown allowing carrier buffer to flush cleanly
 
         this.telephonyWs.send(
           JSON.stringify({
