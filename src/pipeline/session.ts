@@ -848,7 +848,8 @@ export class VoiceSession {
         this.callId,
         this.callerNumber,
         this.agentName,
-        abortSignal
+        abortSignal,
+        this.currentLanguage
       );
 
       for await (const token of tokenStream) {

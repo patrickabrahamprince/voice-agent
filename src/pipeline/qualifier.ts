@@ -120,8 +120,9 @@ export class QualificationEngine {
       }
     }
 
-    // Follow-up / Visit scheduling
-    if (text.includes('visit') || text.includes('tomorrow') || text.includes('saturday') || text.includes('sunday') || text.includes('weekend') || text.includes('am') || text.includes('pm')) {
+    // Follow-up / Visit scheduling (only if caller is not delaying or objecting)
+    const isVisitDelay = /\b(before|not yet|don't want|dont want|can't|cant|cannot|more info|details first)\b/i.test(text);
+    if (!isVisitDelay && (text.includes('visit') || text.includes('tomorrow') || text.includes('saturday') || text.includes('sunday') || text.includes('weekend') || text.includes('am') || text.includes('pm'))) {
       const timeMatch = text.match(/\b(tomorrow|saturday|sunday|weekend|morning|afternoon|evening|\d{1,2}\s*(?:am|pm))\b/gi);
       if (timeMatch) {
         this.state.followUpTime = timeMatch.join(' ');

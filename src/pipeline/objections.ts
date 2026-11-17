@@ -18,8 +18,8 @@ export const OBJECTION_SCENARIOS: ObjectionScenario[] = [
     title: 'Price is too high / ₹12,000 per sqft is expensive',
     customerObjection: 'Your price of 12,000 per sq ft is too expensive compared to other Jakkur projects.',
     underlyingConcern: 'Price-value justification, fear of overpaying compared to under-construction projects.',
-    idealResponse: 'Since Mittal Palms has full Occupancy Certificate, there is zero GST, saving you lakhs immediately, plus uninterrupted lake views. Would you like to inspect the actual apartments this weekend?',
-    strategicPrinciple: 'Offset price resistance with 0% GST savings, zero construction risk, and ready OC immediate possession.',
+    idealResponse: 'Since Mittal Palms has full Occupancy Certificate, there is zero GST, saving you 6 to 15 lakhs immediately, plus uninterrupted lake views and a 15,000 square foot clubhouse. Would you like to know more about the layouts or amenities?',
+    strategicPrinciple: 'Offset price resistance with 0% GST savings, zero construction risk, ready OC, and lakefront lifestyle. Do NOT push for a site visit prematurely.',
     keywords: ['price', 'expensive', 'costly', 'too high', 'rate is high', '12000', '12,000', 'cheaper', 'high price', 'quote is high'],
   },
   {
@@ -48,7 +48,7 @@ export const OBJECTION_SCENARIOS: ObjectionScenario[] = [
     title: 'Water supply & monsoon water logging concerns',
     customerObjection: 'Is there Cauvery water, or will there be water shortages and monsoon flooding near the lake?',
     underlyingConcern: 'Living distress from water scarcity, heavy tanker dependence, or monsoon waterlogging.',
-    idealResponse: 'We have 24/7 dual water supply with dedicated borewells recharged by Jakkur Lake alongside Cauvery pipeline infrastructure, with zero water logging due to elevated topography. Shall we show you around this weekend?',
+    idealResponse: 'We have 24/7 dual water supply with dedicated borewells recharged by Jakkur Lake alongside Cauvery pipeline infrastructure, with zero water logging due to elevated topography. Would you like to know more about our eco-friendly lakefront features?',
     strategicPrinciple: 'Turn lake proximity into a groundwater recharge asset while confirming Cauvery supply and elevated drainage.',
     keywords: ['cauvery', 'water problem', 'water shortage', 'flooding', 'water logging', 'tanker', 'monsoon', 'drainage', 'borewell'],
   },
@@ -85,12 +85,56 @@ export const OBJECTION_SCENARIOS: ObjectionScenario[] = [
   {
     id: 'whatsapp_request',
     category: 'Channel Preference',
-    title: 'Send on WhatsApp / Don’t call me',
-    customerObjection: 'Please don\'t call me right now, just send everything on WhatsApp.',
-    underlyingConcern: 'Unwanted phone intrusion or inconvenience while busy at work.',
-    idealResponse: 'I will send the brochure and floor plans to your WhatsApp right away! Are you preferring the 2 BHK or 3 BHK layout?',
-    strategicPrinciple: 'Instantly comply without friction, then ask a simple 1-question configuration qualifier to progress the lead.',
-    keywords: ['send on whatsapp', 'whatsapp me', 'dont call', "don't call", 'send details on whatsapp', 'ping me on whatsapp', 'share on whatsapp'],
+    title: 'Send on WhatsApp / Share Brochure & Floor Plans Request',
+    customerObjection: 'Can you send details/brochure on WhatsApp?',
+    underlyingConcern: 'Wants to inspect visual floor plans, layouts, and pricing on their phone without immediate pressure.',
+    idealResponse: 'Yes, absolutely! I will send the complete brochure, floor plans, and pricing directly to this number on WhatsApp right away. Are you interested in the 2 BHK or 3 BHK layout?',
+    strategicPrinciple: 'Confirm WhatsApp delivery immediately and enthusiastically to their caller ID number without asking for their phone number, then qualify configuration.',
+    keywords: [
+      'whatsapp',
+      'whats app',
+      'send on whatsapp',
+      'send it on whatsapp',
+      'share on whatsapp',
+      'brochure on whatsapp',
+      'bhej do',
+      'send brochure',
+      'share brochure',
+      'send floor plans',
+      'share floor plans',
+      'send details',
+      'share details',
+      'send photos',
+      'send images',
+      'whatsapp pe'
+    ],
+  },
+  {
+    id: 'more_info_first',
+    category: 'Information & Amenities Focus',
+    title: 'Wants property details & amenities before considering a visit',
+    customerObjection: 'I need to know more details and amenities about the property before I book a visit.',
+    underlyingConcern: 'Reluctance to commit to a site visit without knowing if the amenities, lakefront location, and project features justify the trip.',
+    idealResponse: 'Mittal Palms sits right beside Jakkur Lake with ready OC, featuring a 15,000 square foot clubhouse, rooftop swimming pool, gym, and lakefront gardens. All homes have 100 percent OC so you save 0 percent GST. Which amenities are most important for your family?',
+    strategicPrinciple: 'Never push for a visit when caller asks for details first. Build excitement around Jakkur Lakefront living, 15,000 sq ft clubhouse, pool, gym, landscaped gardens, and ready OC possession.',
+    keywords: [
+      'more info',
+      'more information',
+      'tell me more',
+      'more details',
+      'details about the property',
+      'what amenities',
+      'what are the amenities',
+      'tell me about amenities',
+      'what do you have',
+      'before i book',
+      'before booking',
+      'before visiting',
+      'before i visit',
+      'repeat that again',
+      'know more details',
+      'know more information'
+    ],
   },
   {
     id: 'resale_vs_builder',
@@ -98,7 +142,7 @@ export const OBJECTION_SCENARIOS: ObjectionScenario[] = [
     title: 'Is this resale or direct from developer?',
     customerObjection: 'Is this unit directly from the builder or a resale property?',
     underlyingConcern: 'Clarity on transfer process, condition of flat, and price transparency.',
-    idealResponse: 'These are exclusive resale units directly available with immediate possession, meaning you get a brand-new ready home with no construction delays or GST. Shall we arrange a preview walkthrough?',
+    idealResponse: 'These are exclusive ready-to-move units with immediate possession, meaning you get a brand-new ready home with no construction delays and zero GST. Would you like me to share the floor plans and layout options?',
     strategicPrinciple: 'Highlight the dual financial and peace-of-mind benefits of ready resale: zero GST and immediate possession.',
     keywords: ['resale', 'builder', 'developer', 'first owner', 'secondary sale', 'is this resale', 'from builder'],
   },
@@ -139,7 +183,7 @@ export function detectObjectionHint(utterance: string): string | null {
     if (scenario.id === 'negation_correction') continue;
     const matched = scenario.keywords.some((kw) => lower.includes(kw));
     if (matched) {
-      return `OBJECTION DETECTED (${scenario.title}): Follow principle: "${scenario.strategicPrinciple}". Model answer style: "${scenario.idealResponse}". Keep response under 25 words.`;
+      return `OBJECTION DETECTED (${scenario.title}): Follow principle: "${scenario.strategicPrinciple}". Model answer style: "${scenario.idealResponse}". Deliver a warm, helpful response in 2-3 natural sentences (~25-40 words).`;
     }
   }
 
