@@ -9,23 +9,23 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://athletes-twins-assistance-satellite.trycloudflare.com/api/:path*"
+      "destination": "https://architecture-domains-fill-carbon.trycloudflare.com/api/:path*"
     },
     {
       "source": "/incoming-call",
-      "destination": "https://athletes-twins-assistance-satellite.trycloudflare.com/incoming-call"
+      "destination": "https://architecture-domains-fill-carbon.trycloudflare.com/incoming-call"
     },
     {
       "source": "/media-stream",
-      "destination": "https://athletes-twins-assistance-satellite.trycloudflare.com/media-stream"
+      "destination": "https://architecture-domains-fill-carbon.trycloudflare.com/media-stream"
     },
     {
       "source": "/transfer-to-human",
-      "destination": "https://athletes-twins-assistance-satellite.trycloudflare.com/transfer-to-human"
+      "destination": "https://architecture-domains-fill-carbon.trycloudflare.com/transfer-to-human"
     },
     {
       "source": "/transfer-fallback",
-      "destination": "https://athletes-twins-assistance-satellite.trycloudflare.com/transfer-fallback"
+      "destination": "https://architecture-domains-fill-carbon.trycloudflare.com/transfer-fallback"
     },
     {
       "source": "/(.*)",
