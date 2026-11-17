@@ -7,7 +7,23 @@ import { createCall, updateCall, getCallerMemory, updateLeadRecording } from '..
 import { callEventsBroadcaster } from './events.js';
 import { CallAudioRecorder } from './recorder.js';
 import { semanticTurnDetector } from './turn_detector.js';
-import { isTransferIntent, transferCallToHuman } from './transfer.js';
+import { isTransferIntent, transferCallToHuman, plivoClient } from './transfer.js';
+
+function repairTelephonyTranscript(rawText: string): string {
+  if (!rawText) return '';
+  let text = rawText;
+
+  // 4 BHK misrecognitions (e.g., "FORE VHK", "for vhk", "poor wage", "four wage")
+  text = text.replace(/\b(fore|for|poor|pour|foor)\s*(vhk|vhks|wage|wages|bhk|bhks|phk)\b/gi, '4 BHK');
+
+  // 3 BHK misrecognitions
+  text = text.replace(/\b(tree|free)\s*(vhk|bhk|phk)\b/gi, '3 BHK');
+
+  // 2 BHK misrecognitions
+  text = text.replace(/\b(tool with you|tool with u|to bhk|too bhk|two vhk)\b/gi, '2 BHK');
+
+  return text;
+}
 
 export class VoiceSession {
   private telephonyWs: WebSocket;
@@ -721,51 +737,86 @@ export class VoiceSession {
     }
     this.isProcessingUtterance = true;
 
+    const cleanedText = repairTelephonyTranscript(callerText);
+
     callEventsBroadcaster.broadcast({
       type: 'caller_speech',
       streamSid: this.streamSid,
       callerNumber: this.callerNumber,
       timestamp: new Date().toISOString(),
       data: {
-        transcript: callerText,
+        transcript: cleanedText,
         callerNumber: this.callerNumber,
         elapsedSeconds: this.getElapsedSeconds(),
         elapsedSecStr: this.getElapsedSecStr(),
       },
     });
 
-    this.updateLanguageFromCaller(callerText);
+    this.updateLanguageFromCaller(cleanedText);
     const callDuration = Math.round((Date.now() - this.startTime) / 1000);
-    const lower = callerText.toLowerCase().trim();
+    const lower = cleanedText.toLowerCase().trim();
 
-    // 1. Early rejection cap: If caller says "not interested", "wrong number", "don't call" within first 20s
-    if (
-      callDuration <= 20 &&
-      (lower.includes('not interested') ||
-        lower.includes('wrong number') ||
-        lower.includes("don't call") ||
-        lower.includes('dont call') ||
-        lower.includes('not looking') ||
-        lower.includes('stop calling') ||
-        lower.includes('remove my number') ||
-        lower.includes('nahin chahiye') ||
-        lower.includes('nahi dekh'))
-    ) {
-      console.log(`[Session] Early exit trigger within ${callDuration}s: "${callerText}". Ending call immediately.`);
-      const politeExit = "I completely understand. Thank you for your time, have a wonderful day ahead. Goodbye!";
-      this.conversationHistory.push({ role: 'user', content: callerText });
-      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${callerText}`);
+    // 0. Hostile / Abusive caller filter
+    const isAbusive = /\b(fuck|bitch|bastard|asshole|idiot|dumb fuck|chutiya|madarchod|bhosdike|harami|gaand)\b/i.test(lower);
+    if (isAbusive) {
+      console.log(`[Session] Abusive language detected from caller: "${cleanedText}". Concluding call professionally.`);
+      const exitMsg = this.currentLanguage === 'hi'
+        ? "Kripya shant rahein. Hum keval Mittal Palms property ke baare mein baat kar sakte hain. Aapka din shubh rahe. Alvida."
+        : "I appreciate your time, but we maintain professional standards. Have a wonderful day ahead. Goodbye.";
+      this.conversationHistory.push({ role: 'user', content: cleanedText });
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${cleanedText}`);
+      await this.speakText(exitMsg);
+      this.conversationHistory.push({ role: 'assistant', content: exitMsg });
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${exitMsg}`);
+      this.isProcessingUtterance = false;
+      const waitMs = Math.max(1000, this.agentSpeakingUntil - Date.now() + 400);
+      setTimeout(async () => {
+        await this.closeSession('Abusive Language / Hostile Caller', 'Agent', 'ABUSIVE_CALLER');
+      }, waitMs);
+      return exitMsg;
+    }
+
+    // 1. Caller rejection / Opt-out filter (active throughout entire call)
+    const isDncOrNotInterested = (
+      lower.includes("don't call") ||
+      lower.includes("dont call") ||
+      lower.includes("never call") ||
+      lower.includes("stop calling") ||
+      lower.includes("not interested") ||
+      lower.includes("wrong number") ||
+      lower.includes("remove my number") ||
+      lower.includes("dont ever call") ||
+      lower.includes("don't ever call") ||
+      lower.includes("no need") ||
+      lower.includes("not looking") ||
+      lower.includes("nahin chahiye") ||
+      lower.includes("nahi chahiye") ||
+      lower.includes("nahi dekh") ||
+      lower.includes("mat call karo") ||
+      lower.includes("phone mat karo")
+    );
+
+    if (isDncOrNotInterested) {
+      console.log(`[Session] Caller requested opt-out / DNC at ${callDuration}s: "${cleanedText}". Ending call politely.`);
+      const politeExit = this.currentLanguage === 'hi'
+        ? "Ji bilkul, main samajh sakti hoon. Aapke samay ke liye dhanyawad, aapka din shubh rahe. Alvida!"
+        : "I completely understand. Thank you for your time, have a wonderful day ahead. Goodbye!";
+      this.conversationHistory.push({ role: 'user', content: cleanedText });
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${cleanedText}`);
       await this.speakText(politeExit);
       this.conversationHistory.push({ role: 'assistant', content: politeExit });
       this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${politeExit}`);
       this.isProcessingUtterance = false;
-      await this.closeSession('Early Rejection (Caller Not Interested)', 'Agent', 'EARLY_EXIT');
+      const waitMs = Math.max(1000, this.agentSpeakingUntil - Date.now() + 400);
+      setTimeout(async () => {
+        await this.closeSession('Caller Opt-Out (Not Interested / DNC)', 'Caller', 'OPTOUT');
+      }, waitMs);
       return politeExit;
     }
 
     // 2. Check if caller requested live human transfer
-    if (isTransferIntent(callerText)) {
-      console.log(`[Session] Caller requested human escalation: "${callerText}". Initiating transfer...`);
+    if (isTransferIntent(cleanedText)) {
+      console.log(`[Session] Caller requested human escalation: "${cleanedText}". Initiating transfer...`);
       const transferMsg = "Sure, let me connect your call to our on-site property advisor team right away. Please stay on the line.";
       this.conversationHistory.push({ role: 'assistant', content: transferMsg });
       this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${transferMsg}`);
@@ -774,15 +825,15 @@ export class VoiceSession {
         callUuid: this.callUuid || this.callSid,
         streamSid: this.streamSid,
         callerNumber: this.callerNumber,
-        reason: callerText,
+        reason: cleanedText,
       });
       this.isProcessingUtterance = false;
       await this.closeSession('Transferred to Human Property Advisor', 'Agent', 'TRANSFER');
       return transferMsg;
     }
 
-    this.conversationHistory.push({ role: 'user', content: callerText });
-    this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${callerText}`);
+    this.conversationHistory.push({ role: 'user', content: cleanedText });
+    this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${cleanedText}`);
 
     // Create AbortController for interruption support
     this.activeAbortController = new AbortController();
@@ -1033,6 +1084,22 @@ export class VoiceSession {
         elapsedSecStr: `+${durationSeconds}s`,
       },
     });
+
+    // Terminate live Plivo telephony carrier call leg if active
+    if (this.callUuid && !this.callUuid.startsWith('sim_') && !this.callUuid.startsWith('test_')) {
+      if (plivoClient) {
+        plivoClient.calls.hangup(this.callUuid).catch((err: any) => {
+          console.warn('[Session] Plivo carrier hangup notice:', err.message);
+        });
+      }
+    }
+
+    // Close the telephony WebSocket connection to free the audio socket
+    if (this.telephonyWs && this.telephonyWs.readyState === WebSocket.OPEN) {
+      try {
+        this.telephonyWs.close();
+      } catch {}
+    }
   }
 
   public getCallId(): number | null {

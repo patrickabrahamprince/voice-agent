@@ -13,7 +13,7 @@ function getPlivoClient() {
   }
 }
 
-const plivoClient = getPlivoClient();
+export const plivoClient = getPlivoClient();
 
 /**
  * Checks whether user speech expresses intent to speak with a real human agent.
