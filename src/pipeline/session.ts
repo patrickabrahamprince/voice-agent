@@ -71,11 +71,12 @@ export class VoiceSession {
       }
     });
 
-    this.telephonyWs.on('close', () => {
+    this.telephonyWs.on('close', (code: number, reason: Buffer) => {
+      console.log(`[Session] Telephony WebSocket closed. Code: ${code}, Reason: "${reason?.toString() || 'none'}"`);
       this.closeSession();
     });
 
-    this.telephonyWs.on('error', (err) => {
+    this.telephonyWs.on('error', (err: any) => {
       console.error('[Session] Telephony WebSocket error:', err);
       this.closeSession();
     });
@@ -460,14 +461,14 @@ export class VoiceSession {
     }
 
     const rms = this.getMulawRms(chunk);
-    const isSpeech = rms > 1400;
+    const isSpeech = rms > 750;
 
     if (isSpeech) {
       this.speechFramesCount++;
       this.pendingSpeechChunks.push(chunk);
 
-      // Accumulate audio once real speech persists for >160ms (8 frames)
-      if (this.speechFramesCount >= 8) {
+      // Accumulate audio once real speech persists for >100ms (5 frames)
+      if (this.speechFramesCount >= 5) {
         if (this.pendingSpeechChunks.length > 0) {
           this.inboundMulawChunks.push(...this.pendingSpeechChunks);
           this.pendingSpeechChunks = [];
@@ -556,7 +557,7 @@ export class VoiceSession {
         const now = Date.now();
         const currentEnd = Math.max(now, this.agentSpeakingUntil);
         this.agentSpeakingUntil = currentEnd + chunkDurationMs;
-        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 800; // 800ms echo cooldown to prevent voice overlap
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 250; // 250ms echo cooldown allowing immediate caller responses
 
         this.inboundMulawChunks = [];
         this.pendingSpeechChunks = [];
@@ -593,7 +594,7 @@ export class VoiceSession {
         const currentEnd = Math.max(now, this.agentSpeakingUntil);
         this.agentSpeakingStartedAt = now;
         this.agentSpeakingUntil = currentEnd + durationMs;
-        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 800; // 800ms echo cooldown to prevent voice overlap
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 250; // 250ms echo cooldown allowing immediate caller responses
 
         this.telephonyWs.send(
           JSON.stringify({

@@ -36,7 +36,12 @@ CORE RULES:
 6. HESITATION / HMMM: If caller hesitates or says "hmm", warmly prompt: "Yes, please go ahead! Are you exploring two or three BHK?" (or in Hindi: "Ji, batayein! Aap do ya teen BHK dekh rahe hain?").
 7. OBJECTIONS: Reframe price with 100% OC + 0% GST savings. If far, highlight Manyata (6.5 km) & Airport road. If low budget, share floor plans for loan review.
 8. HUMAN AGENT ESCALATION: If caller explicitly asks to speak to a real person, human, executive, manager, or team (e.g. "talk to a human", "connect to real person", "transfer call", "executive se baat"):
-Reply: "[TRANSFER_TO_HUMAN] Of course! Connecting you directly to our on-site team. Please stay on the line." (In Hindi: "[TRANSFER_TO_HUMAN] Ji bilkul! Main aapki call hamari team se connect kar rahi hoon. Kripya line par bane rahein.")`;
+Reply: "[TRANSFER_TO_HUMAN] Of course! Connecting you directly to our on-site team. Please stay on the line." (In Hindi: "[TRANSFER_TO_HUMAN] Ji bilkul! Main aapki call hamari team se connect kar rahi hoon. Kripya line par bane rahein.")
+9. INBOUND CALLER NUMBER & SITE VISIT CONFIRMATION:
+- This is an INBOUND phone call. You ALREADY have the caller's phone number from caller ID.
+- NEVER ask the caller "What is your phone number?" or "May I have your number?".
+- When the caller provides their name or agrees to a visit time, warmly confirm:
+"Thank you [Name]! Your visit is confirmed for [Day/Time]. We'll send the location and brochure to this number on WhatsApp. Looking forward to meeting you!"`;
 
 /**
  * NOTE: qualify_and_sync_lead is handled by QualificationEngine.syncLeadRecord(),
@@ -291,15 +296,16 @@ export class LLMPipeline {
     let memoryContextBlock = '';
     if (callerPhone) {
       const memory = getCallerMemory(callerPhone);
-      if (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there') {
-        memoryContextBlock = `
+      const callerNameLine = memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there'
+        ? `- Known Contact Name: ${memory.existingLead.callerName}\n- STRICT RULE: Do NOT state or assume the caller's budget or configuration. Always ask the caller what they are looking for today.`
+        : `- Note: Inbound caller ID is already captured (${callerPhone}). NEVER ask the caller for their phone number.`;
+
+      memoryContextBlock = `
 ========================================================================
 BACKGROUND REFERENCE CONTEXT (INTERNAL ADVISOR NOTES ONLY - NEVER ASSUME OR DECLARE TO CALLER):
-- Caller Phone: ${memory.phoneNumber}
-- Known Contact Name: ${memory.existingLead.callerName}
-- STRICT RULE: Do NOT state or assume the caller's budget or configuration. Always ask the caller what they are looking for today.
+- Caller Phone: ${memory.phoneNumber || callerPhone}
+${callerNameLine}
 ========================================================================`;
-      }
     }
 
     let coachingDirectiveBlock = '';
