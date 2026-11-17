@@ -195,8 +195,10 @@ app.post('/api/auth/logout', async (request: FastifyRequest, reply) => {
  * Helper to determine canonical public WebSocket streaming URL
  */
 function getCanonicalStreamUrl(reqHost?: string, isTls?: boolean): string {
+  // If request comes through a public tunnel or external domain, always use that host directly so WebSocket matches the webhook
+  const isReqHostPublic = reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1') && !reqHost.startsWith('192.168.') && !reqHost.startsWith('10.') && !reqHost.startsWith('172.');
   const publicDomain = process.env.PUBLIC_DOMAIN?.trim();
-  let domain = publicDomain || reqHost || HOST;
+  let domain = isReqHostPublic ? reqHost : (publicDomain || reqHost || HOST);
   domain = domain.replace(/^https?:\/\//i, '').replace(/^wss?:\/\//i, '').replace(/\/$/, '');
   const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
   const protocol = !isLocal || isTls ? 'wss' : 'ws';
