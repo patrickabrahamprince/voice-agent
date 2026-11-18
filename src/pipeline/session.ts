@@ -441,6 +441,7 @@ export class VoiceSession {
     // Discard noises under 0.25s
     const durationSec = fullAudio.length / 8000;
     if (durationSec < 0.25) {
+      this.armDeadAirTimer();
       return;
     }
 
@@ -451,6 +452,7 @@ export class VoiceSession {
       const transcript = (rawTranscript || '').trim();
 
       if (!transcript || transcript.length < 2) {
+        this.armDeadAirTimer();
         return;
       }
 
@@ -466,6 +468,7 @@ export class VoiceSession {
 
       if (turnDecision.shouldIgnore) {
         console.log(`[TurnDetector] Ignoring non-turn sound/hallucination: "${combined}"`);
+        this.armDeadAirTimer();
         return;
       }
 
@@ -485,6 +488,7 @@ export class VoiceSession {
             const words = utterance.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
             if (words.length <= 1 && !STANDALONE_VALID_ANSWERS.has(words[0]) && !words[0]?.includes('bhk') && !/^\d+$/.test(words[0])) {
               console.log(`[TurnDetector Safety Timer] Dropping isolated noise artifact: "${utterance}"`);
+              this.armDeadAirTimer();
               return;
             }
 
@@ -507,6 +511,9 @@ export class VoiceSession {
       console.warn('[Session] STT processing notice:', err.message);
     } finally {
       this.isProcessingSTT = false;
+      if (!this.isProcessingUtterance && !this.isAgentSpeaking && !this.deadAirTimer) {
+        this.armDeadAirTimer();
+      }
     }
   }
 
@@ -591,9 +598,9 @@ export class VoiceSession {
         this.silenceTimer = null;
       }
 
-      // Conversational silence debounce: 380-450ms
+      // Conversational silence debounce: 320-380ms for responsive snappy turn-taking
       const currentSpeechDuration = this.inboundMulawChunks.length / 8000;
-      const debounceMs = currentSpeechDuration > 1.0 ? 380 : 450;
+      const debounceMs = currentSpeechDuration > 0.8 ? 320 : 380;
 
       this.silenceTimer = setTimeout(async () => {
         if (this.isAgentSpeaking || this.isSynthesizingSpeech) {
@@ -614,6 +621,9 @@ export class VoiceSession {
       } else {
         this.speechFramesCount = 0;
         this.pendingSpeechChunks = [];
+        if (!this.deadAirTimer && !this.isAgentSpeaking && !this.isProcessingUtterance && !this.isProcessingSTT) {
+          this.armDeadAirTimer();
+        }
       }
     }
   }
@@ -926,7 +936,7 @@ export class VoiceSession {
 
   /**
    * Arms a dead-air re-engagement timer to prevent awkward silence or abandoned calls.
-   * Prompts the caller if they remain silent for >7 seconds after agent finishes speaking.
+   * Prompts the caller if they remain silent for >5 seconds after agent finishes speaking.
    */
   private armDeadAirTimer(): void {
     this.clearDeadAirTimer();
@@ -934,7 +944,7 @@ export class VoiceSession {
 
     // Calculate when the agent will actually finish speaking on the PBX
     const timeUntilAgentDone = Math.max(0, this.agentSpeakingUntil - Date.now());
-    const silenceTimeoutMs = timeUntilAgentDone + 7000; // 7 seconds after agent finishes speaking
+    const silenceTimeoutMs = timeUntilAgentDone + 5000; // 5.0 seconds after agent finishes speaking
 
     this.deadAirTimer = setTimeout(async () => {
       if (
@@ -945,6 +955,9 @@ export class VoiceSession {
         this.inboundMulawChunks.length > 0 ||
         this.speechFramesCount > 0
       ) {
+        if (!this.isClosed && !this.isAgentSpeaking && !this.isProcessingUtterance) {
+          this.armDeadAirTimer();
+        }
         return;
       }
 
