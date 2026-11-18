@@ -1,0 +1,24 @@
+name: 24/7 Voice AI Cloud Keep-Alive
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free instance from cold-sleeping (idle timeout is 15 mins)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Voice AI Backend
+        run: |
+          echo "Pinging Render backend at https://mittal-palms-voice-agent.onrender.com/health..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://mittal-palms-voice-agent.onrender.com/health)
+          echo "HTTP Status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Warning: Render health check returned HTTP $STATUS, retrying..."
+            sleep 5
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://mittal-palms-voice-agent.onrender.com/health)
+            echo "Retry HTTP Status: $STATUS"
+          fi
+          test "$STATUS" -eq 200
