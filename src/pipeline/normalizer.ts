@@ -78,8 +78,10 @@ export function normalizeRealEstateText(text: string): string {
 
   let normalized = text;
 
-  // 1. Remove Markdown characters and formatting
+  // 1. Remove Markdown characters, formatting, and parenthetical meta directions
   normalized = normalized
+    .replace(/\([^)]*\)/g, '')       // strip parenthetical stage directions like (pause), (chuckle)
+    .replace(/\[[^\]]*\]/g, '')       // strip bracketed stage directions like [pause]
     .replace(/\*\*(.*?)\*\*/g, '$1') // bold
     .replace(/\*(.*?)\*/g, '$1')     // italic
     .replace(/__(.*?)__/g, '$1')     // underline
@@ -95,10 +97,10 @@ export function normalizeRealEstateText(text: string): string {
     .replace(/\bRs\.?\s*/gi, '')
     .replace(/\bINR\s*/gi, '');
 
-  // 3. Indian Crores Normalization: (e.g., "1.5 Cr", "2 Crores", "3cr")
+  // 3. Indian Crores Normalization: (e.g., "1.5 Cr", "2 Crores", "3cr", "1.70 to 1.95 crore rupees")
   // -> "one point five crore rupees"
   normalized = normalized.replace(
-    /\b(\d+(\.\d+)?)\s*(?:cr|crore|crores)\b/gi,
+    /\b(\d+(\.\d+)?)\s*(?:cr|crore|crores)(?:\s*rupees)?\b/gi,
     (_, num) => {
       const spokenNum = formatDecimalOrNumber(num);
       return `${spokenNum} crore rupees`;
@@ -108,12 +110,15 @@ export function normalizeRealEstateText(text: string): string {
   // 4. Indian Lakhs Normalization: (e.g., "85L", "75 Lakhs", "90 lacs")
   // -> "eighty-five lakh rupees"
   normalized = normalized.replace(
-    /\b(\d+(\.\d+)?)\s*(?:l|lakh|lakhs|lac|lacs)\b/gi,
+    /\b(\d+(\.\d+)?)\s*(?:l|lakh|lakhs|lac|lacs)(?:\s*rupees)?\b/gi,
     (_, num) => {
       const spokenNum = formatDecimalOrNumber(num);
       return `${spokenNum} lakh rupees`;
     }
   );
+
+  // Clean any duplicated "rupees rupees"
+  normalized = normalized.replace(/\brupees\s+rupees\b/gi, 'rupees');
 
   // 5. BHK Normalization: (e.g., "2 bhk", "3BHK", "4 BHKs")
   // -> "2 B H K"
