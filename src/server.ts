@@ -6,7 +6,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import fastifyFormbody from '@fastify/formbody';
 import { WebSocket } from 'ws';
 import { VoiceSession } from './pipeline/session.js';
-import { getCalls, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory, deleteAllCalls, deleteAllLeads, deleteAllData, updateCallHangup } from './tools/db.js';
+import { getCalls, getCallById, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory, deleteAllCalls, deleteAllLeads, deleteAllData, updateCallHangup, updateCallRecordingByUuid } from './tools/db.js';
 import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech, prewarmTtsCache } from './pipeline/tts.js';
 import { clearQualifier, llmPipeline } from './pipeline/llm.js';
@@ -234,6 +234,7 @@ app.get('/health', async (request: FastifyRequest, reply: FastifyReply) => {
  */
 app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) => {
   const isTls = request.headers['x-forwarded-proto'] === 'https';
+  const publicDomain = process.env.PUBLIC_DOMAIN || (request.headers['x-forwarded-host'] as string) || request.headers.host || HOST;
   const streamUrl = getCanonicalStreamUrl(request.headers.host, isTls);
 
   const body = (request.body || {}) as any;
@@ -268,12 +269,16 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
   // Plivo incoming call is accepted. The live media session will connect to /media-stream WebSocket,
   // where VoiceSession will handle real-time audio and broadcast call_started when caller connects.
   
-  // Trigger Plivo carrier-grade call recording as secondary backup
+  // Trigger Plivo carrier-grade call recording as permanent backup
   const plivoConfig = getPlivoConfig();
   if (plivoConfig.authId && plivoConfig.authToken && callUuid && !callUuid.startsWith('sim_')) {
     try {
       const client = new plivo.Client(plivoConfig.authId, plivoConfig.authToken);
-      client.calls.record(callUuid, { fileFormat: 'mp3' }).catch((err: any) => {
+      client.calls.record(callUuid, {
+        fileFormat: 'mp3',
+        callbackUrl: `https://${publicDomain}/recording-callback`,
+        callbackMethod: 'POST',
+      }).catch((err: any) => {
         app.log.warn({ err: err.message }, '[Plivo] Carrier record initiation notice');
       });
     } catch {}
@@ -286,6 +291,44 @@ app.all('/incoming-call', async (request: FastifyRequest, reply: FastifyReply) =
   const xml = buildStreamResponse(streamUrlWithCaller);
   reply.header('Content-Type', 'text/xml');
   return reply.code(200).send(xml);
+});
+
+/**
+ * 1c. Carrier Recording Callback: ALL /recording-callback
+ * Plivo invokes this webhook as soon as carrier-grade audio MP3 is finalized and ready.
+ * Saves the permanent CDN URL directly to the call and lead records in SQLite.
+ */
+app.all('/recording-callback', async (request: FastifyRequest, reply: FastifyReply) => {
+  const body = (request.body || {}) as any;
+  const query = (request.query || {}) as any;
+
+  const recordingUrl = body.RecordUrl || body.recording_url || body.RecordingUrl || query.RecordUrl || query.recording_url || query.RecordingUrl || '';
+  const callUuid = body.CallUUID || body.call_uuid || query.CallUUID || query.call_uuid || '';
+  const duration = parseInt(body.RecordingDuration || body.recording_duration || query.RecordingDuration || '0', 10);
+
+  console.log(`\n============================================================`);
+  console.log(`🎙️ [Plivo Carrier Recording Ready Callback]`);
+  console.log(`   Call UUID:     ${callUuid}`);
+  console.log(`   Recording URL: ${recordingUrl}`);
+  console.log(`   Duration:      ${duration}s`);
+  console.log(`============================================================\n`);
+
+  if (callUuid && recordingUrl) {
+    updateCallRecordingByUuid(callUuid, recordingUrl);
+    callEventsBroadcaster.broadcast({
+      type: 'call_recording_ready',
+      streamSid: '',
+      callerNumber: '',
+      timestamp: new Date().toISOString(),
+      data: {
+        callUuid,
+        recordingUrl,
+        durationSeconds: duration,
+      },
+    });
+  }
+
+  return reply.code(200).send({ status: 'ok', callUuid, recordingUrl });
 });
 
 /**
@@ -317,6 +360,20 @@ app.all('/hangup', async (request: FastifyRequest, reply: FastifyReply) => {
 
   if (callUuid) {
     updateCallHangup(callUuid, hangupSource, hangupCause, hangupCauseCode, duration);
+
+    // Secondary check: query Plivo API for recording if callback hasn't arrived yet
+    const plivoConfig = getPlivoConfig();
+    if (plivoConfig.authId && plivoConfig.authToken && !callUuid.startsWith('sim_')) {
+      setTimeout(async () => {
+        try {
+          const client = new plivo.Client(plivoConfig.authId, plivoConfig.authToken);
+          const list: any = await client.recordings.list({ callUuid });
+          if (list && list.length > 0 && list[0].recordingUrl) {
+            updateCallRecordingByUuid(callUuid, list[0].recordingUrl);
+          }
+        } catch {}
+      }, 4000);
+    }
   }
 
   callEventsBroadcaster.broadcast({
@@ -340,49 +397,94 @@ app.all('/hangup', async (request: FastifyRequest, reply: FastifyReply) => {
 /**
  * API: Stream Call Audio Recording: GET /api/calls/:id/audio
  * Delivers full call WAV recording with HTTP range support for immediate browser review and playback.
+ * Automatically falls back to permanent Plivo carrier CDN MP3 if local WAV is missing.
  */
 app.get('/api/calls/:id/audio', async (request: FastifyRequest<{ Params: { id: string }; Querystring: { download?: string } }>, reply: FastifyReply) => {
-  const callId = request.params.id;
+  const callId = parseInt(request.params.id, 10);
   const isDownload = request.query?.download === '1' || request.query?.download === 'true';
   const recordingsDir = path.resolve(process.cwd(), 'data', 'recordings');
   const filePath = path.join(recordingsDir, `call_${callId}.wav`);
 
-  if (!fs.existsSync(filePath)) {
-    return reply.code(404).send({ error: `Audio recording not found for call #${callId}` });
+  // 1. If local mixed WAV file exists on disk, stream directly
+  if (fs.existsSync(filePath)) {
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = request.headers.range;
+
+    const disposition = isDownload ? 'attachment' : 'inline';
+    reply.header('Content-Disposition', `${disposition}; filename="call_${callId}.wav"`);
+    reply.header('Access-Control-Allow-Origin', '*');
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+      const fileStream = fs.createReadStream(filePath, { start, end });
+
+      reply.raw.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': 'audio/wav',
+        'Content-Disposition': `${disposition}; filename="call_${callId}.wav"`,
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*',
+      });
+      return reply.send(fileStream);
+    }
+
+    reply.header('Content-Type', 'audio/wav');
+    reply.header('Content-Length', fileSize);
+    reply.header('Accept-Ranges', 'bytes');
+    reply.header('Cache-Control', 'public, max-age=86400');
+    return reply.send(fs.createReadStream(filePath));
   }
 
-  const stat = fs.statSync(filePath);
-  const fileSize = stat.size;
-  const range = request.headers.range;
-
-  const disposition = isDownload ? 'attachment' : 'inline';
-  reply.header('Content-Disposition', `${disposition}; filename="call_${callId}.wav"`);
-  reply.header('Access-Control-Allow-Origin', '*');
-
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    const chunkSize = end - start + 1;
-    const fileStream = fs.createReadStream(filePath, { start, end });
-
-    reply.raw.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunkSize,
-      'Content-Type': 'audio/wav',
-      'Content-Disposition': `${disposition}; filename="call_${callId}.wav"`,
-      'Cache-Control': 'public, max-age=86400',
-      'Access-Control-Allow-Origin': '*',
-    });
-    return reply.send(fileStream);
+  // 2. Local WAV not on disk (e.g. after container redeploy). Look up database for remote carrier recording URL!
+  const call = getCallById(callId);
+  if (call?.recording_url && call.recording_url.startsWith('http')) {
+    if (isDownload) {
+      try {
+        const audioRes = await fetch(call.recording_url);
+        if (audioRes.ok && audioRes.body) {
+          reply.header('Content-Type', audioRes.headers.get('content-type') || 'audio/mpeg');
+          reply.header('Content-Disposition', `attachment; filename="call_${callId}.mp3"`);
+          reply.header('Access-Control-Allow-Origin', '*');
+          return reply.send(Buffer.from(await audioRes.arrayBuffer()));
+        }
+      } catch {}
+    }
+    return reply.redirect(call.recording_url);
   }
 
-  reply.header('Content-Type', 'audio/wav');
-  reply.header('Content-Length', fileSize);
-  reply.header('Accept-Ranges', 'bytes');
-  reply.header('Cache-Control', 'public, max-age=86400');
-  return reply.send(fs.createReadStream(filePath));
+  // 3. Fallback: Query Plivo API directly for this call's recording if not yet attached in DB
+  const plivoConfig = getPlivoConfig();
+  if (plivoConfig.authId && plivoConfig.authToken && (call?.stream_sid || call?.call_uuid)) {
+    try {
+      const client = new plivo.Client(plivoConfig.authId, plivoConfig.authToken);
+      const uuid = call.call_uuid || call.stream_sid;
+      const list: any = await client.recordings.list({ callUuid: uuid });
+      if (list && list.length > 0 && list[0].recordingUrl) {
+        updateCallRecordingByUuid(uuid, list[0].recordingUrl);
+        return reply.redirect(list[0].recordingUrl);
+      }
+    } catch {}
+  }
+
+  return reply.code(404).send({ error: `Audio recording not found for call #${callId}` });
+});
+
+/**
+ * API: Get Single Call Details (including Full Turn-by-Turn Transcript): GET /api/calls/:id
+ */
+app.get('/api/calls/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  const callId = parseInt(request.params.id, 10);
+  const call = getCallById(callId);
+  if (!call) {
+    return reply.code(404).send({ error: `Call #${callId} not found` });
+  }
+  return call;
 });
 
 /**

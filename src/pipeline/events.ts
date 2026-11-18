@@ -8,6 +8,7 @@ export type CallEventType =
   | 'lead_update'
   | 'call_transferred'
   | 'call_hangup'
+  | 'call_recording_ready'
   | 'call_ended';
 
 export interface LiveCallEvent {

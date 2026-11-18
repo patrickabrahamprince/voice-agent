@@ -7,6 +7,7 @@ export interface CallRecord {
   stream_sid: string;
   caller_number: string;
   caller_name?: string;
+  call_uuid?: string;
   duration_seconds: number;
   full_transcript: string;
   summary: string;
@@ -167,6 +168,9 @@ export function initDatabase(): void {
     try {
       sqliteDb.exec("ALTER TABLE calls ADD COLUMN hangup_cause_code TEXT DEFAULT '4000'");
     } catch { }
+    try {
+      sqliteDb.exec("ALTER TABLE calls ADD COLUMN call_uuid TEXT DEFAULT ''");
+    } catch { }
   } catch (err) {
     console.warn('initDatabase exec error:', err);
   }
@@ -176,13 +180,13 @@ export function initDatabase(): void {
 initDatabase();
 
 // Call operations
-export function createCall(streamSid: string, callerNumber: string): number {
+export function createCall(streamSid: string, callerNumber: string, callUuid: string = ''): number {
   const db = requireDb();
   const stmt = db.prepare(`
-    INSERT INTO calls (stream_sid, caller_number, created_at)
-    VALUES (?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO calls (stream_sid, caller_number, call_uuid, created_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
   `);
-  const result = stmt.run(streamSid, callerNumber);
+  const result = stmt.run(streamSid, callerNumber, callUuid);
   return Number(result.lastInsertRowid);
 }
 
@@ -254,6 +258,28 @@ export function updateLeadRecording(callId: number, recordingUrl: string): void 
     stmt.run(recordingUrl, callId);
   } catch (err) {
     console.warn('[DB] Could not update lead recording_url:', err);
+  }
+}
+
+export function updateCallRecordingByUuid(callUuid: string, recordingUrl: string): void {
+  if (!sqliteDb || !callUuid || !recordingUrl) return;
+  try {
+    const updateCallStmt = sqliteDb.prepare(`
+      UPDATE calls
+      SET recording_url = ?
+      WHERE stream_sid = ? OR call_uuid = ?
+    `);
+    updateCallStmt.run(recordingUrl, callUuid, callUuid);
+
+    const updateLeadStmt = sqliteDb.prepare(`
+      UPDATE leads
+      SET recording_url = ?
+      WHERE call_id IN (SELECT id FROM calls WHERE stream_sid = ? OR call_uuid = ?)
+    `);
+    updateLeadStmt.run(recordingUrl, callUuid, callUuid);
+    console.log(`[DB] Successfully linked recording URL for Call UUID ${callUuid} -> ${recordingUrl}`);
+  } catch (err: any) {
+    console.warn('[DB] Could not update recording by UUID:', err.message);
   }
 }
 

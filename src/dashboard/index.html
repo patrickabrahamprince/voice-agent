@@ -1356,6 +1356,28 @@
     </div>
   </div>
 
+  <!-- Call Full Dialogue Transcript Modal -->
+  <div id="transcript-modal" style="display:none; position:fixed; inset:0; z-index:99998; background:rgba(15, 23, 42, 0.72); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; box-sizing:border-box;" onclick="if(event.target===this)closeTranscriptModal()">
+    <div style="background:#FFFFFF; width:100%; max-width:680px; max-height:85vh; border-radius:18px; box-shadow:0 25px 50px -12px rgba(15, 23, 42, 0.35); overflow:hidden; display:flex; flex-direction:column; animation:modalPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; background:var(--bg-secondary);">
+        <div>
+          <div id="transcript-modal-title" style="font-size:15px; font-weight:700; color:var(--text-primary);">Call Transcript</div>
+          <div id="transcript-modal-subtitle" style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button onclick="copyTranscriptText()" class="btn-refresh" style="font-size:12px; padding:6px 12px; cursor:pointer;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Copy
+          </button>
+          <button onclick="closeTranscriptModal()" class="btn-refresh" style="font-size:12px; padding:6px 12px; cursor:pointer;">✕ Close</button>
+        </div>
+      </div>
+      <div id="transcript-modal-body" style="padding:20px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:12px; background:#F8FAFC;">
+        <!-- Transcript conversation bubbles inserted here -->
+      </div>
+    </div>
+  </div>
+
   <!-- Top Navigation Header -->
   <header class="app-header">
     <div class="header-inner">
@@ -2171,6 +2193,8 @@
     let activeAudio = null;
     let selectedNeuralVoiceId = 'ishita';
     let allLeadsData = [];
+    let allCallsData = [];
+    let currentModalTranscriptText = '';
     let activeLeadFilter = 'all';
     let clientDialogueHistory = [];
 
@@ -2751,6 +2775,121 @@
       setTimeout(() => {
         try { document.body.removeChild(link); } catch (_) {}
       }, 1500);
+    }
+
+    async function openTranscriptModal(callId) {
+      const modal = document.getElementById('transcript-modal');
+      const title = document.getElementById('transcript-modal-title');
+      const subtitle = document.getElementById('transcript-modal-subtitle');
+      const body = document.getElementById('transcript-modal-body');
+      if (!modal || !body) return;
+
+      modal.style.display = 'flex';
+      body.innerHTML = '<div style="text-align:center; padding:32px; color:var(--text-muted); font-size:13px;">Loading transcript...</div>';
+
+      let call = (allCallsData || []).find(c => c.id === callId);
+      if (!call) {
+        try {
+          const res = await fetch(`/api/calls/${callId}`);
+          if (res.ok) call = await res.json();
+        } catch (e) {}
+      }
+
+      if (!call) {
+        body.innerHTML = '<div style="text-align:center; padding:32px; color:#DC2626; font-size:13px;">Call record not found.</div>';
+        return;
+      }
+
+      if (title) title.innerText = `Call #${call.id} Transcript • ${call.caller_name || 'Caller'}`;
+      if (subtitle) subtitle.innerHTML = `${escapeHtml(call.caller_number || '')} • ${formatCallTime(call.created_at)} • Duration: ${call.duration_seconds || 0}s`;
+
+      const transcript = call.full_transcript || '';
+      currentModalTranscriptText = transcript;
+
+      if (!transcript.trim()) {
+        body.innerHTML = '<div style="text-align:center; padding:32px; color:var(--text-muted); font-size:13px;">No dialogue transcript recorded for this call yet.</div>';
+        return;
+      }
+
+      const lines = transcript.split('\n').filter(l => l.trim());
+      const bubblesHtml = lines.map(line => {
+        const timeMatch = line.match(/^\[\+?([0-9.]+s?)\]\s*(.*)$/);
+        const timeStr = timeMatch ? timeMatch[1] : '';
+        const rest = timeMatch ? timeMatch[2] : line;
+
+        if (rest.includes('⚡ [Barge-In]')) {
+          return `<div style="align-self:center; background:#FEF3C7; border:1px solid #FCD34D; color:#92400E; font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:12px; margin:4px 0;">⚡ Customer interrupted agent speech (${timeStr})</div>`;
+        }
+        if (rest.includes('🏁 Call Concluded')) {
+          return `<div style="align-self:center; background:#F1F5F9; border:1px solid #E2E8F0; color:#475569; font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:12px; margin:4px 0;">🏁 ${escapeHtml(rest)}</div>`;
+        }
+
+        const isPriya = rest.startsWith('Priya:');
+        const isCaller = rest.startsWith('Caller:');
+        const speaker = isPriya ? 'Priya' : (isCaller ? 'Caller' : '');
+        const messageText = speaker ? rest.substring(speaker.length + 1).trim() : rest;
+
+        if (isPriya) {
+          return `
+            <div style="align-self:flex-start; max-width:82%; margin-bottom:6px;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                <span style="font-size:11px; font-weight:700; color:#2563EB;">Priya (Advisor)</span>
+                ${timeStr ? `<span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted);">${timeStr}</span>` : ''}
+              </div>
+              <div style="background:#EFF6FF; border:1px solid #BFDBFE; color:#1E3A8A; padding:10px 14px; border-radius:12px 12px 12px 2px; font-size:13.5px; line-height:1.45;">
+                ${escapeHtml(messageText)}
+              </div>
+            </div>
+          `;
+        } else {
+          return `
+            <div style="align-self:flex-end; max-width:82%; margin-bottom:6px; display:flex; flex-direction:column; align-items:flex-end;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                ${timeStr ? `<span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted);">${timeStr}</span>` : ''}
+                <span style="font-size:11px; font-weight:700; color:#475569;">Customer</span>
+              </div>
+              <div style="background:#FFFFFF; border:1px solid #CBD5E1; color:#0F172A; padding:10px 14px; border-radius:12px 12px 2px 12px; font-size:13.5px; line-height:1.45; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                ${escapeHtml(messageText)}
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+
+      const audioBar = call.recording_url ? `
+        <div style="background:#FFFFFF; border:1px solid var(--border-color); border-radius:10px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="18" height="18" fill="none" stroke="#2563EB" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+            <span style="font-size:12.5px; font-weight:600; color:var(--text-primary);">Audio Recording Available</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn-play-recording" onclick="playCallAudio('${call.recording_url}', this)">
+              <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <span>Play Audio</span>
+            </button>
+            <a href="${call.recording_url}?download=1" onclick="downloadCallAudio('${call.recording_url}', 'call_${call.id}.wav', event)" class="btn-refresh" style="font-size:11px; padding:4px 8px; text-decoration:none; cursor:pointer;">
+              Download
+            </a>
+          </div>
+        </div>
+      ` : '';
+
+      body.innerHTML = audioBar + bubblesHtml;
+      body.scrollTop = 0;
+    }
+
+    function closeTranscriptModal() {
+      const modal = document.getElementById('transcript-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function copyTranscriptText() {
+      if (!currentModalTranscriptText) return;
+      navigator.clipboard.writeText(currentModalTranscriptText).then(() => {
+        alert('Full call transcript copied to clipboard!');
+      }).catch(() => {
+        prompt('Copy transcript:', currentModalTranscriptText);
+      });
     }
 
     const renderedLiveBubbleKeys = new Set();
@@ -3679,6 +3818,7 @@
         const learnings = Array.isArray(learningsRaw) ? learningsRaw : [];
 
         allLeadsData = leads || [];
+        allCallsData = calls || [];
 
         // Update KPIs
         const totalCallsEl = document.getElementById('stat-total-calls');
@@ -3736,7 +3876,17 @@
                   ${c.hangup_cause ? `<span style="font-size: 10px; opacity: 0.85;">(${escapeHtml(c.hangup_cause)})</span>` : ''}
                 </div>
               </td>
-              <td style="color: var(--text-secondary); font-size: 13px;">${escapeHtml(c.summary || 'In progress')}</td>
+              <td>
+                <div style="color: var(--text-secondary); font-size: 13px; line-height: 1.4;">${escapeHtml(c.summary || 'In progress')}</div>
+                ${c.full_transcript ? `
+                  <div style="margin-top: 6px;">
+                    <button class="btn-refresh" onclick="openTranscriptModal(${c.id})" style="font-size: 11px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--accent-blue); border-color: #BFDBFE; background: #EFF6FF;">
+                      <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                      <span>View Transcript</span>
+                    </button>
+                  </div>
+                ` : ''}
+              </td>
             </tr>
           `).join('');
         };
@@ -3835,7 +3985,15 @@
               <div style="font-size: 12.5px; font-weight: 600; color: ${isBad ? 'var(--accent-rose)' : 'var(--accent-emerald)'};">
                 ${l.status || (isBad ? 'Filtered Out' : 'Qualified Lead')}
               </div>
-              ${l.summary ? `<div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">${l.summary}</div>` : ''}
+              ${l.summary ? `<div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(l.summary)}</div>` : ''}
+              ${l.call_id ? `
+                <div style="margin-top: 5px;">
+                  <button class="btn-refresh" onclick="openTranscriptModal(${l.call_id})" style="font-size: 10.5px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--accent-blue); border-color: #BFDBFE; background: #EFF6FF;">
+                    <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                    <span>Transcript</span>
+                  </button>
+                </div>
+              ` : ''}
             </td>
           </tr>
         `;

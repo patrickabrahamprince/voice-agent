@@ -129,7 +129,7 @@ export class VoiceSession {
         console.log(`[Session] Call started. StreamSid: ${this.streamSid}, Caller: ${this.callerNumber}`);
 
         // Register in local SQLite database
-        this.callId = createCall(this.streamSid, this.callerNumber);
+        this.callId = createCall(this.streamSid, this.callerNumber, this.callUuid);
 
         // Start full-duplex call audio recording
         this.recorder = new CallAudioRecorder(this.callId, this.startTime);
