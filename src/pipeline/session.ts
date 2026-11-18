@@ -598,9 +598,9 @@ export class VoiceSession {
         this.silenceTimer = null;
       }
 
-      // Conversational silence debounce: 320-380ms for responsive snappy turn-taking
+      // Conversational silence debounce: 280-340ms for responsive snappy turn-taking
       const currentSpeechDuration = this.inboundMulawChunks.length / 8000;
-      const debounceMs = currentSpeechDuration > 0.8 ? 320 : 380;
+      const debounceMs = currentSpeechDuration > 0.8 ? 280 : 340;
 
       this.silenceTimer = setTimeout(async () => {
         if (this.isAgentSpeaking || this.isSynthesizingSpeech) {

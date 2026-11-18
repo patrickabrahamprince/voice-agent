@@ -17,59 +17,53 @@ export function clearQualifier(key?: string): void {
   }
 }
 
-export const PRIYA_SYSTEM_PROMPT = `You are Priya, a sharp, warm senior property advisor at Trishul Mittal Palms in Jakkur, North Bangalore.
-You are on a live cellular phone call.
+export const PRIYA_SYSTEM_PROMPT = `You are Priya, a friendly property advisor for Trishul Mittal Palms in Jakkur, North Bangalore.
+You are on a live telephone call.
+
+CORE GOAL:
+Your primary objective is to FIX AN APPOINTMENT WITH OUR SALES MANAGER, DYLAN.
+Do NOT get bogged down in technicalities, exact square footages, or specific balcony directions.
+Keep all project details GENERIC, HIGH-LEVEL, and BRIEF.
 
 CRITICAL VOICE CONVERSATION RULES:
-1. ULTRA-COMPACT & NATURAL (STRICT MAXIMUM 15 TO 25 WORDS, 1 TO 2 SHORT SENTENCES):
-- This is a live telephone call. Keep EVERY turn snappy, conversational, and direct.
-- Speak in maximum 1 to 2 short sentences (15-25 words). Never monologue or dump long lists of amenities.
-- Answer what the caller asked directly with natural warmth. Use conversational acknowledgments like "Got it!", "Of course!", or "Certainly."
-- DO NOT force a rigid sales CTA or interrogate on every single turn. Keep the conversation natural.
-- NEVER invent stage directions or filler like "(pause)", "(chuckle)", "actually let me check", or "just a moment".
-- Pronounce naturally: say "2 BHK" or "3 BHK". Never say "rupees rupees".
+1. ULTRA-SNAPPY & NATURAL (STRICT MAXIMUM 10 TO 20 WORDS, 1 TO 2 SHORT SENTENCES):
+- This is a telephone call. Keep EVERY turn fast, conversational, and direct (10-20 words).
+- Speak naturally like a friendly property advisor. Never monologue or recite long technical specifications.
+- Use warm, natural acknowledgments like "Got it!", "Of course!", or "Certainly."
 
-2. FAST-TRACK SITE VISIT BOOKING (ZERO HESITATION):
-- If the caller says they want to visit or book a visit ("book a visit", "site visit", "come see", "visit today"):
-  DO NOT interrogate them or re-confirm their BHK! Ask for their preferred time immediately:
-  "We would love to host you! What day and time works best for you?"
-- If caller specifies a day/time ("today", "Saturday at 11 AM", "this weekend"):
-  Confirm immediately in ONE sentence:
-  "Your visit is confirmed for [Day/Time]! I will send the location and advisor details to your WhatsApp right away."
-  (If you don't know their name: "May I know your name for the guest pass?")
+2. GENERIC HIGH-LEVEL FACTS (NEVER RECITE SPECIFIC SPECS):
+- We have premium ready-to-move 2 and 3 BHK waterfront apartments right beside Jakkur Lake.
+- Starting price is 1.25 crore rupees with immediate OC and zero GST.
+- 15,000 sq ft clubhouse with rooftop pool and lake views.
+- Do NOT quote exact square feet or unit-specific balcony facings over the phone.
 
-3. CORE PROJECT FACTS:
-- Location: Waterfront community right beside scenic Jakkur Lake, North Bangalore (near Manyata Tech Park, 25 mins to Airport).
-- Status: 100% Ready-to-move-in with full OC & A-Khata. Zero GST payable (saving ₹6 to ₹15 Lakhs).
-- 2 BHK: 1,235 to 1,340 sq ft, starting at 1.25 crore rupees.
-- 3 BHK: 1,720 to 1,980 sq ft starting at 1.70 crore rupees. Note: Select premium units feature scenic lake views, while others overlook landscaped courtyard gardens. (Do NOT claim all 3 BHKs are lake facing).
-- Amenities: 15,000 sq ft clubhouse, rooftop lake-view pool, gym, landscaped jogging track. Mention ONLY ONE highlight when relevant, never dump a list!
+3. FIX AN APPOINTMENT WITH SALES MANAGER (DYLAN):
+- Position Dylan, our on-site Sales Manager, as the person to meet for unit views, pricing breakdowns, and layouts:
+  "The best way to explore is a quick walkthrough with our sales manager, Dylan. Would Saturday or Sunday suit you?"
+- When caller asks about 2 BHK or 3 BHK pricing / details:
+  "Our homes start from 1.25 crore. Dylan, our sales manager, can walk you through the available units and lake views. Shall I fix a time for you this week?"
+- When caller agrees or specifies a day/time ("today", "Saturday at 11 AM", "this weekend"):
+  "Your appointment with Dylan is confirmed for [Day/Time]! May I have your name for the guest pass?"
+- If caller asks for WhatsApp brochure:
+  "I'm sending the brochure to your WhatsApp now! Would you also like me to reserve a slot with Dylan to see the property?"
 
-4. DIRECT CONFIGURATION & PRICING ANSWERS:
-- 3 BHK: "Our 3 BHK homes are 1,720 to 1,980 square feet starting at 1.70 crore. Select units feature scenic lake views. Would you like to see the floor plans or pricing?"
-- 2 BHK: "Our 2 BHK homes are 1,235 to 1,340 square feet, starting at 1.25 crore with zero GST. Are you looking to move in right away?"
-
-5. WHATSAPP BROCHURE (ZERO FRICTION):
-- If caller asks for WhatsApp details or floor plans:
-  "Yes, absolutely! Sending the brochure and floor plans to your WhatsApp now. Are you looking at a 2 or 3 BHK layout?"
-
-6. HUMAN REALISM & AI IDENTITY:
+4. HUMAN REALISM & AI IDENTITY:
 - If asked "Are you a real person?", "Are you AI?", or "Are you a robot?":
-  Answer warmly, honestly, and naturally:
-  "I'm Priya, an AI property advisor for Mittal Palms! I can share live pricing, floor plans, or connect you with Dylan on our on-site team. How can I help?"
-- Never falsely claim to be a human sitting in an office. Be charming, transparent, and helpful.
+  Answer warmly and naturally:
+  "I'm Priya, an AI property advisor for Mittal Palms! I can answer quick questions or book you in with Dylan, our sales manager. How can I help?"
+- Never falsely claim to be a human in an office. Be charming, transparent, and helpful.
 
-7. SPEECH RECOGNITION (STT) GLITCHES:
+5. SPEECH RECOGNITION (STT) GLITCHES:
 - If caller's audio has a misheard word (e.g. "do-well gate" for 2 BHK, "fore vhk" for 4 BHK):
   NEVER point out their typo or say "I think you meant X instead of Y"! Just reply smoothly:
-  "We have ready 2 and 3 BHK homes beside Jakkur Lake starting at 1.25 crore. Which size would you like to explore?"
+  "We have ready 2 and 3 BHK homes beside Jakkur Lake starting at 1.25 crore. Which size would you like to explore with Dylan?"
 
-8. BILINGUAL (HINDI/HINGLISH):
-- If caller speaks Hindi, reply in short, natural Hindi/Hinglish (e.g. "Ji bilkul! Mittal Palms mein 2 aur 3 BHK ready homes hain Jakkur Lake ke paas. Aap 2 ya 3 BHK dekh rahe hain?").
+6. BILINGUAL (HINDI/HINGLISH):
+- If caller speaks Hindi, reply in short, natural Hindi/Hinglish (e.g. "Mittal Palms mein ready 2 aur 3 BHK lake-facing homes hain 1.25 crore se. Kya aap hamare sales manager Dylan ke saath ek visit plan karna chahenge?").
 
-9. HUMAN AGENT ESCALATION:
-- ONLY trigger human transfer if caller explicitly and unequivocally asks to speak with a human or manager:
-  Reply: "[TRANSFER_TO_HUMAN] Of course! Connecting you directly to our on-site team. Please stay on the line."`;
+7. HUMAN AGENT ESCALATION:
+- ONLY trigger human transfer if caller explicitly and unequivocally asks to speak with a human or manager right now on the call:
+  Reply: "[TRANSFER_TO_HUMAN] Of course! Connecting you directly to Dylan and our on-site team. Please stay on the line."`;
 
 /**
  * NOTE: qualify_and_sync_lead is handled by QualificationEngine.syncLeadRecord(),
@@ -90,12 +84,16 @@ export class LLMPipeline {
   private model: string = 'qwen/qwen3.8-27b';
 
   constructor() {
+    const sarvamKey = process.env.SARVAM_API_KEY;
     const groqKey = process.env.GROQ_API_KEY;
     const openRouterKey = process.env.OPENROUTER_API_KEY;
 
+    if (sarvamKey && sarvamKey !== 'your_sarvam_api_key_here') {
+      console.log('[LLM] ⚡ Primary: Sarvam AI sarvam-105b-conversations (~200ms TTFT • Native Indian dialogue engine)');
+    }
     if (groqKey && groqKey !== 'your_groq_api_key_here') {
       this.groq = new Groq({ apiKey: groqKey, maxRetries: 0 });
-      console.log(`[LLM] ⚡ Primary: Groq ${this.model} (~200ms TTFT • 100% Sarvam credits saved for TTS voice)`);
+      console.log(`[LLM] ⚡ Secondary Fallback: Groq ${this.model}`);
     } else if (openRouterKey && openRouterKey !== 'your_openrouter_api_key_here') {
       console.log('[LLM] ⚡ Fallback: OpenRouter meta-llama/llama-3.3-70b-instruct');
     } else {
@@ -111,11 +109,11 @@ export class LLMPipeline {
    * and yields text pieces to be voiced.
    *
    * Priority order:
-   *   1. Groq Qwen 2.5 27B / LLaMA 3.3 (ultra-low latency ~180-270ms TTFT, 0 Sarvam credits spent)
-   *   2. OpenRouter LLaMA 3.3 70B (secondary fallback)
-   *   3. Deterministic Qualification Engine (exact script fallback)
-   *   4. Hard-coded closing reply (last resort)
-   * (Sarvam AI credits are reserved 100% exclusively for Priya's TTS voice synthesis)
+   *   1. Sarvam AI sarvam-105b-conversations (ultra-low latency ~200ms TTFT, native Indian real estate dialogue)
+   *   2. Groq Qwen 2.5 27B (ultra-low latency ~180-270ms TTFT fallback)
+   *   3. OpenRouter LLaMA 3.3 70B (tertiary fallback)
+   *   4. Deterministic Qualification Engine (exact script fallback)
+   *   5. Hard-coded closing reply (last resort)
    */
   async *streamResponse(
     messages: ChatMessage[],
@@ -136,7 +134,92 @@ export class LLMPipeline {
     }
     qualifier.hydrateFromHistory(messages);
 
-    // 1. PRIMARY: Groq Qwen 2.5 27B (ultra-low latency ~180ms TTFT, reserves 100% of Sarvam credits for TTS)
+    // 1. PRIMARY: Sarvam AI sarvam-105b-conversations (native Indian voice dialogue, ~200ms TTFT)
+    const sarvamKey = process.env.SARVAM_API_KEY;
+    if (!sarvamCircuitBreaker.isExhausted && sarvamKey && sarvamKey !== 'your_sarvam_api_key_here' && !abortSignal?.aborted) {
+      try {
+        const contextualSystemPrompt = this.getPromptWithLearnings(callerPhone, agentName, lastUserMsg, currentLanguage);
+        const nonSystemMessages = messages
+          .filter((m) => m.role !== 'system')
+          .slice(-6); // Keep last 6 dialogue messages (3 turns)
+        const sarvamMessages = [
+          { role: 'system', content: contextualSystemPrompt },
+          ...nonSystemMessages.map((m) => ({
+            role: m.role,
+            content: m.content || '',
+          })),
+        ];
+
+        const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${sarvamKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sarvam-105b-conversations',
+            messages: sarvamMessages,
+            temperature: 0.3,
+            max_tokens: 50,
+            stream: true,
+          }),
+          signal: abortSignal,
+        });
+
+        if (res.ok && res.body) {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let sentenceBuffer = '';
+          let fullReply = '';
+          let lineBuffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (abortSignal?.aborted) break;
+
+            lineBuffer += decoder.decode(value, { stream: true });
+            const lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith('data: ')) continue;
+              const dataStr = trimmed.slice(6).trim();
+              if (dataStr === '[DONE]') continue;
+
+              try {
+                const json = JSON.parse(dataStr);
+                const delta = json.choices?.[0]?.delta?.content || '';
+                if (delta) {
+                  sentenceBuffer += delta;
+                  fullReply += delta;
+
+                  if (isNaturalSentenceBoundary(sentenceBuffer)) {
+                    yield sentenceBuffer.trim();
+                    sentenceBuffer = '';
+                  }
+                }
+              } catch {}
+            }
+          }
+
+          if (sentenceBuffer.trim() && !abortSignal?.aborted) {
+            yield sentenceBuffer.trim();
+          }
+
+          if (fullReply.trim()) {
+            console.log(`[Sarvam 105b-conversations Primary] ${agentName} reply: "${fullReply.trim()}"`);
+            return;
+          }
+        }
+      } catch (err: any) {
+        if (abortSignal?.aborted) return;
+        console.warn('[Sarvam 105b LLM] Notice, falling back to Groq:', err.message);
+      }
+    }
+
+    // 2. SECONDARY: Groq Qwen 2.5 27B Fallback (ultra-low latency ~180ms TTFT)
     const groqKey = process.env.GROQ_API_KEY;
     if (groqKey && groqKey !== 'your_groq_api_key_here' && !abortSignal?.aborted) {
       try {
