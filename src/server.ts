@@ -13,6 +13,7 @@ import { clearQualifier, llmPipeline } from './pipeline/llm.js';
 import { sarvamCircuitBreaker } from './pipeline/circuit_breaker.js';
 import { verifyPlivoSignature, buildStreamResponse, logInboundCall, getPlivoConfig } from './telephony/plivo.js';
 import plivo from 'plivo';
+import { plivoClient } from './pipeline/transfer.js';
 import { callEventsBroadcaster, LiveCallEvent } from './pipeline/events.js';
 import { OBJECTION_SCENARIOS } from './pipeline/objections.js';
 
@@ -551,11 +552,9 @@ app.get('/api/calls', async () => {
   }
 
   // If local SQLite is empty on Render container restart, backfill recent calls from Plivo
-  const plivoConfig = getPlivoConfig();
-  if (plivoConfig.authId && plivoConfig.authToken) {
+  if (plivoClient) {
     try {
-      const client = new plivo.Client(plivoConfig.authId, plivoConfig.authToken);
-      const remoteCalls = await client.calls.list({ limit: 15 });
+      const remoteCalls = await plivoClient.calls.list({ limit: 15 });
       for (const rc of ((remoteCalls as any) || [])) {
         if (!rc.callUuid) continue;
         const callUuid = rc.callUuid;
