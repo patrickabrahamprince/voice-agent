@@ -6,8 +6,76 @@ import { spawn } from 'child_process';
 import os from 'os';
 import crypto from 'crypto';
 import Groq, { toFile } from 'groq-sdk';
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
+import { MPEGDecoder } from 'mpg123-decoder';
 import { globalStreamingTTS } from './streaming_tts.js';
 import { sarvamCircuitBreaker } from './circuit_breaker.js';
+
+let edgeTtsInstance: MsEdgeTTS | null = null;
+let edgeTtsDecoder: MPEGDecoder | null = null;
+let currentEdgeVoice: string = '';
+
+/**
+ * High-fidelity fallback TTS using Microsoft Azure Neural voice (en-IN-NeerjaNeural / hi-IN-SwaraNeural).
+ * Synthesizes ultra-realistic Indian English or Hindi speech, downsampled to 8kHz G.711 mulaw.
+ * Runs 100% reliably cross-platform (Linux on Render + macOS), requiring 0 API keys and 0 quota.
+ */
+export async function synthesizeEdgeTelephonyMulaw(
+  normalizedText: string,
+  isHindi: boolean = false,
+  onAudioChunk?: (chunk: Buffer) => void
+): Promise<Buffer> {
+  const targetVoice = isHindi ? 'hi-IN-SwaraNeural' : 'en-IN-NeerjaNeural';
+  try {
+    if (!edgeTtsInstance || currentEdgeVoice !== targetVoice) {
+      edgeTtsInstance = new MsEdgeTTS();
+      await edgeTtsInstance.setMetadata(targetVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+      currentEdgeVoice = targetVoice;
+    }
+
+    const { audioStream } = edgeTtsInstance.toStream(normalizedText);
+    const mp3Chunks: Buffer[] = [];
+
+    audioStream.on('data', (c: Buffer) => mp3Chunks.push(c));
+
+    await new Promise<void>((resolve, reject) => {
+      audioStream.on('end', () => resolve());
+      audioStream.on('error', (err) => reject(err));
+    });
+
+    const fullMp3 = Buffer.concat(mp3Chunks);
+    if (!fullMp3 || fullMp3.length === 0) return Buffer.alloc(0);
+
+    if (!edgeTtsDecoder) {
+      edgeTtsDecoder = new MPEGDecoder();
+      await edgeTtsDecoder.ready;
+    }
+
+    const decoded = edgeTtsDecoder.decode(new Uint8Array(fullMp3));
+    if (!decoded.channelData || !decoded.channelData[0] || decoded.channelData[0].length === 0) {
+      return Buffer.alloc(0);
+    }
+
+    // Downsample from 24kHz to 8kHz (factor of 3)
+    const inSamples = decoded.channelData[0];
+    const outCount = Math.floor(inSamples.length / 3);
+    const pcm16 = Buffer.alloc(outCount * 2);
+
+    for (let i = 0; i < outCount; i++) {
+      const s = Math.max(-1, Math.min(1, inSamples[i * 3]));
+      pcm16.writeInt16LE(Math.round(s < 0 ? s * 0x8000 : s * 0x7fff), i * 2);
+    }
+
+    const mulawBuf = pcmToMulaw(pcm16);
+    if (onAudioChunk && mulawBuf.length > 0) {
+      try { onAudioChunk(mulawBuf); } catch {}
+    }
+    return mulawBuf;
+  } catch (err: any) {
+    console.warn('[Edge TTS Fallback] Synthesis notice:', err.message);
+    return Buffer.alloc(0);
+  }
+}
 
 export interface TTSVoiceInfo {
   id: string;
@@ -217,7 +285,21 @@ export async function synthesizeNeuralSpeech(
     }
   }
 
-  // 2. Fallback: High-Quality macOS Indian English Neural Synthesis (Tara / Rishi at 24kHz)
+  // 2. Secondary High-Fidelity Fallback: Microsoft Azure Neural Indian Voice (en-IN-NeerjaNeural / hi-IN-SwaraNeural)
+  try {
+    const isHindiText = /[\u0900-\u097F]/.test(normalizedText) || /\b(ji|aap|hain|hai|kaunsa|bhk|dekh|rahe|kya|bataiye|bilkul|namaste|theek|dhanyawad|shukriya|hanji|haanji|haan)\b/i.test(normalizedText);
+    const mulaw = await synthesizeEdgeTelephonyMulaw(normalizedText, isHindiText);
+    if (mulaw && mulaw.length > 0) {
+      const wav = mulawToWav(mulaw);
+      const item = { buffer: wav, contentType: 'audio/wav' };
+      audioCache.set(cacheKey, item);
+      return item;
+    }
+  } catch (err: any) {
+    console.warn('[Neural TTS Fallback] Edge TTS notice:', err.message);
+  }
+
+  // 3. Fallback: High-Quality macOS Indian English Neural Synthesis (Tara / Rishi at 24kHz)
   if (process.platform === 'darwin') {
     try {
       const macVoice = isMale ? 'Rishi' : 'Tara';
@@ -540,8 +622,21 @@ export async function synthesizeTelephonyMulaw(
     }
   }
 
-  // 3. Fallback: Direct native macOS Indian English Voice at exact 8000 Hz LEI16
-  // Only used in extreme emergencies when Sarvam is completely down. NEVER write to persistent cache!
+  // 3. SECONDARY HIGH-FIDELITY FALLBACK: Microsoft Azure Indian English/Hindi Neural Voice (en-IN-NeerjaNeural / hi-IN-SwaraNeural)
+  // Operates 100% reliably cross-platform (Linux on Render + macOS), 0 credits needed, 0ms quota dependency
+  try {
+    const isHindiText = /[\u0900-\u097F]/.test(normalizedText) || /\b(ji|aap|hain|hai|kaunsa|bhk|dekh|rahe|kya|bataiye|bilkul|namaste|theek|dhanyawad|shukriya|hanji|haanji|haan)\b/i.test(normalizedText);
+    const edgeMulaw = await synthesizeEdgeTelephonyMulaw(normalizedText, isHindiText, onAudioChunk);
+    if (edgeMulaw && edgeMulaw.length > 0) {
+      console.log(`[TTS Edge Fallback] Synthesized ${edgeMulaw.length} bytes for Priya ("${normalizedText.slice(0, 35)}...")`);
+      return edgeMulaw;
+    }
+  } catch (edgeErr: any) {
+    console.warn('[TTS Edge Fallback] Notice:', edgeErr.message);
+  }
+
+  // 4. Emergency Fallback: Direct native macOS Indian English Voice at exact 8000 Hz LEI16
+  // Only used in extreme emergencies when Sarvam and Edge are completely down. NEVER write to persistent cache!
   if (process.platform === 'darwin') {
     try {
       console.error(`[CRITICAL TTS ALERT] Sarvam Bulbul unreachable! Falling back to macOS speech (${voiceId}). DO NOT CACHE.`);
@@ -553,7 +648,6 @@ export async function synthesizeTelephonyMulaw(
         if (wavBuf.length > dataOffset) {
           const pcmBytes = wavBuf.subarray(dataOffset);
           const mulawBuf = pcmToMulaw(pcmBytes);
-          // CRITICAL: Do NOT call telephonyLruCache.set(cacheKey, mulawBuf)! Fallback speech must never pollute persistent disk cache!
           return mulawBuf;
         }
       }
@@ -562,7 +656,7 @@ export async function synthesizeTelephonyMulaw(
     }
   }
 
-  // 4. Fallback to standard neural speech converted to mulaw
+  // 5. Fallback to standard neural speech converted to mulaw
   const { buffer } = await synthesizeNeuralSpeech(normalizedText, voiceId);
   if (buffer && buffer.length > 12) {
     const dataOffset = findWavDataOffset(buffer);

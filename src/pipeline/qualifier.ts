@@ -136,7 +136,7 @@ export class QualificationEngine {
     }
   }
 
-  public async syncLeadRecord(): Promise<void> {
+  public async syncLeadRecord(recordingUrl?: string, transcript?: string): Promise<void> {
     try {
       await sheetsService.qualifyAndSyncLead({
         call_id: this.state.callId,
@@ -151,6 +151,8 @@ export class QualificationEngine {
         lead_quality: this.state.leadQuality || 'Good Lead',
         lead_status: this.state.followUpTime ? 'Good Lead - Visit Scheduled' : 'In Discussion',
         qualification_reason: this.state.qualificationReason || 'Trishul Mittal Palms inquiry with Priya',
+        recording_url: recordingUrl,
+        transcript: transcript,
       });
     } catch (err: any) {
       console.warn('[Qualifier] Lead sync notice:', err.message);

@@ -134,6 +134,18 @@ export class VoiceSession {
         // Start full-duplex call audio recording
         this.recorder = new CallAudioRecorder(this.callId, this.startTime);
 
+        // Trigger Plivo carrier-grade call recording as permanent backup
+        if (this.callUuid && !this.callUuid.startsWith('sim_') && !this.callUuid.startsWith('test_') && plivoClient) {
+          const publicDomain = process.env.PUBLIC_DOMAIN || 'mittal-palms-voice-agent.onrender.com';
+          plivoClient.calls.record(this.callUuid, {
+            fileFormat: 'mp3',
+            callbackUrl: `https://${publicDomain}/recording-callback`,
+            callbackMethod: 'POST',
+          }).catch((err: any) => {
+            console.warn('[Plivo Carrier Record] Initiation notice:', err.message);
+          });
+        }
+
         // Preload memory context into conversation system prompt
         this.conversationHistory = [
           {
@@ -876,8 +888,11 @@ export class VoiceSession {
       for await (const token of tokenStream) {
         if (abortSignal.aborted) break;
 
-        sentenceBuffer += token;
-        fullResponse += token;
+        const tokenToAdd = (fullResponse && !fullResponse.endsWith(' ') && !/^[\s,.:;?!]/.test(token))
+          ? ` ${token}`
+          : token;
+        sentenceBuffer += tokenToAdd;
+        fullResponse += tokenToAdd;
 
         // Check for natural sentence boundaries (. ? ! or newline) protecting decimals like 1.25
         if (isNaturalSentenceBoundary(sentenceBuffer)) {
@@ -1085,6 +1100,15 @@ export class VoiceSession {
         );
         console.log(`[Database] Call record #${this.callId} updated with summary: "${finalSummary}"`);
         await llmPipeline.extractAndStoreLearnings(this.callId, fullTranscript);
+
+        // Sync lead with recording and full turn-by-turn transcript to Google Sheets
+        const qualifierKey = `${this.callId ?? 'sim'}:${this.callerNumber}`;
+        const qualifier = activeQualifiers.get(qualifierKey);
+        if (qualifier) {
+          qualifier.syncLeadRecord(recordingUrl, fullTranscript).catch((e: any) => {
+            console.warn('[Session] Post-call lead sync notice:', e.message);
+          });
+        }
       } catch (err) {
         console.error('[Session] Error finalizing call audit record:', err);
       }

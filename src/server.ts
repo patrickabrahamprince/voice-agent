@@ -6,7 +6,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import fastifyFormbody from '@fastify/formbody';
 import { WebSocket } from 'ws';
 import { VoiceSession } from './pipeline/session.js';
-import { getCalls, getCallById, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory, deleteAllCalls, deleteAllLeads, deleteAllData, updateCallHangup, updateCallRecordingByUuid } from './tools/db.js';
+import { getCalls, getCallById, getLeads, getLeadStats, exportLeadsToCsv, getRecentLearnings, getCallerMemory, deleteAllCalls, deleteAllLeads, deleteAllData, updateCallHangup, updateCallRecordingByUuid, createCall, updateCall } from './tools/db.js';
 import { sheetsService } from './tools/sheets.js';
 import { AVAILABLE_FEMALE_VOICES, synthesizeNeuralSpeech, prewarmTtsCache } from './pipeline/tts.js';
 import { clearQualifier, llmPipeline } from './pipeline/llm.js';
@@ -545,7 +545,41 @@ app.all('/transfer-fallback', async (request: FastifyRequest, reply: FastifyRepl
  * API: Get recent calls
  */
 app.get('/api/calls', async () => {
-  return getCalls(50);
+  const localCalls = getCalls(50);
+  if (localCalls && localCalls.length > 0) {
+    return localCalls;
+  }
+
+  // If local SQLite is empty on Render container restart, backfill recent calls from Plivo
+  const plivoConfig = getPlivoConfig();
+  if (plivoConfig.authId && plivoConfig.authToken) {
+    try {
+      const client = new plivo.Client(plivoConfig.authId, plivoConfig.authToken);
+      const remoteCalls = await client.calls.list({ limit: 15 });
+      for (const rc of ((remoteCalls as any) || [])) {
+        if (!rc.callUuid) continue;
+        const callUuid = rc.callUuid;
+        const callerPhone = rc.fromNumber || '+91-XXXXXXXXXX';
+        const durationSec = parseInt(rc.callDuration || '0', 10);
+        const id = createCall(`plivo_${callUuid.slice(0, 8)}`, callerPhone, callUuid);
+        updateCall(
+          id,
+          durationSec,
+          `Inbound telephony call from ${callerPhone} to line 080 6434 8409.`,
+          `Call answered on line 080 6434 8409. Duration: ${durationSec}s.`,
+          `/api/calls/${id}/audio`,
+          'Carrier',
+          rc.hangupCause || 'Normal Clearing',
+          '4000'
+        );
+      }
+      return getCalls(50);
+    } catch (e: any) {
+      app.log.warn({ err: e.message }, 'Notice during Plivo call history backfill');
+    }
+  }
+
+  return [];
 });
 
 /**

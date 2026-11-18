@@ -15,6 +15,8 @@ const EXPECTED_HEADERS = [
   'Status',
   'Qualification Reason',
   'Registered Lead Email',
+  'Recording URL',
+  'Call Transcript',
 ];
 
 export interface QualifyLeadParams {
@@ -32,6 +34,8 @@ export interface QualifyLeadParams {
   summary?: string;
   lead_email?: string;
   call_id?: number | null;
+  recording_url?: string;
+  transcript?: string;
 }
 
 class GoogleSheetsService {
@@ -158,11 +162,13 @@ class GoogleSheetsService {
           params.lead_status,
           params.qualification_reason || params.summary || '',
           leadEmail,
+          params.recording_url || '',
+          params.transcript || '',
         ];
 
         await this.sheetsClient.spreadsheets.values.append({
           spreadsheetId: this.sheetId,
-          range: 'A:M',
+          range: 'A:O',
           valueInputOption: 'USER_ENTERED',
           insertDataOption: 'INSERT_ROWS',
           requestBody: {

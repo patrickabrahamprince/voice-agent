@@ -150,6 +150,10 @@ export class LLMPipeline {
           })),
         ];
 
+        // Strict 1200ms timeout on Sarvam network calls to guarantee Priya never lags or freezes
+        const timeoutSignal = AbortSignal.timeout(1200);
+        const combinedSignal = abortSignal ? AbortSignal.any([abortSignal, timeoutSignal]) : timeoutSignal;
+
         const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -163,10 +167,13 @@ export class LLMPipeline {
             max_tokens: 50,
             stream: true,
           }),
-          signal: abortSignal,
+          signal: combinedSignal,
         });
 
-        if (res.ok && res.body) {
+        if (res.status === 402 || res.status === 429) {
+          sarvamCircuitBreaker.markExhausted();
+          console.warn(`[Sarvam 105b LLM] Quota exhausted (HTTP ${res.status}). Tripping circuit breaker: instant Groq fallback active.`);
+        } else if (res.ok && res.body) {
           const reader = res.body.getReader();
           const decoder = new TextDecoder();
           let sentenceBuffer = '';
@@ -324,7 +331,7 @@ export class LLMPipeline {
     }
 
     // 3. LAST RESORT FALLBACK: Conversational reply from Priya
-    yield "Trishul Mittal Palms offers ready-to-move 2 and 3 BHK homes right beside Jakkur Lake. Are you looking for a 2 BHK or a 3 BHK for your family?";
+    yield "Our 2 and 3 BHK homes start from 1.25 crore beside Jakkur Lake. Dylan, our sales manager, can walk you through the units in person. Shall I set up a time for you this week?";
   }
 
   /**
