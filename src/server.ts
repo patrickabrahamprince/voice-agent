@@ -510,7 +510,7 @@ app.all('/transfer-to-human', async (request: FastifyRequest, reply: FastifyRepl
   const query = (request.query || {}) as any;
   const body = (request.body || {}) as any;
   const targetPhone = query.target || body.target || process.env.HUMAN_ADVISOR_PHONE || '+919738397933';
-  const publicDomain = process.env.PUBLIC_DOMAIN || 'knowaeo.com';
+  const publicDomain = process.env.PUBLIC_DOMAIN || process.env.RENDER_EXTERNAL_HOSTNAME || 'mittal-palms-voice-agent.onrender.com';
 
   app.log.info({ targetPhone }, '[Telephony] Generating Plivo transfer XML to human agent');
 
@@ -1272,6 +1272,21 @@ async function startServer() {
 
     // Pre-warm top 25 real estate phrases in background
     prewarmTtsCache().catch((err) => console.warn('[TTS] Cache prewarming notice:', err.message));
+
+    // Keep Render web service warm (Render free tier spins down after 15m inactivity, causing busy tones on incoming calls)
+    const keepAliveHost = process.env.RENDER_EXTERNAL_HOSTNAME || (process.env.PUBLIC_DOMAIN && !process.env.PUBLIC_DOMAIN.includes('localhost') ? process.env.PUBLIC_DOMAIN : 'mittal-palms-voice-agent.onrender.com');
+    if (keepAliveHost && !keepAliveHost.includes('localhost') && !keepAliveHost.includes('127.0.0.1')) {
+      const pingUrl = `https://${keepAliveHost}/health`;
+      console.log(`[KeepAlive] Starting Render keep-alive ping loop to ${pingUrl} every 4 minutes`);
+      setInterval(async () => {
+        try {
+          const res = await fetch(pingUrl, { signal: AbortSignal.timeout(6000) });
+          console.log(`[KeepAlive] Render health ping -> ${res.status}`);
+        } catch (err: any) {
+          console.warn(`[KeepAlive] Ping failed: ${err.message}`);
+        }
+      }, 240000); // 4 minutes
+    }
   } catch (err) {
     app.log.error(err);
     process.exit(1);

@@ -850,18 +850,21 @@ export class VoiceSession {
     // 2. Check if caller requested live human transfer
     if (isTransferIntent(cleanedText)) {
       console.log(`[Session] Caller requested human escalation: "${cleanedText}". Initiating transfer...`);
-      const transferMsg = "Sure, let me connect your call to our on-site property advisor team right away. Please stay on the line.";
+      const transferMsg = "Sure, let me connect your call to Dylan and our on-site team right away. Please stay on the line.";
       this.conversationHistory.push({ role: 'assistant', content: transferMsg });
       this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${transferMsg}`);
       await this.speakText(transferMsg);
-      await transferCallToHuman({
-        callUuid: this.callUuid || this.callSid,
-        streamSid: this.streamSid,
-        callerNumber: this.callerNumber,
-        reason: cleanedText,
-      });
+      const waitMs = Math.max(1200, this.agentSpeakingUntil - Date.now() + 300);
+      setTimeout(async () => {
+        await transferCallToHuman({
+          callUuid: this.callUuid || this.callSid,
+          streamSid: this.streamSid,
+          callerNumber: this.callerNumber,
+          reason: cleanedText,
+        });
+        await this.closeSession('Transferred to Human Property Advisor', 'Agent', 'TRANSFER');
+      }, waitMs);
       this.isProcessingUtterance = false;
-      await this.closeSession('Transferred to Human Property Advisor', 'Agent', 'TRANSFER');
       return transferMsg;
     }
 
@@ -896,19 +899,42 @@ export class VoiceSession {
 
         // Check for natural sentence boundaries (. ? ! or newline) protecting decimals like 1.25
         if (isNaturalSentenceBoundary(sentenceBuffer)) {
-          await this.speakText(sentenceBuffer.trim());
+          const cleanSentence = sentenceBuffer.replace(/\[TRANSFER_TO_HUMAN\]/gi, '').trim();
+          if (cleanSentence.length > 0) {
+            await this.speakText(cleanSentence);
+          }
           sentenceBuffer = '';
         }
       }
 
       // Flush any remaining text in buffer
-      if (sentenceBuffer.trim().length > 0 && !abortSignal.aborted) {
-        await this.speakText(sentenceBuffer.trim());
+      const cleanRemaining = sentenceBuffer.replace(/\[TRANSFER_TO_HUMAN\]/gi, '').trim();
+      if (cleanRemaining.length > 0 && !abortSignal.aborted) {
+        await this.speakText(cleanRemaining);
       }
 
-      if (fullResponse.trim()) {
-        this.conversationHistory.push({ role: 'assistant', content: fullResponse.trim() });
-        this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${fullResponse.trim()}`);
+      const isTransfer = fullResponse.includes('[TRANSFER_TO_HUMAN]');
+      const cleanResponse = fullResponse.replace(/\[TRANSFER_TO_HUMAN\]/gi, '').trim();
+
+      if (cleanResponse) {
+        this.conversationHistory.push({ role: 'assistant', content: cleanResponse });
+        this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${cleanResponse}`);
+      }
+
+      // If the LLM triggered live human escalation, execute carrier transfer
+      if (isTransfer) {
+        console.log(`[Session] LLM response triggered [TRANSFER_TO_HUMAN]. Initiating carrier transfer to Dylan...`);
+        const waitMs = Math.max(1200, this.agentSpeakingUntil - Date.now() + 300);
+        setTimeout(async () => {
+          await transferCallToHuman({
+            callUuid: this.callUuid || this.callSid,
+            streamSid: this.streamSid,
+            callerNumber: this.callerNumber,
+            reason: cleanedText,
+          });
+          await this.closeSession('Transferred to Human Property Advisor', 'Agent', 'TRANSFER');
+        }, waitMs);
+        return cleanResponse;
       }
 
       // Broadcast dynamic lead updates extracted so far from QualificationEngine
@@ -1134,9 +1160,9 @@ export class VoiceSession {
       },
     });
 
-    // Terminate live Plivo telephony carrier call leg if active
+    // Terminate live Plivo telephony carrier call leg if active (never hang up during a carrier transfer)
     if (this.callUuid && !this.callUuid.startsWith('sim_') && !this.callUuid.startsWith('test_')) {
-      if (plivoClient) {
+      if (plivoClient && this.hangupCauseCode !== 'TRANSFER') {
         plivoClient.calls.hangup(this.callUuid).catch((err: any) => {
           console.warn('[Session] Plivo carrier hangup notice:', err.message);
         });
