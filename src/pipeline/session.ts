@@ -8,6 +8,7 @@ import { callEventsBroadcaster } from './events.js';
 import { CallAudioRecorder } from './recorder.js';
 import { semanticTurnDetector, STANDALONE_VALID_ANSWERS } from './turn_detector.js';
 import { isTransferIntent, transferCallToHuman, plivoClient } from './transfer.js';
+import { ScriptEngine, getScriptGreeting } from './script_engine.js';
 
 function repairTelephonyTranscript(rawText: string): string {
   if (!rawText) return '';
@@ -57,8 +58,9 @@ export class VoiceSession {
 
   private currentContextId: string = '';
   private activeAbortController: AbortController | null = null;
-  private agentName: string = 'Priya';
+  private agentName: string = 'Nisha Prasad';
   private agentVoice: string = 'ishita';
+  private scriptEngine: ScriptEngine = new ScriptEngine('Eric Dsouza');
   private recorder: CallAudioRecorder | null = null;
 
   private deepgramWs: WebSocket | null = null;
@@ -831,9 +833,7 @@ export class VoiceSession {
 
     if (isDncOrNotInterested) {
       console.log(`[Session] Caller requested opt-out / DNC at ${callDuration}s: "${cleanedText}". Ending call politely.`);
-      const politeExit = this.currentLanguage === 'hi'
-        ? "Ji bilkul, main samajh sakti hoon. Aapke samay ke liye dhanyawad, aapka din shubh rahe. Alvida!"
-        : "I completely understand. Thank you for your time, have a wonderful day ahead. Goodbye!";
+      const politeExit = "I completely understand. Thank you for your time Eric, have a wonderful day ahead. Goodbye!";
       this.conversationHistory.push({ role: 'user', content: cleanedText });
       this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${cleanedText}`);
       await this.speakText(politeExit);
@@ -847,25 +847,51 @@ export class VoiceSession {
       return politeExit;
     }
 
-    // 2. Check if caller requested live human transfer
-    if (isTransferIntent(cleanedText)) {
-      console.log(`[Session] Caller requested human escalation: "${cleanedText}". Initiating transfer...`);
-      const transferMsg = "Sure, let me connect your call to Dylan and our on-site team right away. Please stay on the line.";
-      this.conversationHistory.push({ role: 'assistant', content: transferMsg });
-      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${transferMsg}`);
-      await this.speakText(transferMsg);
-      const waitMs = Math.max(1200, this.agentSpeakingUntil - Date.now() + 300);
-      setTimeout(async () => {
-        await transferCallToHuman({
-          callUuid: this.callUuid || this.callSid,
+    // 2. Deterministic Script Engine Progression
+    const scriptResult = this.scriptEngine.getNextScriptLine(cleanedText);
+    if (scriptResult && scriptResult.response) {
+      const response = scriptResult.response;
+      this.conversationHistory.push({ role: 'user', content: cleanedText });
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] Caller: ${cleanedText}`);
+      await this.speakText(response);
+      this.conversationHistory.push({ role: 'assistant', content: response });
+      this.fullTranscriptLines.push(`[${this.getElapsedSecStr()}] ${this.agentName}: ${response}`);
+
+      // Broadcast lead updates
+      const qualifierKey = `${this.callId ?? 'sim'}:${this.callerNumber}`;
+      const qualifier = activeQualifiers.get(qualifierKey);
+      if (qualifier) {
+        qualifier.extractEntities(cleanedText);
+        const state = qualifier.getState();
+        callEventsBroadcaster.broadcast({
+          type: 'lead_update',
           streamSid: this.streamSid,
           callerNumber: this.callerNumber,
-          reason: cleanedText,
+          timestamp: new Date().toISOString(),
+          data: {
+            config: state.config,
+            budget: state.budget,
+            intent: state.intent,
+            location: state.preferredLocation,
+            callerName: state.callerName,
+            isQualified: state.isQualified,
+            leadQuality: state.leadQuality,
+          },
         });
-        await this.closeSession('Transferred to Human Property Advisor', 'Agent', 'TRANSFER');
-      }, waitMs);
+      }
+
       this.isProcessingUtterance = false;
-      return transferMsg;
+
+      if (scriptResult.shouldClose) {
+        const waitMs = Math.max(1200, this.agentSpeakingUntil - Date.now() + 400);
+        setTimeout(async () => {
+          await this.closeSession('Qualification Script Completed', 'Agent', '4000');
+        }, waitMs);
+      } else {
+        this.armDeadAirTimer();
+      }
+
+      return response;
     }
 
     this.conversationHistory.push({ role: 'user', content: cleanedText });
@@ -1006,20 +1032,14 @@ export class VoiceSession {
       console.log(`[DeadAir Timer] Silence detected. Triggering prompt #${this.deadAirPromptCount}...`);
 
       if (this.deadAirPromptCount === 1) {
-        const prompt =
-          this.currentLanguage === 'hi'
-            ? 'नमस्ते, क्या आप सुन पा रहे हैं? अगर आप फ्लोर प्लान या प्राइसिंग जानना चाहते हैं तो बेझिझक पूछें।'
-            : "Hello, are you still with me? Feel free to ask if you'd like pricing details, floor plans, or site visit timings!";
+        const prompt = "Hello, are you still with me? Are you currently looking for any investment options in Real Estate?";
 
         this.conversationHistory.push({ role: 'assistant', content: prompt });
         this.fullTranscriptLines.push(`${this.agentName}: ${prompt}`);
         await this.speakText(prompt);
         this.armDeadAirTimer();
       } else if (this.deadAirPromptCount >= 2) {
-        const farewell =
-          this.currentLanguage === 'hi'
-            ? 'लगता है आपकी आवाज़ नहीं आ पा रही है। आप हमें कभी भी दोबारा कॉल कर सकते हैं या हमारी वेबसाइट mittalpalms.com देख सकते हैं। धन्यवाद!'
-            : 'I seem to be having trouble hearing you. Please feel free to call us back anytime or visit mittalpalms.com. Have a wonderful day!';
+        const farewell = "I seem to be having trouble hearing you. Thank you for your time, Eric. Have a wonderful day ahead! Goodbye.";
 
         this.conversationHistory.push({ role: 'assistant', content: farewell });
         this.fullTranscriptLines.push(`${this.agentName}: ${farewell}`);
@@ -1230,9 +1250,6 @@ export class VoiceSession {
   }
 
   public getInitialGreeting(): string {
-    const memory = getCallerMemory(this.callerNumber);
-    return (memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there')
-      ? `Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?`
-      : `Hello! This is Priya from Trishul Mittal Palms in Jakkur. Are you looking for a 2 BHK or a 3 BHK for your family?`;
+    return getScriptGreeting('Eric Dsouza');
   }
 }

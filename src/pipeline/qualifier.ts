@@ -19,16 +19,16 @@ export interface LeadQualificationState {
 export class QualificationEngine {
   private state: LeadQualificationState;
   private memory: CallerMemoryContext;
-  private persona: string = 'priya';
+  private persona: string = 'nisha';
 
-  constructor(callId: number | null, callerPhone: string, persona: string = 'priya') {
+  constructor(callId: number | null, callerPhone: string, persona: string = 'nisha') {
     this.memory = getCallerMemory(callerPhone);
     const existing = this.memory.existingLead;
     this.persona = persona;
 
-    const existingName = existing?.callerName && existing.callerName !== 'Valued Buyer'
+    const existingName = existing?.callerName && existing.callerName !== 'Valued Buyer' && existing.callerName !== 'there'
       ? existing.callerName
-      : 'there';
+      : 'Eric Dsouza';
 
     this.state = {
       callId,
@@ -36,7 +36,7 @@ export class QualificationEngine {
       callerName: existingName,
       config: null,
       sizeInMind: null,
-      preferredLocation: 'Jakkur / North Bangalore',
+      preferredLocation: null,
       intent: null,
       budget: null,
       followUpTime: null,
@@ -132,7 +132,7 @@ export class QualificationEngine {
     // Lead quality assessment
     if (this.state.config || this.state.budget || this.state.followUpTime) {
       this.state.leadQuality = 'Good Lead';
-      this.state.qualificationReason = `Inquired for Trishul Mittal Palms (${this.state.config || '2/3 BHK'}, Budget: ${this.state.budget || '₹12k/sqft'})`;
+      this.state.qualificationReason = `Real estate investment inquiry (${this.state.config || 'Apartment/Villa/Plot'}, Budget: ${this.state.budget || 'Flexible'})`;
     }
   }
 
@@ -142,15 +142,15 @@ export class QualificationEngine {
         call_id: this.state.callId,
         caller_name: this.state.callerName,
         phone_number: this.state.callerPhone,
-        configuration: this.state.config || '2/3 BHK',
-        location_preference: this.state.preferredLocation || 'Jakkur / North Bangalore',
-        budget_bracket: this.state.budget || '₹12,000 / sqft',
-        intent: this.state.intent || 'Self-use',
-        possession_timeline: 'Ready to move',
-        site_visit_day: this.state.followUpTime || 'Site Visit / Follow-up',
+        configuration: this.state.config || 'Apartment/Villa/Plot',
+        location_preference: this.state.preferredLocation || 'Open',
+        budget_bracket: this.state.budget || 'Flexible',
+        intent: this.state.intent || 'Investment',
+        possession_timeline: 'Open',
+        site_visit_day: this.state.followUpTime || 'Follow-up',
         lead_quality: this.state.leadQuality || 'Good Lead',
-        lead_status: this.state.followUpTime ? 'Good Lead - Visit Scheduled' : 'In Discussion',
-        qualification_reason: this.state.qualificationReason || 'Trishul Mittal Palms inquiry with Priya',
+        lead_status: this.state.followUpTime ? 'Qualified Lead - Callback Scheduled' : 'In Discussion',
+        qualification_reason: this.state.qualificationReason || 'Real estate inquiry with Nisha Prasad',
         recording_url: recordingUrl,
         transcript: transcript,
       });

@@ -713,7 +713,7 @@ app.get('/api/training/objections', async () => {
 });
 
 /**
- * API: Run live objection benchmark test against Priya
+ * API: Run live objection benchmark test against Nisha Prasad
  */
 app.post('/api/training/test-objection', async (request, reply) => {
   const body = (request.body as any) || {};
@@ -727,7 +727,7 @@ app.post('/api/training/test-objection', async (request, reply) => {
     {
       role: 'assistant',
       content:
-        'Hello! Welcome to Trishul Mittal Palms in Jakkur. I\'m Priya, property advisor. Thanks for calling! Are you exploring 2 or 3 BHK properties in Bangalore?',
+        'I am Nisha Prasad, just wanted to know are you currently looking for any investment options in Real Estate?',
     },
     {
       role: 'user',
@@ -736,7 +736,7 @@ app.post('/api/training/test-objection', async (request, reply) => {
   ];
 
   let response = '';
-  for await (const chunk of llmPipeline.streamResponse(testHistory, null, '+91-9880199999', 'Priya')) {
+  for await (const chunk of llmPipeline.streamResponse(testHistory, null, '+91-9880199999', 'Nisha Prasad')) {
     response += chunk;
   }
 
@@ -1031,7 +1031,7 @@ app.post('/api/simulator/call', async (request: FastifyRequest<{ Body: { callerN
 
   const session = createVirtualSession(streamSid, callerNumber);
 
-  const agentName = 'Priya';
+  const agentName = 'Nisha Prasad';
   session.setAgentName(agentName);
   session.setAgentVoice(voice);
 
@@ -1115,7 +1115,7 @@ app.post(
       session.setConversationHistory(history);
     }
 
-    const agentName = 'Priya';
+    const agentName = 'Nisha Prasad';
     session.setAgentName(agentName);
     session.setAgentVoice(voice);
 

@@ -17,65 +17,50 @@ export function clearQualifier(key?: string): void {
   }
 }
 
-export const PRIYA_SYSTEM_PROMPT = `You are Priya, a friendly property advisor for Trishul Mittal Palms in Jakkur, North Bangalore.
+export const NISHA_SYSTEM_PROMPT = `You are Nisha Prasad, a professional, polite, and articulate real estate executive calling Eric Dsouza.
 You are on a live telephone call.
 
-CORE GOAL:
-Your primary objective is to FIX AN APPOINTMENT WITH OUR SALES MANAGER, DYLAN.
-Do NOT get bogged down in technicalities, exact square footages, or specific balcony directions.
-Keep all project details GENERIC, HIGH-LEVEL, and BRIEF.
+CORE SCRIPT DIRECTIVE (STRICT: REMOVE ALL OTHER SCRIPTS):
+You must speak ONLY according to this exact qualification script.
+Do NOT mention Trishul Mittal Palms, Jakkur Lake, 1.25 Crore pricing, Dylan, clubhouse, OC, or any other project details.
+This is a general real estate investment qualification call.
 
-CRITICAL VOICE CONVERSATION RULES:
-1. ULTRA-SNAPPY & NATURAL (STRICT MAXIMUM 10 TO 20 WORDS, 1 TO 2 SHORT SENTENCES):
-- This is a telephone call. Keep EVERY turn fast, conversational, and direct (10-20 words).
-- Speak naturally like a friendly property advisor. Never monologue or recite long technical specifications.
-- Use warm, natural acknowledgments like "Got it!", "Of course!", or "Certainly."
+SCRIPT CONVERSATION FLOW:
+1. GREETING (Handled automatically on call start):
+   "Hi, am I speaking with Eric Dsouza? Good Morning/Afternoon/Evening, Eric."
 
-2. GENERIC HIGH-LEVEL FACTS (NEVER RECITE SPECIFIC SPECS):
-- We have premium ready-to-move 2 and 3 BHK waterfront apartments right beside Jakkur Lake.
-- Starting price is 1.25 crore rupees with immediate OC and zero GST.
-- 15,000 sq ft clubhouse with rooftop pool and lake views.
-- Do NOT quote exact square feet or unit-specific balcony facings over the phone.
+2. AFTER ERIC CONFIRMS IDENTITY ("Yes" / "Speaking" / "Yeah"):
+   Reply: "I am Nisha Prasad, just wanted to know are you currently looking for any investment options in Real Estate?"
 
-3. FIX AN APPOINTMENT WITH SALES MANAGER (DYLAN):
-- Position Dylan, our on-site Sales Manager, as the person to meet for unit views, pricing breakdowns, and layouts:
-  "The best way to explore is a quick walkthrough with our sales manager, Dylan. Would Saturday or Sunday suit you?"
-- When caller asks about 2 BHK or 3 BHK pricing / details:
-  "Our homes start from 1.25 crore. Dylan, our sales manager, can walk you through the available units and lake views. Shall I fix a time for you this week?"
-- When caller agrees or specifies a day/time ("today", "Saturday at 11 AM", "this weekend"):
-  "Your appointment with Dylan is confirmed for [Day/Time]! May I have your name for the guest pass?"
-- If caller asks for WhatsApp brochure:
-  "I'm sending the brochure to your WhatsApp now! Would you also like me to reserve a slot with Dylan to see the property?"
+3. AFTER ERIC CONFIRMS INTEREST ("Yes" / "I am looking" / "Yes, I am looking"):
+   Proceed with the 8 qualification questions ONE BY ONE in strict order:
+   Question 1: "Are you looking for an apartment, plot or villas?"
+   Question 2: "How many bedrooms are you looking for?"
+   Question 3: "Any particular size in mind?"
+   Question 4: "Is it for self use or investment?"
+   Question 5: "May I know your budget?"
+   Question 6: "Which location do you prefer?"
+   Question 7: "Are you looking for ready to move in or under construction?"
+   Question 8: "How soon are you looking to book?"
 
-4. CALLBACK REQUESTS (NEVER TRANSFER OR SAY HOLD THE LINE):
-- When caller asks for a call back (e.g. "Can Dylan call me back?", "Ask Dylan to call me", "Call me back later", "Have someone call me"):
-  DO NOT transfer the call and NEVER say "hold the line" or "connecting you now"!
-  Reply: "I will have Dylan call you right back on this number! May I have your name so he knows who to ask for?"
-  If caller's name is already known or provided:
-  Reply: "Got it! I have scheduled Dylan to call you back shortly. Have a wonderful day!"
+4. AFTER ALL 8 QUESTIONS ARE ANSWERED:
+   Reply: "Thank you so much for the information. May I know what is the best time for us to reach you at?"
 
-5. LIVE HUMAN AGENT ESCALATION (ONLY FOR IMMEDIATE LIVE HANDOFF):
-- ONLY trigger live transfer if caller explicitly asks to speak with Dylan or a human right now on this call:
-  Reply: "[TRANSFER_TO_HUMAN] Of course! Connecting you directly to Dylan and our on-site team right now. Please stay on the line."
+5. AFTER ERIC GIVES THE BEST TIME:
+   Reply: "Thank you so much, Eric! We will reach out to you then. Have a wonderful day! Goodbye."
 
-6. STRICT ANTI-REPETITION DIRECTIVE:
-- Review earlier assistant messages in this conversation. NEVER repeat the same pitch, question, or phrasing twice.
-- If caller says "hello", "can you hear me", or "are you there", answer simply: "Yes, I can hear you clearly! How can I help you?"
-- If you already offered a site visit or asked about 2 vs 3 BHK, advance the conversation based on what the caller said.
+CRITICAL VOICE TELEPHONY RULES:
+- STRICT BREVITY: Ask ONLY ONE question at a time. Maximum 10 to 18 words per turn.
+- NATURAL ACKNOWLEDGMENTS: When Eric answers a question, acknowledge briefly ("Got it!", "Understood.", "Noted.") and ask the NEXT question immediately.
+- SMART ENTITY SKIP: If Eric already provided the answer to an upcoming question (e.g. "I am looking for a 3 BHK apartment in Whitefield"), acknowledge and SKIP the questions already answered. Ask the next unanswered question.
+- IF ERIC ASKS WHO THIS IS OR WHICH COMPANY:
+  Reply in 1 short sentence: "I am Nisha Prasad calling regarding real estate investment options. Are you currently looking for any properties?"
+- IF ERIC IS NOT INTERESTED / OPT-OUT:
+  Reply: "I completely understand. Thank you for your time Eric, have a wonderful day ahead. Goodbye!"
+- NEVER MONOLOGUE. NEVER RECITE MULTIPLE QUESTIONS AT ONCE. NEVER SPEAK ABOUT ANY OTHER BUILDER OR PROPERTY.`;
 
-7. HUMAN REALISM & AI IDENTITY:
-- If asked "Are you a real person?", "Are you AI?", or "Are you a robot?":
-  Answer warmly and naturally:
-  "I'm Priya, an AI property advisor for Mittal Palms! I can answer quick questions or book you in with Dylan, our sales manager. How can I help?"
-- Never falsely claim to be a human in an office. Be charming, transparent, and helpful.
-
-8. SPEECH RECOGNITION (STT) GLITCHES:
-- If caller's audio has a misheard word (e.g. "do-well gate" for 2 BHK, "fore vhk" for 4 BHK):
-  NEVER point out their typo or say "I think you meant X instead of Y"! Just reply smoothly:
-  "We have ready 2 and 3 BHK homes beside Jakkur Lake starting at 1.25 crore. Which size would you like to explore with Dylan?"
-
-9. BILINGUAL (HINDI/HINGLISH):
-- If caller speaks Hindi, reply in short, natural Hindi/Hinglish (e.g. "Mittal Palms mein ready 2 aur 3 BHK lake-facing homes hain 1.25 crore se. Kya aap hamare sales manager Dylan ke saath ek visit plan karna chahenge?").`;
+// Alias for backwards compatibility
+export const PRIYA_SYSTEM_PROMPT = NISHA_SYSTEM_PROMPT;
 
 /**
  * NOTE: qualify_and_sync_lead is handled by QualificationEngine.syncLeadRecord(),
@@ -109,29 +94,19 @@ export class LLMPipeline {
     } else if (openRouterKey && openRouterKey !== 'your_openrouter_api_key_here') {
       console.log('[LLM] ⚡ Fallback: OpenRouter meta-llama/llama-3.3-70b-instruct');
     } else {
-      console.warn('[LLM] Using local Trishul Mittal Palms qualification engine.');
+      console.warn('[LLM] Using local real estate qualification engine.');
     }
-
-    // Auto-seed objection handling learnings into knowledge base
-    seedObjectionLearnings();
   }
 
   /**
    * Streams LLM response tokens, triggers function calling if requested,
    * and yields text pieces to be voiced.
-   *
-   * Priority order:
-   *   1. Sarvam AI sarvam-105b-conversations (ultra-low latency ~200ms TTFT, native Indian real estate dialogue)
-   *   2. Groq Qwen 2.5 27B (ultra-low latency ~180-270ms TTFT fallback)
-   *   3. OpenRouter LLaMA 3.3 70B (tertiary fallback)
-   *   4. Deterministic Qualification Engine (exact script fallback)
-   *   5. Hard-coded closing reply (last resort)
    */
   async *streamResponse(
     messages: ChatMessage[],
     callId: number | null,
     callerPhone: string,
-    agentName: string = 'Priya',
+    agentName: string = 'Nisha Prasad',
     abortSignal?: AbortSignal,
     currentLanguage: 'en' | 'hi' = 'en'
   ): AsyncGenerator<string, void, unknown> {
@@ -141,7 +116,7 @@ export class LLMPipeline {
     const key = `${callId ?? 'sim'}:${callerPhone}`;
     let qualifier = activeQualifiers.get(key);
     if (!qualifier) {
-      qualifier = new QualificationEngine(callId, callerPhone, 'priya');
+      qualifier = new QualificationEngine(callId, callerPhone, 'nisha');
       activeQualifiers.set(key, qualifier);
     }
     qualifier.hydrateFromHistory(messages);
@@ -342,8 +317,8 @@ export class LLMPipeline {
       }
     }
 
-    // 3. LAST RESORT FALLBACK: Conversational reply from Priya
-    yield "Our 2 and 3 BHK homes start from 1.25 crore beside Jakkur Lake. Dylan, our sales manager, can walk you through the units in person. Shall I set up a time for you this week?";
+    // 3. LAST RESORT FALLBACK: Conversational reply from Nisha Prasad
+    yield "I am Nisha Prasad, just wanted to know are you currently looking for any investment options in Real Estate?";
   }
 
   /**
@@ -368,7 +343,7 @@ export class LLMPipeline {
             {
               role: 'system',
               content:
-                'Summarize this property inquiry call with advisor Priya for Trishul Mittal Palms in 1-2 concise sentences. Focus ONLY on confirmed requirements explicitly stated by the caller. If the caller denied or corrected an assumed budget (e.g. stating they never specified a budget), do NOT record that denied number as their budget. Note any scheduled site visit or follow-up.',
+                'Summarize this real estate qualification call with executive Nisha Prasad for client Eric Dsouza in 1-2 concise sentences. Focus on property type (apartment/plot/villa), bedrooms, size, purpose, budget, location, construction status, timeline, and best time to reach.',
             },
             { role: 'user', content: `Call transcript:\n${transcript}` },
           ],
@@ -382,7 +357,7 @@ export class LLMPipeline {
       }
     }
 
-    return 'Inquiry regarding Trishul Mittal Palms in Jakkur, Bangalore with advisor Priya.';
+    return 'Real estate investment inquiry with executive Nisha Prasad for Eric Dsouza.';
   }
 
   /**
@@ -392,17 +367,24 @@ export class LLMPipeline {
   async extractAndStoreLearnings(callId: number | null, transcript: string): Promise<void> {
     if (!transcript || transcript.trim().length < 30) return;
 
-    let insight = 'Buyer explored Trishul Mittal Palms resale opportunity in Jakkur.';
+    let insight = 'Buyer shared real estate investment preferences.';
     let type = 'general';
-    if (transcript.includes('3 bhk') || transcript.includes('3bhk')) {
-      insight = 'Buyer interested in 3 BHK (1,720 to 1,980 sq.ft) with lake view.';
+    const lower = transcript.toLowerCase();
+    if (lower.includes('apartment') || lower.includes('flat')) {
+      insight = 'Client interested in apartment configuration.';
       type = 'preference';
-    } else if (transcript.includes('2 bhk') || transcript.includes('2bhk')) {
-      insight = 'Buyer interested in 2 BHK (1,235 to 1,340 sq.ft) layout.';
+    } else if (lower.includes('plot') || lower.includes('land')) {
+      insight = 'Client interested in plot / land investment.';
       type = 'preference';
-    } else if (transcript.includes('visit') || transcript.includes('weekend') || transcript.includes('saturday')) {
-      insight = 'Site visit discussion initiated for upcoming weekend.';
-      type = 'visit';
+    } else if (lower.includes('villa')) {
+      insight = 'Client interested in villas.';
+      type = 'preference';
+    } else if (lower.includes('ready to move') || lower.includes('ready-to-move')) {
+      insight = 'Client prefers ready to move in properties.';
+      type = 'status';
+    } else if (lower.includes('under construction')) {
+      insight = 'Client open to under construction properties.';
+      type = 'status';
     }
 
     saveAgentLearning({
@@ -415,7 +397,7 @@ export class LLMPipeline {
   /**
    * Generates dynamic prompt with real-time few-shot learnings and caller memory context.
    */
-  getPromptWithLearnings(callerPhone?: string, agentName: string = 'Priya', lastUserMsg?: string, currentLanguage: 'en' | 'hi' = 'en'): string {
+  getPromptWithLearnings(callerPhone?: string, agentName: string = 'Nisha Prasad', lastUserMsg?: string, currentLanguage: 'en' | 'hi' = 'en'): string {
     const learnings = getRecentLearnings(8);
     // Deduplicate learnings to avoid repeating identical bullets
     const uniqueLearnings = Array.from(new Set((learnings || []).map((l) => l.key_insight)))
@@ -427,13 +409,13 @@ export class LLMPipeline {
     if (callerPhone) {
       const memory = getCallerMemory(callerPhone);
       const callerNameLine = memory.isReturningCaller && memory.existingLead?.callerName && memory.existingLead.callerName !== 'Valued Buyer' && memory.existingLead.callerName !== 'there'
-        ? `- Known Contact Name: ${memory.existingLead.callerName}\n- STRICT RULE: Do NOT assume a site visit is booked or confirmed until the caller explicitly asks to book one in THIS call. Do NOT assume budget or configuration.`
-        : `- Known Contact Name: None yet. Only ask for their name if they explicitly ask to book a site visit.`;
+        ? `- Known Contact Name: ${memory.existingLead.callerName}`
+        : `- Known Contact Name: Eric Dsouza`;
 
       memoryContextBlock = `
 ========================================================================
-BACKGROUND REFERENCE CONTEXT (INTERNAL ADVISOR NOTES ONLY - NEVER ASSUME OR DECLARE TO CALLER):
-- Caller Phone: ${memory.phoneNumber || callerPhone} (Inbound caller ID ALREADY captured. NEVER ask the caller for their phone number.)
+BACKGROUND REFERENCE CONTEXT:
+- Caller Phone: ${memory.phoneNumber || callerPhone}
 ${callerNameLine}
 ========================================================================`;
     }
@@ -444,23 +426,13 @@ ${callerNameLine}
       if (hint) {
         coachingDirectiveBlock = `
 ========================================================================
-REAL-TIME COACHING DIRECTIVE FOR THIS TURN:
+REAL-TIME COACHING DIRECTIVE:
 ${hint}
 ========================================================================`;
       }
     }
 
-    let languageDirectiveBlock = '';
-    if (currentLanguage === 'hi') {
-      languageDirectiveBlock = `
-========================================================================
-ACTIVE CONVERSATION LANGUAGE: HINDI / HINGLISH
-The caller is speaking in Hindi. You MUST reply in conversational Hindi or Hinglish (e.g. "Ji bilkul! Mittal Palms mein do aur teen BHK ready homes hain Jakkur Lake ke paas. 15,000 square feet ka clubhouse aur rooftop pool hai. Aap 2 ya 3 BHK dekh rahe hain?").
-Do NOT switch back to English unless caller explicitly asks for English. Keep responses natural, warm, and concise (2 short sentences).
-========================================================================`;
-    }
-
-    const basePrompt = PRIYA_SYSTEM_PROMPT;
+    const basePrompt = NISHA_SYSTEM_PROMPT;
 
     return `${basePrompt}
 
@@ -468,10 +440,8 @@ ${memoryContextBlock}
 
 ${coachingDirectiveBlock}
 
-${languageDirectiveBlock}
-
 CONTINUOUS REAL-TIME LEARNINGS:
-${uniqueLearnings || '- Maintain crisp 1-2 sentence conversational turns.'}`;
+${uniqueLearnings || '- Follow the exact Nisha Prasad qualification script in sequence.'}`;
   }
 }
 

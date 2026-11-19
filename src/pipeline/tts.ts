@@ -481,23 +481,28 @@ class MulawLruCache {
 export const telephonyLruCache = new MulawLruCache(500);
 
 export const TOP_25_PHRASES = [
-  "Hello! This is Priya from Trishul Mittal Palms in Jakkur. Are you looking for a 2 BHK or a 3 BHK for your family?",
-  "Hello! Welcome back to Mittal Palms. This is Priya. Are you looking for a 2 BHK or a 3 BHK for your family?",
-  "Sure, let me connect your call to our on-site property advisor team right away. Please stay on the line.",
-  "Pricing starts at one point two five crore rupees for 2 BHK, and one point seven crore rupees for 3 BHK.",
-  "Two BHK pricing starts from one point two five crore rupees all inclusive.",
-  "Three BHK pricing starts from one point seven crore rupees all inclusive.",
-  "Trishul Mittal Palms is located in Jakkur, North Bangalore, right beside Jakkur Lake.",
-  "Full Occupancy Certificate is received, so zero GST and immediate possession.",
-  "Yes, we have amenities like a 15,000 square foot clubhouse, swimming pool, gym, and landscaped gardens.",
-  "Yes, our on-site property advisor team is available for site visits tomorrow. Would morning or afternoon suit you better?",
-  "Thank you for your time. Have a wonderful day ahead. Goodbye!",
-  "I completely understand. Thank you for your time, have a wonderful day ahead. Goodbye!"
+  "Hi, am I speaking with Eric Dsouza? Good Morning, Eric.",
+  "Hi, am I speaking with Eric Dsouza? Good Afternoon, Eric.",
+  "Hi, am I speaking with Eric Dsouza? Good Evening, Eric.",
+  "I am Nisha Prasad, just wanted to know are you currently looking for any investment options in Real Estate?",
+  "Are you looking for an apartment, plot or villas?",
+  "How many bedrooms are you looking for?",
+  "Any particular size in mind?",
+  "Is it for self use or investment?",
+  "May I know your budget?",
+  "Which location do you prefer?",
+  "Are you looking for ready to move in or under construction?",
+  "How soon are you looking to book?",
+  "Thank you so much for the information. May I know what is the best time for us to reach you at?",
+  "Thank you so much, Eric! We will reach out to you then. Have a wonderful day! Goodbye.",
+  "I completely understand. Thank you for your time Eric, have a wonderful day ahead. Goodbye!",
+  "Hello, are you still with me? Are you currently looking for any investment options in Real Estate?",
+  "I seem to be having trouble hearing you. Thank you for your time, Eric. Have a wonderful day ahead! Goodbye."
 ];
 
 export async function prewarmTtsCache(): Promise<void> {
   const voicesToPrewarm = ['ishita'];
-  console.log(`[TTS] Checking persistent cache for ${TOP_25_PHRASES.length} core Priya phrases with Sarvam Bulbul Female Voice...`);
+  console.log(`[TTS] Checking persistent cache for ${TOP_25_PHRASES.length} core Nisha Prasad phrases with Sarvam Bulbul Female Voice...`);
   let diskHits = 0;
   let neededSynthesis = 0;
 
