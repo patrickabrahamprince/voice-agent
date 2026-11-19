@@ -509,7 +509,7 @@ export class VoiceSession {
             console.log(`[TurnDetector Safety Timer] Processing stalled utterance: "${utterance}"`);
             await this.processCallerUtterance(utterance);
           }
-        }, 550);
+        }, 850);
 
         return;
       }
@@ -538,26 +538,26 @@ export class VoiceSession {
     const now = Date.now();
     const rms = this.getMulawRms(chunk);
 
-    // 1. Vocal Barge-In: Allows the caller to interrupt Priya when they speak into their phone
+    // 1. Vocal Barge-In: Allows caller to interrupt Nisha when they speak into their phone
     if (this.isAgentSpeaking) {
-      // Echo onset guard: First 600ms of agent speech is protected against transmission echo bursts
-      if (now - this.agentSpeakingStartedAt < 600) {
+      // Echo onset guard: First 200ms of agent speech is protected against transmission echo bursts
+      if (now - this.agentSpeakingStartedAt < 200) {
         this.interruptFramesCount = 0;
         this.interruptChunks = [];
         return;
       }
 
-      // Sustained caller speech into the phone microphone (RMS > 1400 for 140ms = 7 consecutive frames)
-      if (rms > 1400) {
+      // Sustained caller speech into the phone microphone (RMS > 950 for 80ms = 4 consecutive frames)
+      if (rms > 950) {
         this.interruptFramesCount++;
         this.interruptChunks.push(chunk);
 
-        if (this.interruptFramesCount >= 7) {
+        if (this.interruptFramesCount >= 4) {
           console.log(
-            `[Barge-In] Caller interrupted Priya (RMS: ${Math.round(rms)}, sustained: ${this.interruptFramesCount} frames). Halting speech immediately.`
+            `[Barge-In] Caller interrupted Nisha (RMS: ${Math.round(rms)}, sustained: ${this.interruptFramesCount} frames). Halting speech immediately.`
           );
 
-          // Stop PBX playback immediately and cancel active synthesis so Priya is silent
+          // Stop PBX playback immediately and cancel active synthesis so Nisha is silent
           this.handleBargeIn(true, true);
           this.clearDeadAirTimer();
           this.deadAirPromptCount = 0;
@@ -573,7 +573,7 @@ export class VoiceSession {
           }
           this.silenceTimer = setTimeout(async () => {
             await this.finalizeCallerSpeech();
-          }, 450);
+          }, 750);
         }
       } else {
         // Drop brief noise transient or unvoiced gap
@@ -584,8 +584,8 @@ export class VoiceSession {
       return;
     }
 
-    // 2. Post-speech cooldown: Agent finished speaking, suppress 250ms residual echo tail
-    if (now < this.postSpeechCooldownUntil && this.speechFramesCount === 0) {
+    // 2. Post-speech cooldown: Suppress residual acoustic echo tail unless clear caller voice (RMS > 950)
+    if (now < this.postSpeechCooldownUntil && this.speechFramesCount === 0 && rms < 950) {
       return;
     }
 
@@ -612,9 +612,9 @@ export class VoiceSession {
         this.silenceTimer = null;
       }
 
-      // Conversational silence debounce: 280-340ms for responsive snappy turn-taking
+      // Conversational silence debounce: 650-850ms ensures caller finishes their sentence without overlapping
       const currentSpeechDuration = this.inboundMulawChunks.length / 8000;
-      const debounceMs = currentSpeechDuration > 0.8 ? 280 : 340;
+      const debounceMs = currentSpeechDuration > 1.2 ? 850 : (currentSpeechDuration > 0.5 ? 750 : 650);
 
       this.silenceTimer = setTimeout(async () => {
         if (this.isAgentSpeaking || this.isSynthesizingSpeech) {
@@ -653,7 +653,7 @@ export class VoiceSession {
     this.isSynthesizingSpeech = true;
     this.agentSpeakingStartedAt = Date.now();
     this.agentSpeakingUntil = Math.max(this.agentSpeakingUntil, Date.now() + 600);
-    this.postSpeechCooldownUntil = this.agentSpeakingUntil + 450;
+    this.postSpeechCooldownUntil = this.agentSpeakingUntil + 180;
 
     // Flush any pending audio chunks
     this.inboundMulawChunks = [];
@@ -700,7 +700,7 @@ export class VoiceSession {
         const now = Date.now();
         const currentEnd = Math.max(now, this.agentSpeakingUntil);
         this.agentSpeakingUntil = currentEnd + chunkDurationMs;
-        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 450; // 450ms echo cooldown allowing carrier buffer to flush cleanly
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 180; // 180ms echo cooldown allowing carrier buffer to flush cleanly
 
         this.inboundMulawChunks = [];
         this.pendingSpeechChunks = [];
@@ -739,7 +739,7 @@ export class VoiceSession {
         const currentEnd = Math.max(now, this.agentSpeakingUntil);
         this.agentSpeakingStartedAt = now;
         this.agentSpeakingUntil = currentEnd + durationMs;
-        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 450; // 450ms echo cooldown allowing carrier buffer to flush cleanly
+        this.postSpeechCooldownUntil = this.agentSpeakingUntil + 180; // 180ms echo cooldown allowing carrier buffer to flush cleanly
 
         this.telephonyWs.send(
           JSON.stringify({
@@ -1011,7 +1011,7 @@ export class VoiceSession {
 
     // Calculate when the agent will actually finish speaking on the PBX
     const timeUntilAgentDone = Math.max(0, this.agentSpeakingUntil - Date.now());
-    const silenceTimeoutMs = timeUntilAgentDone + 5000; // 5.0 seconds after agent finishes speaking
+    const silenceTimeoutMs = timeUntilAgentDone + 8000; // 8.0 seconds after agent finishes speaking
 
     this.deadAirTimer = setTimeout(async () => {
       if (
@@ -1032,7 +1032,7 @@ export class VoiceSession {
       console.log(`[DeadAir Timer] Silence detected. Triggering prompt #${this.deadAirPromptCount}...`);
 
       if (this.deadAirPromptCount === 1) {
-        const prompt = "Hello, are you still with me? Are you currently looking for any investment options in Real Estate?";
+        const prompt = "Hello Eric, are you still with me?";
 
         this.conversationHistory.push({ role: 'assistant', content: prompt });
         this.fullTranscriptLines.push(`${this.agentName}: ${prompt}`);

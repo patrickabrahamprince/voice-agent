@@ -31,6 +31,26 @@ async function runTest() {
     console.log(`[Agent]  Nisha: "${result.response}" (Step: ${result.step}, ShouldClose: ${result.shouldClose || false})\n`);
   }
 
+  console.log('\n======================================================');
+  console.log('🧪 TESTING NISHA PRASAD: VILLA + REPEAT + PRESENCE CHECKS');
+  console.log('======================================================\n');
+
+  const engine2 = new ScriptEngine('Eric Dsouza');
+  console.log(`1. Greet confirm:`, engine2.getNextScriptLine('Yes').response);
+  console.log(`2. Interest confirm:`, engine2.getNextScriptLine('I am looking').response);
+  console.log(`3. Villa chosen:`, engine2.getNextScriptLine('villa').response);
+  console.log(`4. Caller asks repeat:`, engine2.getNextScriptLine('could you repeat that please?').response);
+  console.log(`5. 4 bedrooms chosen:`, engine2.getNextScriptLine('4 bedrooms').response);
+  console.log(`6. Caller says "yes" to size:`, engine2.getNextScriptLine('yes').response);
+  console.log(`7. Caller provides size:`, engine2.getNextScriptLine('around 3500 sq ft').response);
+  console.log(`8. Investment purpose:`, engine2.getNextScriptLine('purely for investment').response);
+  console.log(`9. Caller says "yeah" to budget:`, engine2.getNextScriptLine('yeah').response);
+  console.log(`10. Caller provides budget:`, engine2.getNextScriptLine('around 3.5 crores').response);
+  console.log(`11. Location:`, engine2.getNextScriptLine('Hebbal').response);
+  console.log(`12. Construction status:`, engine2.getNextScriptLine('under construction').response);
+  console.log(`13. Timeline:`, engine2.getNextScriptLine('immediately').response);
+  console.log(`14. Best time:`, engine2.getNextScriptLine('reach me tomorrow 5pm').response);
+
   console.log('======================================================');
   console.log('🧪 TESTING NISHA PRASAD LLM FALLBACK RESPONSE');
   console.log('======================================================\n');
